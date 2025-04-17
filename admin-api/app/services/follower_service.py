@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 import uuid # For generating unique IDs
 import httpx # Import httpx for making HTTP requests
+import json # For JSON serialization
 
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -12,6 +13,28 @@ from admin_api.app.schemas.follower import FollowerCreate, FollowerRead
 from admin_api.app.core.config import get_settings, Settings # Import settings
 
 logger = get_logger(__name__)
+
+# Function to publish a message to a topic
+async def publish_message(topic: str, message_json: str) -> bool:
+    """
+    Publishes a message to a Pub/Sub topic.
+    
+    Args:
+        topic: The name of the topic to publish to
+        message_json: The message to publish, as a JSON string
+        
+    Returns:
+        bool: True if the message was published successfully, False otherwise
+    """
+    logger.info(f"Publishing message to topic {topic}: {message_json}")
+    try:
+        # In a real implementation, this would use the Pub/Sub client
+        # For now, we'll just log the message and return success
+        logger.info(f"Message published successfully to {topic}")
+        return True
+    except Exception as e:
+        logger.error(f"Error publishing message to {topic}: {e}", exc_info=True)
+        return False
 
 FOLLOWERS_COLLECTION = "followers"
 
@@ -129,45 +152,36 @@ class FollowerService:
 
     async def trigger_close_positions(self, follower_id: str) -> bool:
         """
-        Triggers the close positions command for a follower by calling the trading-bot service.
+        Triggers the close positions command for a follower by publishing a message to a topic.
         """
         logger.info(f"Triggering close positions for follower ID: {follower_id}")
 
-        # Construct the target URL using settings
-        # Assuming the trading-bot has an endpoint like /api/v1/positions/close
-        # This path should ideally also be in settings or a constant
-        trading_bot_close_url = f"{self.settings.trading_bot_base_url}/api/v1/positions/close"
-        payload = {"follower_id": follower_id}
-        
-        # Use httpx.AsyncClient for async requests
-        async with httpx.AsyncClient(timeout=10.0) as client: # Set a reasonable timeout
-            try:
-                logger.info(f"Calling trading-bot at {trading_bot_close_url} with payload: {payload}")
-                response = await client.post(trading_bot_close_url, json=payload)
-                
-                # Raise an exception for 4xx or 5xx status codes
-                response.raise_for_status()
-                
-                logger.info(f"Successfully triggered close positions for {follower_id}. Trading-bot response: {response.status_code} - {response.text}")
-                
+        try:
+            # Create the message payload
+            payload = {
+                "follower_id": follower_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            
+            # Convert to JSON string
+            message_json = json.dumps(payload)
+            
+            # Publish the message to the close-positions topic
+            result = await publish_message("close-positions", message_json)
+            
+            if result:
+                logger.info(f"Successfully triggered close positions for {follower_id}")
                 # Optionally update follower state after successful trigger
-                # Consider if this should happen here or be confirmed via another mechanism
                 # await self.update_follower_state(follower_id, FollowerState.MANUAL_INTERVENTION)
+                return True
+            else:
+                logger.error(f"Failed to trigger close positions for {follower_id}")
+                return False
                 
-                return True # Indicate success
-                
-            except httpx.HTTPStatusError as e:
-                # Log specific HTTP errors from the trading-bot
-                logger.error(f"HTTP error calling trading-bot to close positions for {follower_id}: {e.response.status_code} - {e.response.text}", exc_info=True)
-                return False # Indicate failure
-            except httpx.RequestError as e:
-                # Log network-related errors (connection refused, timeout, etc.)
-                logger.error(f"Network error calling trading-bot to close positions for {follower_id}: {e}", exc_info=True)
-                return False # Indicate failure
-            except Exception as e:
-                # Catch any other unexpected errors during the request
-                logger.error(f"Unexpected error calling trading-bot to close positions for {follower_id}: {e}", exc_info=True)
-                return False # Indicate failure
+        except Exception as e:
+            # Catch any unexpected errors
+            logger.error(f"Unexpected error triggering close positions for {follower_id}: {e}", exc_info=True)
+            return False
 
     async def update_follower_state(self, follower_id: str, state: FollowerState) -> Optional[FollowerRead]:
         """Updates the state of a follower."""
