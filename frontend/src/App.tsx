@@ -1,0 +1,63 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
+import { WebSocketProvider } from './contexts/WebSocketContext'; // Import WebSocketProvider
+import LoginPage from './pages/LoginPage';
+import DashboardLayout from './components/layout/DashboardLayout';
+import FollowersPage from './pages/FollowersPage';
+import LogsPage from './pages/LogsPage';
+import CommandsPage from './pages/CommandsPage'; // Import CommandsPage
+
+// TODO: Move WebSocket URL to environment variables
+const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000/api/v1/ws';
+
+function App() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading indicator while checking auth status
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p> {/* Replace with a proper spinner/loader component later */}
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={!isAuthenticated ? <LoginPage /> : <Navigate to="/followers" replace />} // Redirect if already logged in
+      />
+      <Route
+        path="/*" // All other routes are protected
+        element={
+          isAuthenticated ? (
+            <WebSocketProvider url={WEBSOCKET_URL}>
+              <DashboardLayout>
+                {/* Define nested routes within the layout */}
+                <Routes>
+                  <Route path="/followers" element={<FollowersPage />} />
+                  {/* Add routes for Log Console and Manual Commands later */}
+                  <Route path="/logs" element={<LogsPage />} />
+                  <Route path="/commands" element={<CommandsPage />} />
+
+                  {/* Default route within the dashboard */}
+                  <Route index element={<Navigate to="/followers" replace />} />
+                  <Route path="/" element={<Navigate to="/followers" replace />} />
+
+                  {/* Optional: Catch-all for unknown dashboard routes */}
+                  {/* <Route path="*" element={<div>Dashboard Page Not Found</div>} /> */}
+                </Routes>
+              </DashboardLayout>
+            </WebSocketProvider>
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      {/* Root path redirect is handled by the nested index route now */}
+    </Routes>
+  );
+}
+
+export default App;

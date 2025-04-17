@@ -1,0 +1,200 @@
+version: '3.8'
+
+services:
+  # Core services
+  trading-bot:
+    build:
+      context: .
+      dockerfile: trading-bot/Dockerfile
+    container_name: spreadpilot-trading-bot
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - IB_GATEWAY_HOST=ib-gateway
+      - IB_GATEWAY_PORT=4002
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - GOOGLE_SHEET_URL=${GOOGLE_SHEET_URL}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - firestore
+      - ib-gateway
+      - otel-collector
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+  watchdog:
+    build:
+      context: .
+      dockerfile: watchdog/Dockerfile
+    container_name: spreadpilot-watchdog
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - TRADING_BOT_HOST=trading-bot
+      - TRADING_BOT_PORT=8080
+      - IB_GATEWAY_HOST=ib-gateway
+      - IB_GATEWAY_PORT=4002
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - firestore
+      - trading-bot
+      - ib-gateway
+      - otel-collector
+    ports:
+      - "8082:8080"
+    restart: unless-stopped
+
+  admin-api:
+    build:
+      context: .
+      dockerfile: admin-api/Dockerfile
+    container_name: spreadpilot-admin-api
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - TRADING_BOT_HOST=trading-bot
+      - TRADING_BOT_PORT=8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - firestore
+      - trading-bot
+      - otel-collector
+    ports:
+      - "8083:8080"
+    restart: unless-stopped
+
+  report-worker:
+    build:
+      context: .
+      dockerfile: report-worker/Dockerfile
+    container_name: spreadpilot-report-worker
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+      - ./reports:/app/reports
+    depends_on:
+      - firestore
+      - otel-collector
+    restart: unless-stopped
+
+  alert-router:
+    build:
+      context: .
+      dockerfile: alert-router/Dockerfile
+    container_name: spreadpilot-alert-router
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - DASHBOARD_URL=${DASHBOARD_URL:-http://localhost:8080}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - firestore
+      - otel-collector
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: spreadpilot-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - admin-api
+    restart: unless-stopped
+
+  # Infrastructure services
+  firestore:
+    image: google/cloud-sdk:latest
+    container_name: spreadpilot-firestore
+    entrypoint: gcloud beta emulators firestore start --host-port=0.0.0.0:8080
+    ports:
+      - "8084:8080"
+    restart: unless-stopped
+
+  ib-gateway:
+    image: ghcr.io/spreadpilot/ib-gateway:latest
+    container_name: spreadpilot-ib-gateway
+    environment:
+      - TWS_USERID=${IB_USERNAME}
+      - TWS_PASSWORD=${IB_PASSWORD}
+      - TRADING_MODE=paper
+    ports:
+      - "4002:4002"
+    restart: unless-stopped
+
+  # Observability services
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: spreadpilot-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+      - "8889:8889"  # Prometheus exporter
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: spreadpilot-prometheus
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: spreadpilot-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
