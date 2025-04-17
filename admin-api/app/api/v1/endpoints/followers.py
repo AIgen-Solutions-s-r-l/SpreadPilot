@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from google.cloud import firestore
 
 from spreadpilot_core.logging.logger import get_logger
+from admin_api.app.core.config import Settings, get_settings
 from admin_api.app.db.firestore import get_db
 from admin_api.app.schemas.follower import FollowerCreate, FollowerRead
 from admin_api.app.services.follower_service import FollowerService

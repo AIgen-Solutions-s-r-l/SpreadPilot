@@ -193,3 +193,6 @@ def calculate_commission(monthly_pnl: Decimal, follower: Follower) -> Decimal:
 #     """Fetches all active followers from Firestore."""
 #     # ... Implementation ...
 #     pass
+
+# Alias for backward compatibility with tests
+calculate_daily_pnl = calculate_and_store_daily_pnl

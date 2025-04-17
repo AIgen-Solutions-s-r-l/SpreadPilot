@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     """Application configuration settings."""
 
-    GCP_PROJECT_ID: str = Field(..., env="GCP_PROJECT_ID")
+    GCP_PROJECT_ID: str = Field("spreadpilot-test", env="GCP_PROJECT_ID")
     DASHBOARD_BASE_URL: str = Field(
         "http://localhost:3000", env="DASHBOARD_BASE_URL"
     )  # Default for local dev

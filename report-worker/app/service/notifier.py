@@ -82,3 +82,50 @@ The SpreadPilot Team
                 logger.debug(f"Removed temporary report file: {path}")
             except OSError as e:
                 logger.warning(f"Failed to remove temporary report file {path}: {e}")
+
+
+async def send_monthly_report(report: dict, follower: Follower) -> bool:
+    """
+    Sends a monthly report to a follower.
+    
+    Args:
+        report: The report data dictionary.
+        follower: The Follower object.
+        
+    Returns:
+        True if the report was sent successfully, False otherwise.
+    """
+    from .generator import generate_pdf_report
+    
+    logger.info(f"Preparing to send monthly report to follower {follower.id}...")
+    
+    # Extract report data
+    year = report["year"]
+    month = report["month"]
+    total_pnl = report["total_pnl"]
+    commission_amount = report["commission_amount"]
+    
+    # Format period string
+    report_period = f"{year}-{month:02d}"
+    
+    # Generate PDF report
+    pdf_content = generate_pdf_report(
+        follower=follower,
+        report_period=report_period,
+        total_pnl=float(total_pnl),
+        commission_percentage=follower.commission_pct,
+        commission_amount=float(commission_amount)
+    )
+    
+    # Send email with report
+    if pdf_content:
+        result = send_report_email(
+            follower=follower,
+            report_period=report_period,
+            pdf_path=pdf_content,
+            excel_path=None  # Excel report not implemented yet
+        )
+        return result
+    else:
+        logger.error(f"Failed to generate PDF report for follower {follower.id}")
+        return False

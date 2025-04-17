@@ -117,3 +117,65 @@ def generate_excel_report(
     except Exception as e:
         logger.exception(f"Failed to generate Excel report for follower {follower.id}", exc_info=e)
         return None
+
+
+async def generate_monthly_report(
+    year: int,
+    month: int,
+    follower: Follower,
+    db=None
+) -> Dict[str, Any]:
+    """
+    Generates a monthly report for a follower.
+    
+    Args:
+        year: The year for the report.
+        month: The month for the report.
+        follower: The Follower object.
+        db: Optional Firestore client.
+        
+    Returns:
+        A dictionary containing the report data.
+    """
+    from .pnl import calculate_monthly_pnl, calculate_commission
+    
+    logger.info(f"Generating monthly report for follower {follower.id} for {year}-{month}...")
+    
+    # Calculate monthly P&L
+    total_pnl = calculate_monthly_pnl(year, month)
+    
+    # Calculate commission
+    commission_amount = calculate_commission(total_pnl, follower)
+    
+    # Generate report ID
+    report_id = f"report-{year}-{month:02d}-{follower.id}"
+    
+    # Create report data
+    report = {
+        "report_id": report_id,
+        "follower_id": follower.id,
+        "year": year,
+        "month": month,
+        "total_pnl": str(total_pnl),
+        "commission_amount": str(commission_amount),
+        "net_pnl": str(total_pnl - commission_amount),
+        "generated_at": datetime.datetime.now().isoformat(),
+    }
+    
+    # Store report in Firestore if DB client provided
+    if db:
+        try:
+            db.collection("monthly_reports").document(report_id).set({
+                "followerId": follower.id,
+                "year": year,
+                "month": month,
+                "totalPnl": str(total_pnl),
+                "commissionAmount": str(commission_amount),
+                "netPnl": str(total_pnl - commission_amount),
+                "generatedAt": datetime.datetime.now(),
+            })
+            logger.info(f"Stored monthly report {report_id} in Firestore.")
+        except Exception as e:
+            logger.exception(f"Failed to store monthly report in Firestore", exc_info=e)
+    
+    return report

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from pydantic import BaseModel, Field
 
@@ -73,3 +73,12 @@ class Alert(BaseModel):
             acknowledged_at=data.get("acknowledgedAt"),
             acknowledged_by=data.get("acknowledgedBy"),
         )
+
+
+class AlertEvent(BaseModel):
+    """Alert event model for routing alerts."""
+    
+    event_type: AlertType
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    params: Optional[Dict[str, Any]] = None
