@@ -1,0 +1,160 @@
+graph TD
+    %% Google Cloud Platform
+    subgraph GCP[Google Cloud Platform]
+        %% Cloud Run Services
+        subgraph CloudRun[Cloud Run]
+            TradingBot[Trading Bot Service]
+            Watchdog[Watchdog Service]
+            AdminAPI[Admin API Service]
+            ReportWorker[Report Worker Service]
+            AlertRouter[Alert Router Service]
+            Frontend[Frontend Service]
+            IBGateway[IB Gateway Service]
+        end
+        
+        %% Firestore
+        Firestore[(Firestore)]
+        
+        %% Pub/Sub
+        subgraph PubSub[Pub/Sub]
+            AlertsTopic[Alerts Topic]
+            DailyReportsTopic[Daily Reports Topic]
+            MonthlyReportsTopic[Monthly Reports Topic]
+            
+            AlertsSub[Alert Router Subscription]
+            DailyReportsSub[Daily Reports Subscription]
+            MonthlyReportsSub[Monthly Reports Subscription]
+            
+            AlertsTopic --> AlertsSub
+            DailyReportsTopic --> DailyReportsSub
+            MonthlyReportsTopic --> MonthlyReportsSub
+        end
+        
+        %% Cloud Scheduler
+        subgraph Scheduler[Cloud Scheduler]
+            DailyJob[Daily Report Job]
+            MonthlyJob[Monthly Report Job]
+        end
+        
+        %% Secret Manager
+        subgraph SecretManager[Secret Manager]
+            IBCreds[IB Credentials]
+            SendGridKey[SendGrid API Key]
+            TelegramCreds[Telegram Credentials]
+            AdminCreds[Admin Credentials]
+            JWTSecret[JWT Secret]
+            GoogleSheetURL[Google Sheet URL]
+        end
+        
+        %% Cloud Monitoring
+        subgraph Monitoring[Cloud Monitoring]
+            Metrics[Metrics]
+            Logs[Logs]
+            Alerts[Alerts]
+            Dashboard[Dashboards]
+        end
+        
+        %% Cloud Build
+        subgraph CloudBuild[Cloud Build]
+            BuildTriggers[Build Triggers]
+            DeploymentPipeline[Deployment Pipeline]
+        end
+        
+        %% Artifact Registry
+        ArtifactRegistry[(Artifact Registry)]
+    end
+    
+    %% External Services
+    subgraph External[External Services]
+        IBKR[Interactive Brokers]
+        GoogleSheets[(Google Sheets)]
+        SendGrid[SendGrid Email]
+        Telegram[Telegram Bot]
+        Users[Users/Browsers]
+    end
+    
+    %% Connections
+    %% Service to Service connections
+    TradingBot <--> IBGateway
+    Watchdog --> TradingBot
+    Watchdog --> IBGateway
+    AdminAPI --> TradingBot
+    Frontend --> AdminAPI
+    
+    %% Service to Firestore connections
+    TradingBot <--> Firestore
+    Watchdog <--> Firestore
+    AdminAPI <--> Firestore
+    ReportWorker <--> Firestore
+    AlertRouter <--> Firestore
+    
+    %% Pub/Sub connections
+    TradingBot --> AlertsTopic
+    AlertsSub --> AlertRouter
+    DailyReportsSub --> ReportWorker
+    MonthlyReportsSub --> ReportWorker
+    
+    %% Cloud Scheduler connections
+    DailyJob --> DailyReportsTopic
+    MonthlyJob --> MonthlyReportsTopic
+    
+    %% Secret Manager connections
+    IBCreds -.-> TradingBot
+    IBCreds -.-> IBGateway
+    SendGridKey -.-> ReportWorker
+    SendGridKey -.-> AlertRouter
+    TelegramCreds -.-> AlertRouter
+    TelegramCreds -.-> TradingBot
+    TelegramCreds -.-> Watchdog
+    AdminCreds -.-> AdminAPI
+    JWTSecret -.-> AdminAPI
+    GoogleSheetURL -.-> TradingBot
+    
+    %% External connections
+    IBGateway <--> IBKR
+    TradingBot <--> GoogleSheets
+    ReportWorker --> SendGrid
+    AlertRouter --> SendGrid
+    AlertRouter --> Telegram
+    Users <--> Frontend
+    
+    %% Cloud Build connections
+    BuildTriggers --> DeploymentPipeline
+    DeploymentPipeline --> ArtifactRegistry
+    ArtifactRegistry -.-> CloudRun
+    
+    %% Monitoring connections
+    TradingBot -.-> Metrics
+    Watchdog -.-> Metrics
+    AdminAPI -.-> Metrics
+    ReportWorker -.-> Metrics
+    AlertRouter -.-> Metrics
+    Frontend -.-> Metrics
+    IBGateway -.-> Metrics
+    
+    TradingBot -.-> Logs
+    Watchdog -.-> Logs
+    AdminAPI -.-> Logs
+    ReportWorker -.-> Logs
+    AlertRouter -.-> Logs
+    Frontend -.-> Logs
+    IBGateway -.-> Logs
+    
+    %% Styling
+    classDef cloudRun fill:#4285F4,stroke:#2A56C6,color:white
+    classDef datastore fill:#EA4335,stroke:#C5221F,color:white
+    classDef pubsub fill:#34A853,stroke:#1E8E3E,color:white
+    classDef scheduler fill:#FBBC04,stroke:#EA8600,color:white
+    classDef secretManager fill:#9AA0A6,stroke:#80868B,color:white
+    classDef monitoring fill:#4285F4,stroke:#2A56C6,color:white
+    classDef cloudBuild fill:#34A853,stroke:#1E8E3E,color:white
+    classDef external fill:#9AA0A6,stroke:#80868B,color:white
+    
+    class TradingBot,Watchdog,AdminAPI,ReportWorker,AlertRouter,Frontend,IBGateway cloudRun
+    class Firestore,ArtifactRegistry datastore
+    class AlertsTopic,DailyReportsTopic,MonthlyReportsTopic,AlertsSub,DailyReportsSub,MonthlyReportsSub pubsub
+    class DailyJob,MonthlyJob scheduler
+    class IBCreds,SendGridKey,TelegramCreds,AdminCreds,JWTSecret,GoogleSheetURL secretManager
+    class Metrics,Logs,Alerts,Dashboard monitoring
+    class BuildTriggers,DeploymentPipeline cloudBuild
+    class IBKR,GoogleSheets,SendGrid,Telegram,Users external
