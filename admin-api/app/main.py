@@ -18,8 +18,14 @@ background_tasks = set()
 async def lifespan(app: FastAPI):
     # Start background tasks
     db = get_firestore_client()
+    
+    # Create a follower service instance
+    from admin_api.app.services.follower_service import FollowerService
+    follower_service = FollowerService(db=db, settings=settings)
+    
+    # Start the periodic task
     task = asyncio.create_task(periodic_follower_update_task(
-        follower_service=None,  # Will be created inside the task
+        follower_service=follower_service,
         interval_seconds=15
     ))
     background_tasks.add(task)

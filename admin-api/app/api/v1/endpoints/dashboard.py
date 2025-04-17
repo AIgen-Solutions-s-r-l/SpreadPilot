@@ -44,14 +44,24 @@ async def broadcast_updates(message: dict):
             active_connections.remove(conn)
 
 
-async def periodic_follower_update_task(follower_service: FollowerService, interval_seconds: int = 15):
+async def periodic_follower_update_task(follower_service: FollowerService = None, interval_seconds: int = 15):
     """Periodically fetches follower data and broadcasts updates."""
     logger.info("Starting periodic follower update task for WebSocket.")
+    
+    # Create follower_service if not provided
+    if follower_service is None:
+        from admin_api.app.db.firestore import get_firestore_client
+        from admin_api.app.core.config import get_settings
+        db = get_firestore_client()
+        settings = get_settings()
+        follower_service = FollowerService(db=db, settings=settings)
+        logger.info("Created follower service for periodic task")
+    
     while True:
         try:
             followers: List[FollowerRead] = await follower_service.get_followers()
             # Convert Pydantic models to dicts for JSON serialization
-            followers_data = [f.model_dump(mode='json') for f in followers] 
+            followers_data = [f.model_dump(mode='json') for f in followers]
             update_message = {"type": "followers_update", "data": followers_data}
             if active_connections: # Only broadcast if there are active connections
                 logger.debug(f"Broadcasting follower updates to {len(active_connections)} clients.")
