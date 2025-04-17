@@ -1,0 +1,24 @@
+# deploy/cloudbuild-promote.yaml
+# Used for manually promoting a specific service version to production.
+# Triggered manually, requires _SERVICE_NAME, _IMAGE_TAG, _GCP_PROJECT_ID_PROD variables.
+
+steps:
+- name: 'bash'
+  id: 'Run Promotion Script'
+  script: |
+    #!/usr/bin/env bash
+    set -e # Exit on error
+    echo "--- Starting Production Promotion ---"
+    echo "Service: $_SERVICE_NAME"
+    echo "Tag: $_IMAGE_TAG"
+    echo "Prod Project: $_GCP_PROJECT_ID_PROD"
+    echo "------------------------------------"
+    chmod +x deploy/promote_to_prod.sh
+    ./deploy/promote_to_prod.sh "$_SERVICE_NAME" "$_IMAGE_TAG" "$_GCP_PROJECT_ID_PROD"
+    echo "--- Promotion Script Finished ---"
+  waitFor: ['-'] # Start immediately
+
+timeout: 600s # 10 minutes
+
+options:
+  logging: CLOUD_LOGGING_ONLY
