@@ -36,6 +36,29 @@ spreadpilot/
 └── docker-compose.yml        # Local development setup
 ```
 
+### Folder Naming Convention
+
+SpreadPilot uses hyphenated directory names (`trading-bot`, `admin-api`, etc.) for all services. Each service directory contains an `__init__.py` file that makes it importable as a Python package.
+
+### Importing from Hyphenated Directories
+
+When importing from hyphenated directories in Python code, you need to use the `importlib.import_module()` function since Python's standard import syntax doesn't support hyphens in module names:
+
+```python
+# Import modules using importlib
+import importlib
+
+# Import the entire module
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+admin_api_main = importlib.import_module('admin-api.app.main')
+
+# Import specific components
+SignalProcessor = trading_bot_service.SignalProcessor
+admin_app = admin_api_main.app
+```
+
+This approach allows us to maintain a consistent naming convention across deployment and testing environments while still supporting Python imports.
+
 ## Initial Setup
 
 ### 1. Clone the Repository
@@ -189,6 +212,8 @@ export TRADING_BOT_PORT=8081
 python admin-api/main.py
 ```
 
+> **Note:** When running services directly, Python will automatically use the `__init__.py` files in the hyphenated directories to resolve imports. However, when writing code that imports from these directories, you'll need to use `importlib.import_module()` as described in the "Importing from Hyphenated Directories" section.
+
 ### 3. Running the Frontend
 
 ```bash
@@ -238,6 +263,25 @@ pytest watchdog/tests/service/test_monitor.py
 # Run a specific test function
 pytest watchdog/tests/service/test_monitor.py::test_check_health
 ```
+
+### Test Import Patterns
+
+The integration tests use `importlib.import_module()` to import from hyphenated directories. This pattern is used in `tests/integration/conftest.py` and other test files:
+
+```python
+# Import modules using importlib
+import importlib
+
+# Import modules with hyphenated names
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+alert_router_service = importlib.import_module('alert-router.app.service.router')
+
+# Get specific imports
+SignalProcessor = trading_bot_service.SignalProcessor
+route_alert = alert_router_service.route_alert
+```
+
+When writing new tests, follow this pattern for importing from hyphenated directories.
 
 ### 4. Running End-to-End Tests
 
@@ -502,6 +546,30 @@ npm install --save new-package
 1. Create a new file in `frontend/src/pages/`
 2. Define the page component with React
 3. Add the page to the router in `frontend/src/App.tsx`
+
+### 5. Creating a New Service
+
+When creating a new service, follow the established folder structure convention:
+
+1. Use hyphenated directory names (e.g., `new-service/`)
+2. Add `__init__.py` files to make the directory importable:
+
+```bash
+# Create the service directory structure
+mkdir -p new-service/app/service
+
+# Add __init__.py files
+touch new-service/__init__.py
+touch new-service/app/__init__.py
+touch new-service/app/service/__init__.py
+```
+
+3. When importing from this service in other parts of the codebase, use `importlib.import_module()`:
+
+```python
+import importlib
+new_service_module = importlib.import_module('new-service.app.service.main')
+```
 
 ## Troubleshooting
 

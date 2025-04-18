@@ -24,6 +24,23 @@ The `images/` directory contains diagrams referenced in the documentation:
 - [SpreadPilot Core README](../spreadpilot-core/README.md) - Documentation for the core library
 - [Trading Bot README](../trading-bot/README.md) - Documentation for the trading bot service
 
+## Folder Structure Convention
+
+SpreadPilot uses hyphenated directory names (`trading-bot`, `admin-api`, etc.) for all services. These directories are made importable as Python packages through `__init__.py` files. When importing from these directories in Python code, use the `importlib.import_module()` function:
+
+```python
+# Example: Importing from hyphenated directories
+import importlib
+
+# Import the entire module
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+
+# Import specific components
+SignalProcessor = trading_bot_service.SignalProcessor
+```
+
+This approach allows us to maintain a consistent naming convention across deployment and testing environments while still supporting Python imports.
+
 ## Contributing to Documentation
 
 To contribute to this documentation:

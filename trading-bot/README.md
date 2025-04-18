@@ -38,6 +38,23 @@ The trading bot is built as a FastAPI application with a modular service structu
 - Interactive Brokers Gateway
 - Google Sheets API access
 
+### Import Pattern
+
+The trading bot service uses a hyphenated directory name (`trading-bot`) which is made importable as a Python package through `__init__.py` files. When importing from this directory in other parts of the codebase (like tests), use the `importlib.import_module()` function:
+
+```python
+# Example: Importing from the trading-bot directory
+import importlib
+
+# Import the entire module
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
+
+# Import specific components
+SignalProcessor = trading_bot_service.SignalProcessor
+GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient
+```
+
 ### Setup
 
 1. Install dependencies:

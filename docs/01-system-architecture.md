@@ -198,3 +198,20 @@ Grafana provides visualization and dashboards:
 - **Auto-Recovery**: Failed components are automatically restarted
 - **Alerting**: Critical failures trigger notifications
 - **Logging**: Comprehensive logging for troubleshooting
+
+## Code Organization
+
+### Folder Structure Convention
+
+SpreadPilot uses a consistent folder structure convention:
+
+- **Hyphenated Directory Names**: All service directories use hyphenated names (`trading-bot`, `admin-api`, etc.)
+- **Python Package Imports**: Each service directory contains `__init__.py` files to make it importable as a Python package
+- **Import Pattern**: When importing from hyphenated directories in Python code, `importlib.import_module()` is used:
+
+```python
+import importlib
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+```
+
+This convention ensures consistency across deployment and testing environments while maintaining Python import compatibility.
