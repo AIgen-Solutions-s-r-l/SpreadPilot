@@ -881,3 +881,24 @@ async def test_process_eod_disabled(strategy_handler, mock_ibkr_client):
     mock_ibkr_client.get_contract_details.reset_mock()
     await handler._process_eod()
     mock_ibkr_client.get_contract_details.assert_not_called()
+@pytest.mark.asyncio
+async def test_process_eod_success(strategy_handler, mock_ibkr_client):
+    """Test successful EOD processing closes positions and sends alerts."""
+    handler = strategy_handler
+    # Set up one open position
+    handler.config["close_at_eod"] = True
+
+    handler.positions = {"SOXS": 50}
+    # Mock contract details and order placement
+    mock_ibkr_client.get_contract_details.return_value = [MagicMock(contract=MOCK_STOCK_CONTRACT)]
+    mock_ibkr_client.place_order.return_value = MagicMock()
+    # Patch _send_alert to avoid pydantic validation and capture calls
+    with patch.object(handler, "_send_alert", new_callable=AsyncMock) as mock_send_alert:
+        await handler._process_eod()
+    # Verify contract lookup and order placement
+    mock_ibkr_client.get_contract_details.assert_called_once_with("SOXS", sec_type='STK', exchange='SMART')
+    mock_ibkr_client.place_order.assert_called_once()
+    # Verify alert sent with expected parameters (price None for market EOD)
+    mock_send_alert.assert_called_once_with("SOXS", "SELL", 50, None, 'MKT', 'EOD Close')
+    # Position should be reset to zero
+    assert handler.positions["SOXS"] == 0
