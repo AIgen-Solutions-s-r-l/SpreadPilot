@@ -19,11 +19,21 @@ from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
 
 # Import services for testing
-from trading_bot.app.service.signals import SignalProcessor
-from trading_bot.app.sheets import GoogleSheetsClient
-from alert_router.app.service.router import route_alert
-from report_worker.app.service.pnl import calculate_monthly_pnl
-from admin_api.app.main import app as admin_app
+import importlib
+
+# Import modules using importlib
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
+alert_router_service = importlib.import_module('alert-router.app.service.router')
+report_worker_service = importlib.import_module('report-worker.app.service.pnl')
+admin_api_main = importlib.import_module('admin-api.app.main')
+
+# Get specific imports
+SignalProcessor = trading_bot_service.SignalProcessor
+GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient
+route_alert = alert_router_service.route_alert
+calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl
+admin_app = admin_api_main.app
 
 
 # ---- Environment Setup ----

@@ -11,8 +11,16 @@ from fastapi.testclient import TestClient
 from google.cloud import firestore
 
 from spreadpilot_core.models.follower import Follower, FollowerState
-from admin_api.app.schemas.follower import FollowerCreate, FollowerRead
-from admin_api.app.services.follower_service import FollowerService
+import importlib
+
+# Import modules using importlib
+admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
+admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
+
+# Get specific imports
+FollowerCreate = admin_api_schemas.FollowerCreate
+FollowerRead = admin_api_schemas.FollowerRead
+FollowerService = admin_api_services.FollowerService
 
 
 def test_list_followers(

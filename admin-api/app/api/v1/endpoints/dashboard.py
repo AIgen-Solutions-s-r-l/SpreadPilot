@@ -1,14 +1,24 @@
 import asyncio
 from typing import List, Set
+import importlib
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from google.cloud import firestore
 
 from spreadpilot_core.logging.logger import get_logger
-from admin_api.app.db.firestore import get_db
-from admin_api.app.services.follower_service import FollowerService
-from admin_api.app.schemas.follower import FollowerRead
-from admin_api.app.core.config import get_settings, Settings
+
+# Import modules using importlib
+admin_api_db = importlib.import_module('admin-api.app.db.firestore')
+admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
+admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
+admin_api_config = importlib.import_module('admin-api.app.core.config')
+
+# Get specific imports
+get_db = admin_api_db.get_db
+FollowerService = admin_api_services.FollowerService
+FollowerRead = admin_api_schemas.FollowerRead
+get_settings = admin_api_config.get_settings
+Settings = admin_api_config.Settings
 
 logger = get_logger(__name__)
 
@@ -50,8 +60,8 @@ async def periodic_follower_update_task(follower_service: FollowerService = None
     
     # Create follower_service if not provided
     if follower_service is None:
-        from admin_api.app.db.firestore import get_firestore_client
-        from admin_api.app.core.config import get_settings
+        # Use the already imported modules
+        get_firestore_client = admin_api_db.get_firestore_client
         db = get_firestore_client()
         settings = get_settings()
         follower_service = FollowerService(db=db, settings=settings)

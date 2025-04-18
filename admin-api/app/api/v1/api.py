@@ -1,10 +1,16 @@
 from fastapi import APIRouter
+import importlib
 
-# Import endpoint routers
-from admin_api.app.api.v1.endpoints import followers, dashboard
+# Import endpoint routers using importlib
+from . import endpoints
 
 # Create the main router for API v1
 api_router = APIRouter()
+
+# Include the followers router
+api_router.include_router(endpoints.followers.router, tags=["Followers"])
+# Include the dashboard WebSocket router
+api_router.include_router(endpoints.dashboard.router, tags=["Dashboard"])
 
 # Include the followers router
 api_router.include_router(followers.router, tags=["Followers"])

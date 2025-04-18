@@ -12,9 +12,23 @@ from spreadpilot_core.models.follower import Follower
 from spreadpilot_core.models.position import Position
 from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
 
-from report_worker.app.service.pnl import calculate_daily_pnl, calculate_monthly_pnl, calculate_commission
-from report_worker.app.service.generator import generate_monthly_report
-from report_worker.app.service.notifier import send_monthly_report
+import importlib
+
+# Import modules using importlib
+report_worker_pnl = importlib.import_module('report-worker.app.service.pnl')
+
+# Get specific imports
+calculate_daily_pnl = report_worker_pnl.calculate_daily_pnl
+calculate_monthly_pnl = report_worker_pnl.calculate_monthly_pnl
+calculate_commission = report_worker_pnl.calculate_commission
+
+# Import more modules using importlib
+report_worker_generator = importlib.import_module('report-worker.app.service.generator')
+report_worker_notifier = importlib.import_module('report-worker.app.service.notifier')
+
+# Get specific imports
+generate_monthly_report = report_worker_generator.generate_monthly_report
+send_monthly_report = report_worker_notifier.send_monthly_report
 
 
 @pytest.mark.asyncio
@@ -312,7 +326,8 @@ async def test_end_to_end_reporting_flow(
         with patch("report_worker.app.service.pnl.calculate_daily_pnl", return_value=total_monthly_pnl):
             with patch("report_worker.app.service.generator.generate_pdf_report", return_value=b"mock-pdf-content"):
                 # Run the end-to-end flow
-                from report_worker.app.service.report_service import generate_and_send_monthly_reports
+                report_worker_report_service = importlib.import_module('report-worker.app.service.report_service')
+                generate_and_send_monthly_reports = report_worker_report_service.generate_and_send_monthly_reports
                 
                 # Mock get_all_active_followers
                 with patch("report_worker.app.service.report_service.get_all_active_followers", return_value=[test_follower]):

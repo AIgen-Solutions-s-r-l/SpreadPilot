@@ -1,1 +1,1 @@
-# This file makes the 'api' directory a Python package.
+# Make the api module importable

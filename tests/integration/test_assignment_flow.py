@@ -9,8 +9,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from spreadpilot_core.models.position import Position, AssignmentState
 from spreadpilot_core.models.alert import Alert, AlertType, AlertSeverity
 from spreadpilot_core.ibkr.client import IBKRClient
+import importlib
 
-from trading_bot.app.service.positions import PositionManager
+# Import modules using importlib
+trading_bot_positions = importlib.import_module('trading-bot.app.service.positions')
+
+# Get specific imports
+PositionManager = trading_bot_positions.PositionManager
+
 
 
 @pytest.mark.asyncio
@@ -144,7 +150,13 @@ async def test_alert_routing_for_assignment(
     2. Alert contains correct information
     """
     from spreadpilot_core.models.alert import AlertEvent
-    from alert_router.app.service.router import route_alert
+    import importlib
+    
+    # Import module using importlib
+    alert_router_service = importlib.import_module('alert-router.app.service.router')
+    
+    # Get specific import
+    route_alert = alert_router_service.route_alert
     
     # Create test alert event
     alert_event = AlertEvent(

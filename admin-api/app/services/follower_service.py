@@ -3,14 +3,23 @@ from typing import List, Optional
 import uuid # For generating unique IDs
 import httpx # Import httpx for making HTTP requests
 import json # For JSON serialization
+import importlib
 
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower, FollowerState
-from admin_api.app.schemas.follower import FollowerCreate, FollowerRead
-from admin_api.app.core.config import get_settings, Settings # Import settings
+
+# Import modules using importlib
+admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
+admin_api_config = importlib.import_module('admin-api.app.core.config')
+
+# Get specific imports
+FollowerCreate = admin_api_schemas.FollowerCreate
+FollowerRead = admin_api_schemas.FollowerRead
+get_settings = admin_api_config.get_settings
+Settings = admin_api_config.Settings
 
 logger = get_logger(__name__)
 

@@ -8,8 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
 from spreadpilot_core.ibkr.client import OrderStatus
+import importlib
 
-from trading_bot.app.service.signals import SignalProcessor
+trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+SignalProcessor = trading_bot_service.SignalProcessor
 
 
 @pytest.mark.asyncio

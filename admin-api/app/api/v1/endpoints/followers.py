@@ -1,13 +1,24 @@
 from typing import List
+import importlib
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from google.cloud import firestore
 
 from spreadpilot_core.logging.logger import get_logger
-from admin_api.app.core.config import Settings, get_settings
-from admin_api.app.db.firestore import get_db
-from admin_api.app.schemas.follower import FollowerCreate, FollowerRead
-from admin_api.app.services.follower_service import FollowerService
+
+# Import modules using importlib
+admin_api_config = importlib.import_module('admin-api.app.core.config')
+admin_api_db = importlib.import_module('admin-api.app.db.firestore')
+admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
+admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
+
+# Get specific imports
+Settings = admin_api_config.Settings
+get_settings = admin_api_config.get_settings
+get_db = admin_api_db.get_db
+FollowerCreate = admin_api_schemas.FollowerCreate
+FollowerRead = admin_api_schemas.FollowerRead
+FollowerService = admin_api_services.FollowerService
 
 logger = get_logger(__name__)
 
