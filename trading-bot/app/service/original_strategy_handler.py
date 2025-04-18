@@ -48,6 +48,10 @@ class OriginalStrategyHandler:
             logger.info("Original EMA Strategy is disabled in config.")
             return
 
+        if self._initialized:
+            logger.warning("OriginalStrategyHandler already initialized.")
+            return
+
         logger.info("Initializing OriginalStrategyHandler...")
         try:
             # TODO: Fetch dedicated IBKR credentials using self.config["ibkr_secret_ref"]

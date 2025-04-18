@@ -638,8 +638,9 @@ async def test_calculate_ema(strategy_handler):
 async def test_check_bullish_crossover(strategy_handler):
     """Test bullish crossover detection."""
     # Setup - create Series with a bullish crossover
-    fast_ema = pd.Series([9.0, 10.0, 11.0, 12.5, 13.5])
-    slow_ema = pd.Series([9.5, 10.5, 11.5, 12.0, 13.0])
+    # prev_fast (12.0) < prev_slow (12.5) and current_fast (13.5) >= current_slow (13.0)
+    fast_ema = pd.Series([9.0, 10.0, 11.0, 12.0, 13.5])
+    slow_ema = pd.Series([9.5, 10.5, 11.5, 12.5, 13.0])
     
     # Call the method - should detect a bullish crossover
     result = strategy_handler._check_bullish_crossover(fast_ema, slow_ema)
@@ -651,8 +652,9 @@ async def test_check_bullish_crossover(strategy_handler):
 async def test_check_bearish_crossover(strategy_handler):
     """Test bearish crossover detection."""
     # Setup - create Series with a bearish crossover
+    # prev_fast (11.5) > prev_slow (11.0) and current_fast (10.5) <= current_slow (10.8)
     fast_ema = pd.Series([13.5, 13.0, 12.5, 11.5, 10.5])
-    slow_ema = pd.Series([13.0, 12.5, 12.0, 11.0, 10.0])
+    slow_ema = pd.Series([13.0, 12.5, 12.0, 11.0, 10.8])
     
     # Call the method - should detect a bearish crossover
     result = strategy_handler._check_bearish_crossover(fast_ema, slow_ema)
