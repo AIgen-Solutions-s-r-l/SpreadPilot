@@ -20,12 +20,13 @@ from spreadpilot_core.utils.time import (
     seconds_until_market_open,
 )
 
-from ..config import Settings
+from ..config import Settings, ORIGINAL_EMA_STRATEGY
 from ..sheets import GoogleSheetsClient
 from .alerts import AlertManager
 from .ibkr import IBKRManager
 from .positions import PositionManager
 from .signals import SignalProcessor
+from .original_strategy_handler import OriginalStrategyHandler
 
 logger = get_logger(__name__)
 
@@ -76,6 +77,7 @@ class TradingService:
         self.position_manager = PositionManager(self)
         self.alert_manager = AlertManager(self)
         self.signal_processor = SignalProcessor(self)
+        self.original_strategy_handler = OriginalStrategyHandler(self, ORIGINAL_EMA_STRATEGY)
         
         logger.info("Initialized trading service")
 
@@ -131,7 +133,13 @@ class TradingService:
             # Load active followers
             await self.load_active_followers()
             
-            # Start background tasks
+            # Initialize and start Original Strategy Handler (if enabled)
+            await self.original_strategy_handler.initialize()
+            original_strategy_task = asyncio.create_task(
+                self.original_strategy_handler.run(shutdown_event)
+            )
+            
+            # Start other background tasks
             position_check_task = asyncio.create_task(
                 self.position_manager.check_positions_periodically(shutdown_event)
             )
@@ -219,12 +227,17 @@ class TradingService:
             
             # Cancel background tasks
             position_check_task.cancel()
+            original_strategy_task.cancel()
             
             # Wait for background tasks to complete
             try:
-                await position_check_task
+                await asyncio.gather(
+                    position_check_task,
+                    original_strategy_task,
+                    return_exceptions=True # Don't let one cancelled task stop others
+                )
             except asyncio.CancelledError:
-                pass
+                logger.debug("Background tasks cancelled.")
             
             logger.info("Trading service stopped")
             self.status = ServiceStatus.SHUTDOWN
@@ -237,8 +250,11 @@ class TradingService:
         """Shut down the trading service."""
         logger.info("Shutting down trading service")
         
-        # Disconnect from IBKR
+        # Disconnect from IBKR (main manager)
         await self.ibkr_manager.disconnect_all()
+        
+        # Shutdown Original Strategy Handler
+        await self.original_strategy_handler.shutdown()
         
         self.status = ServiceStatus.SHUTDOWN
         logger.info("Trading service shutdown complete")

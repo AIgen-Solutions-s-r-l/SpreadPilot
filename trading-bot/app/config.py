@@ -156,3 +156,19 @@ def get_settings() -> Settings:
         ib_trading_mode=settings.ib_trading_mode,
     )
     return settings
+
+
+# Configuration for the Original EMA Crossover Strategy
+ORIGINAL_EMA_STRATEGY = {
+    "enabled": True,
+    "ibkr_secret_ref": "ibkr_original_strategy",  # For dedicated credentials
+    "symbols": ["SOXS", "SOXL"],
+    "fast_ema": 7,
+    "slow_ema": 21,
+    "bar_period": "5 mins",
+    "trading_start_time": "09:30:00",
+    "trading_end_time": "15:29:00",
+    "dollar_amount": 10000,
+    "trailing_stop_pct": 1.0,
+    "close_at_eod": True
+}

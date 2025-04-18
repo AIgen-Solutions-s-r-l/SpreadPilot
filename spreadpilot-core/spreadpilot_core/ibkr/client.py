@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import ib_insync
+from ib_insync import Contract, Option, Order, Trade as IBTrade, Stock, BarData
 from ib_insync import Contract, Option, Order, Trade as IBTrade
 
 from ..logging import get_logger
@@ -242,6 +243,191 @@ class IBKRClient:
         except Exception as e:
             logger.error(f"Error getting market price: {e}")
             return None
+
+    async def get_stock_contract(
+        self, symbol: str, exchange: str = "SMART", currency: str = "USD"
+    ) -> Stock:
+        """Create an IBKR Contract object for a stock symbol.
+
+        Args:
+            symbol: Stock ticker symbol.
+            exchange: The exchange to trade on (default: SMART).
+            currency: The currency (default: USD).
+
+        Returns:
+            An ib_insync.Stock contract object.
+        """
+        logger.debug(
+            "Creating stock contract",
+            symbol=symbol,
+            exchange=exchange,
+            currency=currency,
+        )
+        # TODO: Add caching?
+        try:
+            contract = Stock(symbol=symbol, exchange=exchange, currency=currency)
+            # Optional: Qualify contract details if needed
+            # qualified_contracts = await self.ib.qualifyContractsAsync(contract)
+            # if not qualified_contracts:
+            #     logger.error("Could not qualify contract", contract=contract)
+            #     raise ValueError(f"Could not qualify contract for {symbol}")
+            # contract = qualified_contracts[0]
+            # Log a representation instead of the object itself
+            logger.info("Stock contract created successfully", contract_repr=repr(contract))
+            return contract
+        except Exception as e:
+            logger.error(
+                "Error creating stock contract",
+                symbol=symbol,
+                exc_info=True,
+            )
+            raise  # Re-raise the exception after logging
+
+    async def request_historical_data(
+        self,
+        contract: Contract,
+        endDateTime: str = '',
+        durationStr: str = '1 D',
+        barSizeSetting: str = '1 min',
+        whatToShow: str = 'TRADES',
+        useRTH: bool = True
+    ) -> List[BarData]:
+        """Request historical bar data for a contract.
+
+        Args:
+            contract: The ib_insync Contract object.
+            endDateTime: End date/time in 'YYYYMMDD HH:MM:SS [tz]' format or '' for now.
+            durationStr: Duration string (e.g., '1 D', '1 M', '1 Y').
+            barSizeSetting: Bar size (e.g., '1 min', '1 hour', '1 day').
+            whatToShow: Data type (e.g., 'TRADES', 'MIDPOINT', 'BID', 'ASK').
+            useRTH: Use Regular Trading Hours (True) or include data outside RTH (False).
+
+        Returns:
+            A list of ib_insync.BarData objects.
+        """
+        if not await self.ensure_connected():
+            logger.error("Not connected to IB Gateway, cannot request historical data")
+            return []
+
+        logger.info(
+            "Requesting historical data",
+            contract=contract.localSymbol or contract.symbol,
+            endDateTime=endDateTime,
+            durationStr=durationStr,
+            barSizeSetting=barSizeSetting,
+            whatToShow=whatToShow,
+            useRTH=useRTH,
+        )
+        try:
+            bars = await self.ib.reqHistoricalDataAsync(
+                contract,
+                endDateTime=endDateTime,
+                durationStr=durationStr,
+                barSizeSetting=barSizeSetting,
+                whatToShow=whatToShow,
+                useRTH=useRTH,
+                formatDate=1,  # Return as datetime objects
+            )
+            logger.info(
+                f"Received {len(bars)} historical bars",
+                contract=contract.localSymbol or contract.symbol,
+            )
+            return bars
+        except Exception as e:
+            logger.error(
+                "Error requesting historical data",
+                contract=contract.localSymbol or contract.symbol,
+                exc_info=True,
+            )
+            return [] # Return empty list on error
+
+    async def place_order(self, contract: Contract, order: Order) -> Optional[IBTrade]:
+        """Place an order (MKT or TRAIL) for a contract.
+
+        Args:
+            contract: The ib_insync Contract object.
+            order: The ib_insync Order object (e.g., MarketOrder, TrailOrder).
+
+        Returns:
+            An ib_insync.Trade object with order status and details, or None on error.
+        """
+        if not await self.ensure_connected():
+            logger.error("Not connected to IB Gateway, cannot place order")
+            return None
+
+        logger.info(
+            "Placing order",
+            contract=contract.localSymbol or contract.symbol,
+            order_type=order.orderType,
+            action=order.action,
+            quantity=order.totalQuantity,
+            limit_price=getattr(order, 'lmtPrice', None),
+            aux_price=getattr(order, 'auxPrice', None),
+            trail_stop_price=getattr(order, 'trailStopPrice', None),
+            trailing_percent=getattr(order, 'trailingPercent', None),
+        )
+        try:
+            trade = self.ib.placeOrder(contract, order)
+            logger.info(
+                "Order placed successfully",
+                order_id=trade.order.orderId,
+                contract=contract.localSymbol or contract.symbol,
+                status=trade.orderStatus.status
+            )
+            # Note: This returns the trade object immediately.
+            # The status might still be 'Submitted'. Caller needs to monitor the trade object for updates.
+            return trade
+        except Exception as e:
+            logger.error(
+                "Error placing order",
+                contract=contract.localSymbol or contract.symbol,
+                order_type=order.orderType,
+                exc_info=True,
+            )
+            return None
+
+    async def request_stock_positions(self, symbols: List[str]) -> Dict[str, float]:
+        """Request current positions for specific stock symbols.
+
+        Args:
+            symbols: A list of stock ticker symbols.
+
+        Returns:
+            A dictionary mapping symbols to their current position size (float).
+            Returns an empty dictionary if not connected or on error.
+        """
+        if not await self.ensure_connected():
+            logger.error("Not connected to IB Gateway, cannot request positions")
+            return {}
+
+        logger.info("Requesting stock positions", symbols=symbols)
+        try:
+            # Fetch all current positions from IB
+            all_positions = await self.ib.reqPositionsAsync()
+            
+            # Initialize result with requested symbols mapped to 0.0
+            stock_positions = {symbol: 0.0 for symbol in symbols}
+            # Create a lookup map: lowercase symbol -> original symbol
+            symbol_lookup = {s.lower(): s for s in symbols}
+
+            for pos in all_positions:
+                contract = pos.contract
+                # Check if it's a stock and if its lowercase symbol matches a requested one
+                contract_symbol_lower = contract.symbol.lower()
+                if contract.secType == 'STK' and contract_symbol_lower in symbol_lookup:
+                    # Use the original requested symbol casing as the key
+                    original_symbol = symbol_lookup[contract_symbol_lower]
+                    stock_positions[original_symbol] = pos.position
+                    logger.debug(f"Found position for {original_symbol} ({contract.symbol}): {pos.position}")
+            
+            # No need for the second loop, as all requested symbols are already keys
+
+            logger.info("Stock positions retrieved", positions=stock_positions)
+            return stock_positions
+        except Exception as e:
+            logger.error("Error requesting stock positions", exc_info=True)
+            return {} # Return empty dict on error
+
 
     async def place_vertical_spread(
         self,
