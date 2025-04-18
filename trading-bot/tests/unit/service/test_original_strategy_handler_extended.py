@@ -826,3 +826,58 @@ async def test_shutdown_when_not_connected(strategy_handler, mock_ibkr_client):
     # Verify
     mock_ibkr_client.disconnect.assert_not_called()
     assert strategy_handler._initialized == False
+# --- Additional tests for coverage gaps ---
+
+@pytest.mark.asyncio
+async def test_initialize_error(mock_trading_service):
+    """Test initialize handles connection errors properly."""
+    with patch('app.service.original_strategy_handler.IBKRClient') as MockClient:
+        mock_client = AsyncMock()
+        mock_client.connect.side_effect = Exception("Init error")
+        MockClient.return_value = mock_client
+        handler = OriginalStrategyHandler(mock_trading_service, {**MOCK_CONFIG, "enabled": True})
+        await handler.initialize()
+        assert handler._initialized is False
+
+@pytest.mark.asyncio
+async def test_run_without_initialization(strategy_handler):
+    """Test run does nothing if not initialized."""
+    handler = strategy_handler
+    handler._initialized = False
+    with patch.object(handler, 'shutdown') as mock_shutdown:
+        await handler.run(asyncio.Event())
+        mock_shutdown.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_process_bar_bullish_entry(strategy_handler, mock_ibkr_client):
+    """Test processing a bar with bullish crossover places entry and trailing stop orders."""
+    symbol = "SOXS"
+    bar = MOCK_BAR_DATA[0]
+    strategy_handler.historical_data[symbol] = MOCK_HISTORICAL_DF.copy()
+    mock_ibkr_client.place_order.reset_mock()
+    with patch.object(strategy_handler, '_check_bullish_crossover', return_value=True), \
+         patch.object(strategy_handler, '_check_bearish_crossover', return_value=False):
+        await strategy_handler._process_bar(symbol, bar)
+    assert mock_ibkr_client.place_order.call_count == 2
+
+@pytest.mark.asyncio
+async def test_process_bar_bearish_entry(strategy_handler, mock_ibkr_client):
+    """Test processing a bar with bearish crossover places entry and trailing stop orders."""
+    symbol = "SOXS"
+    bar = MOCK_BAR_DATA[0]
+    strategy_handler.historical_data[symbol] = MOCK_HISTORICAL_DF.copy()
+    strategy_handler.positions[symbol] = 0
+    mock_ibkr_client.place_order.reset_mock()
+    with patch.object(strategy_handler, '_check_bullish_crossover', return_value=False), \
+         patch.object(strategy_handler, '_check_bearish_crossover', return_value=True):
+        await strategy_handler._process_bar(symbol, bar)
+    assert mock_ibkr_client.place_order.call_count == 2
+
+@pytest.mark.asyncio
+async def test_process_eod_disabled(strategy_handler, mock_ibkr_client):
+    """Test EOD processing skips when close_at_eod is False."""
+    handler = strategy_handler
+    handler.config["close_at_eod"] = False
+    mock_ibkr_client.get_contract_details.reset_mock()
+    await handler._process_eod()
+    mock_ibkr_client.get_contract_details.assert_not_called()
