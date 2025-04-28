@@ -38,3 +38,4 @@ docker-compose>=1.29.2
 
 # GCP
 # google-cloud-sdk>=430.0.0 - This is a system package, not a Python package
+pytest-asyncio

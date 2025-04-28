@@ -1,100 +1,107 @@
 {
+  "schema_version": "1.0",
   "project_name": "SpreadPilot",
-  "description": "Copy-trading platform for QQQ options strategies (Google Sheets -> IBKR).",
-  "architecture": "Microservices",
-  "deployment_platform": "GCP Cloud Run",
-  "languages": [
-    "Python 3.11",
-    "TypeScript 5.7",
-    "Shell"
+  "description": "Copy-trading platform for QQQ options strategies, replicating Google Sheets signals to Interactive Brokers accounts.",
+  "last_updated": "2025-04-28T23:33:00Z",
+  "source_documents": [
+    "README.md",
+    "docs/01-system-architecture.md",
+    "project_journal/decisions/20250418-spreadpilot-architecture-reflections.md",
+    "environment_details"
   ],
-  "backend": {
-    "frameworks": [
-      "FastAPI",
-      "aiohttp",
-      "Flask (for Pub/Sub)"
+  "stack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": "3.11",
+        "purpose": "Backend services (trading-bot, admin-api, watchdog, report-worker, alert-router), shared core library"
+      },
+      {
+        "name": "TypeScript",
+        "version": "Latest stable (inferred)",
+        "purpose": "Frontend application"
+      }
     ],
-    "libraries": [
-      "Uvicorn",
-      "Pydantic",
-      "httpx",
-      "google-cloud-firestore",
-      "spreadpilot-core"
+    "frameworks_libraries": {
+      "backend": [
+        {"name": "asyncio", "purpose": "Core concurrency model for several services"},
+        {"name": "aiohttp", "purpose": "Async HTTP client/server (used in trading-bot, watchdog)"},
+        {"name": "FastAPI", "purpose": "Web framework for admin-api, alert-router"},
+        {"name": "Flask", "purpose": "Web framework for report-worker (Pub/Sub handling)"},
+        {"name": "spreadpilot-core", "purpose": "Shared library (IBKR client, models, logging, utils)"},
+        {"name": "google-cloud-firestore", "purpose": "Database interaction"},
+        {"name": "google-cloud-pubsub", "purpose": "Asynchronous messaging"},
+        {"name": "google-cloud-secret-manager", "purpose": "Secrets management"},
+        {"name": "google-cloud-logging", "purpose": "Logging integration"},
+        {"name": "opentelemetry-api", "purpose": "Observability instrumentation"},
+        {"name": "opentelemetry-sdk", "purpose": "Observability instrumentation"},
+        {"name": "opentelemetry-exporter-otlp", "purpose": "Exporting telemetry data"}
+      ],
+      "frontend": [
+        {"name": "React", "version": "18", "purpose": "UI library"},
+        {"name": "Vite", "purpose": "Build tool and development server"},
+        {"name": "Tailwind CSS", "purpose": "CSS framework"}
+      ],
+      "testing": [
+        {"name": "pytest", "purpose": "Testing framework for Python"}
+      ]
+    },
+    "databases": [
+      {
+        "name": "Firestore",
+        "mode": "Native",
+        "purpose": "Primary data store (followers, positions, trades, status, config)"
+      }
     ],
-    "async_model": "asyncio"
+    "infrastructure": {
+      "provider": "Google Cloud Platform (GCP)",
+      "compute": [
+        {"name": "Cloud Run", "purpose": "Container hosting for all microservices"}
+      ],
+      "messaging": [
+        {"name": "Pub/Sub", "purpose": "Asynchronous event bus between services"}
+      ],
+      "storage_secrets": [
+        {"name": "Secret Manager", "purpose": "Storing sensitive credentials (IBKR, API keys)"}
+      ],
+      "operations": [
+        {"name": "Cloud Logging", "purpose": "Centralized logging"},
+        {"name": "Cloud Monitoring", "purpose": "Metrics monitoring and alerting"},
+        {"name": "Cloud Build", "purpose": "CI/CD pipeline"},
+        {"name": "Cloud Scheduler", "purpose": "Triggering scheduled tasks (e.g., report generation)"}
+      ],
+      "networking": [
+        {"name": "VPC", "purpose": "Private network for service communication"}
+      ]
+    },
+    "tools_services": {
+      "containerization": [
+        {"name": "Docker", "purpose": "Containerizing applications"},
+        {"name": "Docker Compose", "purpose": "Local development environment orchestration"}
+      ],
+      "observability": [
+        {"name": "OpenTelemetry", "purpose": "Standard for collecting telemetry data (logs, metrics, traces)"},
+        {"name": "Prometheus", "purpose": "Metrics storage and querying (mentioned in architecture)"},
+        {"name": "Grafana", "purpose": "Metrics visualization and dashboards (mentioned in architecture)"}
+      ],
+      "version_control": [
+        {"name": "Git", "purpose": "Source code management"}
+      ],
+      "external_integrations": [
+        {"name": "Interactive Brokers (IBKR)", "via": "IB Gateway", "purpose": "Brokerage connection for trading"},
+        {"name": "Google Sheets", "purpose": "Source of trading signals"},
+        {"name": "Telegram", "purpose": "Alerting channel"},
+        {"name": "SendGrid", "purpose": "Email delivery for reports and alerts (inferred)"}
+      ]
+    }
   },
-  "frontend": {
-    "framework": "React 19",
-    "language": "TypeScript 5.7",
-    "build_tool": "Vite 6",
-    "styling": "Tailwind CSS 4",
-    "routing": "React Router DOM 7",
-    "linting": "ESLint 9"
-  },
-  "database": {
-    "type": "NoSQL",
-    "provider": "Google Cloud Firestore (Native)",
-    "emulator": true
-  },
-  "messaging": {
-    "provider": "Google Cloud Pub/Sub"
-  },
-  "containerization": {
-    "tool": "Docker",
-    "orchestration": "Docker Compose (local), Cloud Run (cloud)"
-  },
-  "ci_cd": {
-    "provider": "Google Cloud Build"
-  },
-  "testing": {
-    "framework": "Pytest",
-    "tools": [
-      "pytest-cov",
-      "pytest-asyncio",
-      "pytest-mock",
-      "pytest-xdist",
-      "pytest-timeout",
-      "httpx",
-      "aioresponses"
-    ]
-  },
-  "code_quality": {
-    "tools": [
-      "black",
-      "isort",
-      "flake8",
-      "mypy"
-    ]
-  },
-  "observability": {
-    "collector": "OpenTelemetry Collector",
-    "metrics_db": "Prometheus",
-    "visualization": "Grafana",
-    "logging": "GCP Cloud Logging (implied), Structured Logging (spreadpilot-core)"
-  },
-  "secrets_management": {
-    "provider": "GCP Secret Manager"
-  },
-  "external_integrations": [
-    "Interactive Brokers (IBKR) via IB Gateway",
-    "Google Sheets",
-    "Telegram",
-    "SendGrid (for email)"
-  ],
-  "build_dev_tools": {
-    "build_system": "Makefile",
-    "dependency_management": "pip-tools (Python), npm (Frontend)",
-    "documentation": "Sphinx"
-  },
-  "potential_specialist_modes": [
-    "dev-python",
-    "framework-fastapi",
-    "dev-react",
-    "util-typescript",
-    "design-tailwind",
-    "cloud-gcp",
-    "data-specialist",
-    "infra-compose",
-    "lead-devops"
+  "notes": [
+    "Project follows a microservices architecture.",
+    "Heavy reliance on GCP managed services.",
+    "Uses event-driven patterns (Pub/Sub) for decoupling.",
+    "Shared core library (`spreadpilot-core`) promotes consistency.",
+    "Distroless Docker images are used for security.",
+    "Observability stack includes OpenTelemetry, potentially Prometheus/Grafana.",
+    "Comprehensive testing strategy (unit, integration, E2E) is intended."
   ]
 }

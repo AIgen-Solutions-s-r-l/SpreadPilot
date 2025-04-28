@@ -97,6 +97,9 @@ class StructuredLogger:
             extra: Extra data to include in the log
             **kwargs: Additional key-value pairs to include in the log
         """
+        # Extract exc_info before processing kwargs
+        include_exc_info = kwargs.pop('exc_info', False)
+
         # Combine extra and kwargs
         log_data = {}
         if extra:
@@ -110,11 +113,11 @@ class StructuredLogger:
             log_data["trace_id"] = format(span_context.trace_id, "032x")
             log_data["span_id"] = format(span_context.span_id, "016x")
 
-        # Log the message with structured data
+        # Log the message with structured data. Let the standard handler handle exc_info.
         if log_data:
-            self.logger.log(level, f"{msg} {json.dumps(log_data)}")
+            self.logger.log(level, f"{msg} {json.dumps(log_data)}", exc_info=include_exc_info)
         else:
-            self.logger.log(level, msg)
+            self.logger.log(level, msg, exc_info=include_exc_info)
 
     def debug(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
         """Log a debug message.
@@ -165,6 +168,18 @@ class StructuredLogger:
             **kwargs: Additional key-value pairs to include in the log
         """
         self._log(logging.CRITICAL, msg, extra, **kwargs)
+
+
+    def exception(self, msg: str, extra: Optional[Dict[str, Any]] = None, exc_info: bool = True, **kwargs: Any) -> None:
+        """Log an error message with exception information.
+
+        Args:
+            msg: Log message
+            extra: Extra data to include in the log
+            exc_info: Whether to include exception information (default: True)
+            **kwargs: Additional key-value pairs to include in the log
+        """
+        self._log(logging.ERROR, msg, extra, exc_info=exc_info, **kwargs)
 
 
 def get_logger(name: str) -> StructuredLogger:

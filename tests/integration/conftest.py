@@ -42,7 +42,7 @@ admin_app = admin_api_main.app
 def setup_test_environment():
     """Set up the test environment variables."""
     # Set environment variables for testing
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
+    os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Match docker-compose.yml host port
     os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test"
     os.environ["TESTING"] = "true"
     

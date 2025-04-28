@@ -1,97 +1,103 @@
 +++
 # --- Basic Metadata ---
 id = "SPREADPILOT-REQUIREMENTS-V1"
-title = "SpreadPilot - Inferred System Requirements"
+title = "SpreadPilot System Requirements"
 context_type = "documentation"
-scope = "Functional and Non-Functional Requirements inferred from existing project analysis"
-target_audience = ["developers", "architects", "project-managers"]
+scope = "Functional and Non-Functional Requirements for the SpreadPilot Platform"
+target_audience = ["developers", "architects", "product-manager", "qa"]
 granularity = "summary"
-status = "draft" # Marked as draft as it's inferred
-last_updated = "2025-04-28" # Date of generation
+status = "active" # Options: draft, active, deprecated, superseded
+last_updated = "2025-04-28T23:33:00Z" # Use current date/time
 # version = "1.0"
-tags = ["requirements", "spreadpilot", "functional", "non-functional", "discovery"]
+tags = ["requirements", "functional", "non-functional", "spreadpilot", "trading", "options"]
 related_context = [
     ".ruru/context/stack_profile.json",
+    "README.md",
     "docs/01-system-architecture.md",
-    "README.md"
-    ]
-# template_schema_doc = ".ruru/templates/toml-md/NN_requirements_doc.README.md" # Hypothetical template
-source_task = "TASK-DISC-20250428-231600"
+    "project_journal/decisions/20250418-spreadpilot-architecture-reflections.md"
+]
+template_schema_doc = ".ruru/templates/toml-md/05_documentation.README.md" # Assuming a generic doc template schema exists
+# --- Project Specific ---
+project_name = "SpreadPilot"
 +++
 
-# SpreadPilot - Inferred System Requirements
+# SpreadPilot System Requirements
 
-This document outlines the functional and non-functional requirements for the SpreadPilot system, as inferred from analysis of the existing codebase, documentation (`README.md`, `docs/01-system-architecture.md`), and configuration files during the onboarding discovery process (Task ID: `TASK-DISC-20250428-231600`).
+## 1. Overview
 
-## 1. Functional Requirements
+This document outlines the functional and non-functional requirements for the SpreadPilot platform, derived from existing project documentation and architectural decisions. SpreadPilot is a copy-trading platform designed to replicate QQQ options strategies from a Google Sheet to follower accounts on Interactive Brokers (IBKR).
 
-### 1.1 Core Trading Logic
-*   **[FR-001]** The system MUST copy-trade QQQ options strategies defined in a specified Google Sheet to linked Interactive Brokers (IBKR) accounts.
-*   **[FR-002]** The system MUST periodically poll the designated Google Sheet for new trading signals.
-*   **[FR-003]** The system MUST execute buy/sell orders for options spreads via the IBKR API (using IB Gateway) based on the signals received.
-*   **[FR-004]** The system MUST detect and handle option assignment events appropriately.
-*   **[FR-005]** The system MUST track Profit & Loss (P&L) for each follower account.
+## 2. Functional Requirements
 
-### 1.2 Reporting
-*   **[FR-006]** The system MUST generate periodic (daily/monthly specified) reports in PDF format.
-*   **[FR-007]** The system MUST generate periodic (daily/monthly specified) reports in Excel format.
-*   **[FR-008]** The system MUST email the generated reports to the respective followers.
+### 2.1 Core Trading Logic
+*   **FR-001:** The system MUST poll a specified Google Sheet at regular intervals (e.g., 1 second) to retrieve trading signals for a QQQ options strategy (Vertical Spread 0-DTE mentioned).
+*   **FR-002:** The system MUST interpret the signals from the Google Sheet to determine required trading actions (e.g., open, close positions).
+*   **FR-003:** The system MUST connect securely to Interactive Brokers (IBKR) via the IB Gateway using provided credentials.
+*   **FR-004:** The system MUST execute trades (options orders) on behalf of registered follower accounts based on the interpreted signals.
+*   **FR-005:** The system MUST manage and track open positions for each follower account in Firestore.
+*   **FR-006:** The system MUST monitor follower positions for potential assignments.
+*   **FR-007:** The system MUST automatically handle detected assignments according to a predefined strategy (details TBD, but handling is required).
+*   **FR-008:** The system MUST calculate and track Profit & Loss (P&L) for follower accounts.
 
-### 1.3 Administration & Monitoring
-*   **[FR-009]** The system MUST provide a web-based administrative dashboard.
-*   **[FR-010]** The admin dashboard MUST allow management of follower accounts (CRUD operations implied).
-*   **[FR-011]** The admin dashboard MUST allow viewing and potentially modifying system configuration.
-*   **[FR-012]** The admin dashboard MUST display real-time logs streamed from the backend services (via WebSockets).
-*   **[FR-013]** The admin dashboard MUST provide a mechanism for manual command execution (details unspecified).
-*   **[FR-014]** The system MUST monitor the health status of the core Trading Bot service.
-*   **[FR-015]** The system MUST monitor the health status of the IB Gateway connection.
-*   **[FR-016]** The system MUST attempt to automatically restart the Trading Bot or IB Gateway if they are detected as unhealthy.
+### 2.2 Reporting
+*   **FR-009:** The system MUST generate periodic (daily, monthly) P&L reports for followers.
+*   **FR-010:** Reports MUST be generated in PDF and Excel formats.
+*   **FR-011:** Generated reports MUST be automatically emailed to the respective followers.
 
-### 1.4 Alerting
-*   **[FR-017]** The system MUST route critical alerts and notifications.
-*   **[FR-018]** Alerts MUST be deliverable via Telegram.
-*   **[FR-019]** Alerts MUST be deliverable via email.
-*   **[FR-020]** Alert messages SHOULD include relevant context or deep links to the admin dashboard where applicable.
+### 2.3 Alerting & Monitoring
+*   **FR-012:** The system MUST generate alerts for critical events (e.g., trading errors, connection issues, assignment detection, component failures).
+*   **FR-013:** Alerts MUST be routed to specified channels, including Telegram and email.
+*   **FR-014:** Alert messages SHOULD include relevant details and potentially deep links to the admin dashboard.
+*   **FR-015:** The system MUST monitor the health status of critical components (Trading Bot, IB Gateway).
+*   **FR-016:** The system MUST attempt to automatically restart failed critical components.
+*   **FR-017:** The health status of components MUST be tracked (e.g., in Firestore) and visible.
 
-## 2. Non-Functional Requirements
+### 2.4 Administration & Management
+*   **FR-018:** The system MUST provide a web-based administrative dashboard.
+*   **FR-019:** The dashboard MUST require secure user authentication (username/password).
+*   **FR-020:** The dashboard MUST allow administrators to manage follower accounts (add, view, modify, remove - details TBD).
+*   **FR-021:** The dashboard MUST display real-time logs streamed from the backend services.
+*   **FR-022:** The dashboard MAY allow administrators to execute certain manual commands (details TBD).
+*   **FR-023:** The system MUST provide APIs (REST, WebSocket) to support the dashboard functionality.
 
-### 2.1 Architecture & Deployment
-*   **[NFR-001]** The system MUST be implemented using a microservices architecture.
-*   **[NFR-002]** Services MUST be containerized using Docker.
-*   **[NFR-003]** The system MUST be deployable to Google Cloud Platform (GCP), specifically using Cloud Run.
-*   **[NFR-004]** Services SHOULD be designed to be stateless to facilitate horizontal scaling.
+## 3. Non-Functional Requirements
 
-### 2.2 Technology Stack
-*   **[NFR-005]** Backend services MUST primarily use Python 3.11.
-*   **[NFR-006]** Asynchronous operations in Python services MUST use the `asyncio` library.
-*   **[NFR-007]** The Admin API MUST use the FastAPI framework. Other backend services may use FastAPI, aiohttp, or Flask as appropriate (e.g., Flask for Pub/Sub).
-*   **[NFR-008]** The frontend MUST be a single-page application built with React (v19+) and TypeScript (v5.7+).
-*   **[NFR-009]** The frontend MUST use Vite as the build tool.
-*   **[NFR-010]** The frontend MUST use Tailwind CSS for styling.
+### 3.1 Performance & Scalability
+*   **NFR-001:** The system MUST process trading signals and execute orders in near real-time to minimize slippage. (Polling interval target: 1 second).
+*   **NFR-002:** The architecture MUST support scaling to handle a target number of followers (e.g., 300+ mentioned in reflections).
+*   **NFR-003:** Individual microservices MUST be independently scalable based on their load.
+*   **NFR-004:** The database (Firestore) MUST handle the load associated with the target number of followers and trading activity.
 
-### 2.3 Data Persistence & Communication
-*   **[NFR-011]** The system MUST use Google Cloud Firestore (Native mode) as the primary database for storing follower data, positions, trades, and system status.
-*   **[NFR-012]** The system MUST use Google Cloud Pub/Sub for asynchronous inter-service communication (e.g., alerts, report triggers).
-*   **[NFR-013]** Synchronous communication MUST primarily use REST APIs.
-*   **[NFR-014]** Real-time communication between the Admin API and Frontend MUST use WebSockets.
+### 3.2 Reliability & Availability
+*   **NFR-005:** The core trading functionality MUST be highly reliable, especially during market hours.
+*   **NFR-006:** The system MUST implement mechanisms for automatic recovery from component failures (e.g., Watchdog restarting services).
+*   **NFR-007:** The event-driven communication (Pub/Sub) MUST ensure reliable message delivery (at-least-once).
+*   **NFR-008:** Services relying on Pub/Sub messages MUST be idempotent.
+*   **NFR-009:** The system SHOULD leverage managed cloud services for high availability.
 
-### 2.4 Security
-*   **[NFR-015]** The Admin API and Frontend MUST implement authentication, likely using JWT.
-*   **[NFR-016]** Sensitive configuration and credentials MUST be managed using GCP Secret Manager.
-*   **[NFR-017]** Network security SHOULD be configured appropriately within GCP (e.g., VPC).
+### 3.3 Security
+*   **NFR-010:** All sensitive credentials (IBKR API keys, service keys, secrets) MUST be stored securely (e.g., GCP Secret Manager).
+*   **NFR-011:** Access control MUST follow the principle of least privilege (e.g., IAM roles).
+*   **NFR-012:** Communication between services SHOULD be secured (e.g., within a private VPC).
+*   **NFR-013:** Communication with external services (IBKR, Google Sheets) MUST be secure (e.g., HTTPS).
+*   **NFR-014:** The admin dashboard MUST implement secure authentication (e.g., JWT) and authorization.
+*   **NFR-015:** Container images SHOULD minimize attack surface (e.g., using distroless images).
 
-### 2.5 Observability & Resilience
-*   **[NFR-018]** The system MUST implement observability using OpenTelemetry for collecting metrics, traces, and logs.
-*   **[NFR-019]** Metrics MUST be stored in Prometheus.
-*   **[NFR-020]** Dashboards for monitoring MUST be provided using Grafana.
-*   **[NFR-021]** Services MUST implement structured logging, potentially using a shared library (`spreadpilot-core`).
-*   **[NFR-022]** The system MUST include mechanisms for resilience, including health monitoring and automatic recovery of critical components (Trading Bot, IB Gateway).
-*   **[NFR-023]** Critical system failures MUST trigger alerts.
+### 3.4 Maintainability & Operability
+*   **NFR-016:** The codebase MUST be modular and follow principles like Separation of Concerns and Single Responsibility.
+*   **NFR-017:** A shared core library MUST be used for common functionality to ensure consistency and reduce duplication.
+*   **NFR-018:** The system MUST be containerized (Docker) for consistent environments and deployment.
+*   **NFR-019:** Deployment processes MUST be automated (e.g., Cloud Build).
+*   **NFR-020:** Configuration MUST be externalized from the code (e.g., environment variables, Secret Manager).
 
-### 2.6 Development & Code Quality
-*   **[NFR-024]** The project MUST use `make` for standard development tasks (setup, test, lint, format, deploy).
-*   **[NFR-025]** Python code MUST adhere to formatting standards enforced by `black` and `isort`.
-*   **[NFR-026]** Python code MUST pass linting checks using `flake8`.
-*   **[NFR-027]** Python code MUST include type hints and pass static analysis using `mypy`.
-*   **[NFR-028]** The project MUST include automated tests using `pytest`.
-*   **[NFR-029]** CI/CD pipelines MUST be implemented using Google Cloud Build.
+### 3.5 Observability
+*   **NFR-021:** The system MUST implement structured logging across all services.
+*   **NFR-022:** Logs SHOULD include correlation IDs to trace requests across services.
+*   **NFR-023:** Key performance indicators (KPIs) and system health metrics MUST be collected (e.g., via OpenTelemetry).
+*   **NFR-024:** Distributed tracing SHOULD be implemented to understand request flows.
+*   **NFR-025:** Monitoring dashboards (e.g., Grafana, Cloud Monitoring) MUST be available for visualizing system health and performance.
+*   **NFR-026:** Meaningful alerts MUST be configured based on collected metrics and logs.
+
+### 3.6 Testability
+*   **NFR-027:** The system MUST have a comprehensive automated testing strategy, including unit, integration, and potentially end-to-end tests.
+*   **NFR-028:** Code modules MUST be designed for testability (e.g., allowing mocking of external dependencies).
