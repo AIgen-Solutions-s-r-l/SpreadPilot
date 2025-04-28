@@ -1,0 +1,100 @@
+{
+  "project_name": "SpreadPilot",
+  "description": "Copy-trading platform for QQQ options strategies (Google Sheets -> IBKR).",
+  "architecture": "Microservices",
+  "deployment_platform": "GCP Cloud Run",
+  "languages": [
+    "Python 3.11",
+    "TypeScript 5.7",
+    "Shell"
+  ],
+  "backend": {
+    "frameworks": [
+      "FastAPI",
+      "aiohttp",
+      "Flask (for Pub/Sub)"
+    ],
+    "libraries": [
+      "Uvicorn",
+      "Pydantic",
+      "httpx",
+      "google-cloud-firestore",
+      "spreadpilot-core"
+    ],
+    "async_model": "asyncio"
+  },
+  "frontend": {
+    "framework": "React 19",
+    "language": "TypeScript 5.7",
+    "build_tool": "Vite 6",
+    "styling": "Tailwind CSS 4",
+    "routing": "React Router DOM 7",
+    "linting": "ESLint 9"
+  },
+  "database": {
+    "type": "NoSQL",
+    "provider": "Google Cloud Firestore (Native)",
+    "emulator": true
+  },
+  "messaging": {
+    "provider": "Google Cloud Pub/Sub"
+  },
+  "containerization": {
+    "tool": "Docker",
+    "orchestration": "Docker Compose (local), Cloud Run (cloud)"
+  },
+  "ci_cd": {
+    "provider": "Google Cloud Build"
+  },
+  "testing": {
+    "framework": "Pytest",
+    "tools": [
+      "pytest-cov",
+      "pytest-asyncio",
+      "pytest-mock",
+      "pytest-xdist",
+      "pytest-timeout",
+      "httpx",
+      "aioresponses"
+    ]
+  },
+  "code_quality": {
+    "tools": [
+      "black",
+      "isort",
+      "flake8",
+      "mypy"
+    ]
+  },
+  "observability": {
+    "collector": "OpenTelemetry Collector",
+    "metrics_db": "Prometheus",
+    "visualization": "Grafana",
+    "logging": "GCP Cloud Logging (implied), Structured Logging (spreadpilot-core)"
+  },
+  "secrets_management": {
+    "provider": "GCP Secret Manager"
+  },
+  "external_integrations": [
+    "Interactive Brokers (IBKR) via IB Gateway",
+    "Google Sheets",
+    "Telegram",
+    "SendGrid (for email)"
+  ],
+  "build_dev_tools": {
+    "build_system": "Makefile",
+    "dependency_management": "pip-tools (Python), npm (Frontend)",
+    "documentation": "Sphinx"
+  },
+  "potential_specialist_modes": [
+    "dev-python",
+    "framework-fastapi",
+    "dev-react",
+    "util-typescript",
+    "design-tailwind",
+    "cloud-gcp",
+    "data-specialist",
+    "infra-compose",
+    "lead-devops"
+  ]
+}
