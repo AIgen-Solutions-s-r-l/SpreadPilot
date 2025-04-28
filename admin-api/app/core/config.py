@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # If set, the Firestore client will connect to the emulator
     firestore_emulator_host: Optional[str] = None
 
+    # MongoDB Settings
+    # Read from MONGO_URI and MONGO_DB_NAME env vars
+    mongo_uri: str = "mongodb://mongodb:27017" # Default for Docker service
+    mongo_db_name: str = "spreadpilot_admin"   # Default database name
+
     # API V1 Prefix
     api_v1_prefix: str = "/api/v1"
 
@@ -51,4 +56,6 @@ if __name__ == "__main__":
     print(f"  GCP Project ID: {settings.gcp_project_id}")
     print(f"  Trading Bot URL: {settings.trading_bot_base_url}")
     print(f"  Firestore Emulator: {settings.firestore_emulator_host}")
+    print(f"  Mongo URI: {settings.mongo_uri}")
+    print(f"  Mongo DB Name: {settings.mongo_db_name}")
     print(f"  CORS Origins: {settings.cors_origins}")

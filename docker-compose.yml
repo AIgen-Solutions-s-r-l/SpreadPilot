@@ -153,6 +153,24 @@ services:
       - "4002:4002"
     restart: unless-stopped
 
+  mongodb:
+    image: mongo:7
+    container_name: spreadpilot-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017" # Expose to host for potential direct access during dev
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   # Observability services
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -198,3 +216,4 @@ services:
 volumes:
   prometheus-data:
   grafana-data:
+  mongo_data:
