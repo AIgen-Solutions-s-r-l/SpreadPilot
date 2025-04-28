@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     # Use a task group to manage background tasks
     async with anyio.create_task_group() as task_group:
         # Start the periodic task
-        task_group.spawn(
+        task_group._spawn( # Corrected method name
             periodic_follower_update_task,
             follower_service=follower_service,
             interval_seconds=15
