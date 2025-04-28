@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import importlib
+import anyio # Import anyio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,8 +20,8 @@ get_firestore_client = admin_api_firestore.get_firestore_client
 
 settings = get_settings()
 
-# Store background tasks
-background_tasks = set()
+# Store background tasks - Use a task group instead of a set
+# background_tasks = set() # Removed
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,21 +33,23 @@ async def lifespan(app: FastAPI):
     FollowerService = admin_api_follower_service.FollowerService
     follower_service = FollowerService(db=db, settings=settings)
     
-    # Start the periodic task
-    task = asyncio.create_task(periodic_follower_update_task(
-        follower_service=follower_service,
-        interval_seconds=15
-    ))
-    background_tasks.add(task)
+    # Use a task group to manage background tasks
+    async with anyio.create_task_group() as task_group:
+        # Start the periodic task
+        task_group.spawn(
+            periodic_follower_update_task,
+            follower_service=follower_service,
+            interval_seconds=15
+        )
+        
+        yield # Application starts here
+
+    # Shutdown background tasks - Task group handles cancellation and waiting on exit
+    # for task in background_tasks: # Removed
+    #     task.cancel() # Removed
     
-    yield
-    
-    # Shutdown background tasks
-    for task in background_tasks:
-        task.cancel()
-    
-    # Wait for tasks to complete
-    await asyncio.gather(*background_tasks, return_exceptions=True)
+    # Wait for tasks to complete # Removed
+    # await asyncio.gather(*background_tasks, return_exceptions=True) # Removed
 
 app = FastAPI(
     title="SpreadPilot Admin API",

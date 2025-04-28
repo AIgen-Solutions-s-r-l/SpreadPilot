@@ -7,7 +7,7 @@ pytest-asyncio>=0.21.0
 pytest-mock>=3.10.0
 pytest-xdist>=3.3.1  # For parallel test execution
 pytest-timeout>=2.1.0  # For test timeouts
-httpx>=0.24.1  # For async HTTP client testing
+httpx>=0.27.0,<0.28.0  # For async HTTP client testing - Aligned with admin-api requirements
 aioresponses>=0.7.4  # For mocking async HTTP requests
 
 # Linting and formatting
