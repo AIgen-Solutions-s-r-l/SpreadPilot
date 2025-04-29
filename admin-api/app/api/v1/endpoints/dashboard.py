@@ -3,18 +3,19 @@ from typing import List, Set
 import importlib
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from google.cloud import firestore
+# from google.cloud import firestore # Removed Firestore import
+from motor.motor_asyncio import AsyncIOMotorDatabase # Added MongoDB import
 
 from spreadpilot_core.logging.logger import get_logger
 
 # Import modules using importlib
-admin_api_db = importlib.import_module('admin-api.app.db.firestore')
+admin_api_db = importlib.import_module('admin-api.app.db.mongodb') # Changed to mongodb
 admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
 admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
 admin_api_config = importlib.import_module('admin-api.app.core.config')
 
 # Get specific imports
-get_db = admin_api_db.get_db
+get_mongo_db = admin_api_db.get_mongo_db # Changed to get_mongo_db
 FollowerService = admin_api_services.FollowerService
 FollowerRead = admin_api_schemas.FollowerRead
 get_settings = admin_api_config.get_settings
@@ -27,9 +28,9 @@ router = APIRouter()
 # Keep track of active WebSocket connections
 active_connections: Set[WebSocket] = set()
 
-# Dependency to get the FollowerService instance (same as in followers.py)
+# Dependency to get the FollowerService instance (using MongoDB)
 def get_follower_service(
-    db: firestore.AsyncClient = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_mongo_db), # Changed dependency and type hint
     settings: Settings = Depends(get_settings)
 ) -> FollowerService:
     return FollowerService(db=db, settings=settings)
@@ -58,15 +59,22 @@ async def periodic_follower_update_task(follower_service: FollowerService = None
     """Periodically fetches follower data and broadcasts updates."""
     logger.info("Starting periodic follower update task for WebSocket.")
     
-    # Create follower_service if not provided
+    # Create follower_service if not provided (e.g., when run standalone, though usually started via lifespan)
     if follower_service is None:
-        # Use the already imported modules
-        get_firestore_client = admin_api_db.get_firestore_client
-        db = get_firestore_client()
-        settings = get_settings()
-        follower_service = FollowerService(db=db, settings=settings)
-        logger.info("Created follower service for periodic task")
-    
+        # Use the already imported modules for MongoDB
+        # Note: This relies on the global client being initialized elsewhere,
+        # which might be fragile if this task runs truly independently.
+        # Ideally, the service instance is always passed from the lifespan manager.
+        try:
+            db = await get_mongo_db() # Get the MongoDB instance
+            settings = get_settings()
+            follower_service = FollowerService(db=db, settings=settings)
+            logger.info("Created follower service for periodic task using MongoDB")
+        except Exception as e:
+            logger.error(f"Failed to create FollowerService in periodic task: {e}", exc_info=True)
+            # Exit the task if service cannot be created
+            return
+
     while True:
         try:
             followers: List[FollowerRead] = await follower_service.get_followers()

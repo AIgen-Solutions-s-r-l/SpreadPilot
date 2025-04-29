@@ -1,16 +1,22 @@
-import os
+# import os # No longer needed for direct env var access here
 import asyncio
+import importlib # Use importlib for consistency
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from spreadpilot_core.logging.logger import get_logger
-from functools import lru_cache
+# from functools import lru_cache # Not using lru_cache for client instance
+
+# Import settings using importlib
+admin_api_config = importlib.import_module('admin-api.app.core.config')
+get_settings = admin_api_config.get_settings
+settings = get_settings() # Load settings once
 
 logger = get_logger(__name__)
 
-# Read MongoDB connection details from environment variables
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodb:27017") # Default to Docker service name
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "spreadpilot_admin")
+# MongoDB connection details from settings
+MONGO_URI = settings.mongo_uri
+MONGO_DB_NAME = settings.mongo_db_name
 
-# Global variable to hold the client instance (alternative to lru_cache for async setup)
+# Global variable to hold the client instance
 _mongo_client: AsyncIOMotorClient | None = None
 
 async def connect_to_mongo():
@@ -66,7 +72,7 @@ async def _test_connection():
         db = await get_mongo_db()
         # Perform a simple operation, e.g., list collections
         collections = await db.list_collection_names()
-        logger.info(f"Successfully connected to MongoDB database '{MONGO_DB_NAME}'. Collections: {collections}")
+        logger.info(f"Successfully connected to MongoDB database '{settings.mongo_db_name}'. Collections: {collections}")
     except Exception as e:
         logger.error(f"MongoDB connection test failed: {e}", exc_info=True)
     finally:

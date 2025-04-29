@@ -1,14 +1,16 @@
+# admin-api/app/services/follower_service.py
 from datetime import datetime
 from typing import List, Optional
 import uuid # For generating unique IDs
-import httpx # Import httpx for making HTTP requests
 import json # For JSON serialization
 import importlib
 
-from google.cloud import firestore
-from google.cloud.firestore_v1.base_query import FieldFilter
+# MongoDB specific imports
+from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
+# from pymongo import ReturnDocument # If using find_one_and_update
 
 from spreadpilot_core.logging.logger import get_logger
+# Use the updated Follower model
 from spreadpilot_core.models.follower import Follower, FollowerState
 
 # Import modules using importlib
@@ -23,69 +25,65 @@ Settings = admin_api_config.Settings
 
 logger = get_logger(__name__)
 
-# Function to publish a message to a topic
+# Function to publish a message to a topic (remains unchanged)
 async def publish_message(topic: str, message_json: str) -> bool:
     """
     Publishes a message to a Pub/Sub topic.
-    
-    Args:
-        topic: The name of the topic to publish to
-        message_json: The message to publish, as a JSON string
-        
-    Returns:
-        bool: True if the message was published successfully, False otherwise
+    (Placeholder implementation)
     """
     logger.info(f"Publishing message to topic {topic}: {message_json}")
     try:
         # In a real implementation, this would use the Pub/Sub client
-        # For now, we'll just log the message and return success
         logger.info(f"Message published successfully to {topic}")
         return True
     except Exception as e:
         logger.error(f"Error publishing message to {topic}: {e}", exc_info=True)
         return False
 
-FOLLOWERS_COLLECTION = "followers"
+FOLLOWERS_COLLECTION = "followers" # Collection name remains the same
 
 class FollowerService:
-    # Inject settings along with the database client
-    def __init__(self, db: firestore.AsyncClient, settings: Settings):
+    # Inject AsyncIOMotorDatabase and Settings
+    def __init__(self, db: AsyncIOMotorDatabase, settings: Settings):
         self.db = db
         self.settings = settings
-        self.collection_ref = self.db.collection(FOLLOWERS_COLLECTION)
+        # Get the collection object
+        self.collection: AsyncIOMotorCollection = self.db[FOLLOWERS_COLLECTION]
 
     async def get_followers(self) -> List[FollowerRead]:
-        """Retrieves all followers from Firestore."""
-        logger.info("Fetching all followers from Firestore.")
-        followers = []
+        """Retrieves all followers from MongoDB."""
+        logger.info("Fetching all followers from MongoDB.")
+        followers_read: List[FollowerRead] = []
         try:
-            docs_stream = self.collection_ref.stream()
-            async for doc in docs_stream:
+            cursor = self.collection.find()
+            async for doc in cursor:
                 try:
-                    follower_data = doc.to_dict()
-                    # Use the core model's from_dict for robust parsing
-                    core_follower = Follower.from_dict(id=doc.id, data=follower_data)
+                    # Validate and parse using the Pydantic model
+                    # model_validate handles the _id -> id mapping
+                    core_follower = Follower.model_validate(doc)
                     # Convert to the API Read schema
-                    followers.append(FollowerRead(**core_follower.model_dump()))
+                    followers_read.append(FollowerRead(**core_follower.model_dump()))
                 except Exception as e:
-                    logger.error(f"Error parsing follower document {doc.id}: {e}", exc_info=True)
-            logger.info(f"Successfully fetched {len(followers)} followers.")
-            return followers
+                    # Log parsing errors for individual documents
+                    doc_id = doc.get("_id", "UNKNOWN_ID")
+                    logger.error(f"Error parsing follower document {doc_id} from MongoDB: {e}", exc_info=True)
+            logger.info(f"Successfully fetched {len(followers_read)} followers from MongoDB.")
+            return followers_read
         except Exception as e:
-            logger.error(f"Error fetching followers from Firestore: {e}", exc_info=True)
-            raise  # Re-raise the exception to be handled by the API layer
+            logger.error(f"Error fetching followers from MongoDB: {e}", exc_info=True)
+            raise # Re-raise the exception for the API layer
 
     async def create_follower(self, follower_create: FollowerCreate) -> FollowerRead:
-        """Creates a new follower in Firestore."""
+        """Creates a new follower in MongoDB."""
         logger.info(f"Creating new follower with email: {follower_create.email}")
         try:
-            # Generate a unique ID for the new follower
+            # Generate a unique ID for the new follower (use as _id)
             follower_id = str(uuid.uuid4())
-            
+
             # Create the core Follower model instance
             now = datetime.utcnow()
             core_follower = Follower(
-                id=follower_id,
+                id=follower_id, # Pydantic will map this to _id on dump
                 created_at=now,
                 updated_at=now,
                 enabled=False, # Followers start disabled by default
@@ -93,124 +91,159 @@ class FollowerService:
                 **follower_create.model_dump() # Unpack data from the creation schema
             )
 
-            # Convert to Firestore-compatible dict using the core model's method
-            follower_data = core_follower.to_dict()
+            # Convert to dict for MongoDB, mapping id to _id
+            # Pydantic's model_dump handles the alias
+            follower_data = core_follower.model_dump(by_alias=True)
 
-            # Add to Firestore
-            doc_ref = self.collection_ref.document(follower_id)
-            await doc_ref.set(follower_data)
-            logger.info(f"Successfully created follower {follower_id} for {follower_create.email}")
+            # Insert into MongoDB
+            insert_result = await self.collection.insert_one(follower_data)
 
-            # Return the data in the Read schema format
-            return FollowerRead(**core_follower.model_dump())
-        except Exception as e:
-            logger.error(f"Error creating follower in Firestore: {e}", exc_info=True)
+            if insert_result.inserted_id == follower_id:
+                logger.info(f"Successfully created follower {follower_id} for {follower_create.email} in MongoDB.")
+                # Return the data in the Read schema format
+                return FollowerRead(**core_follower.model_dump())
+            else:
+                # This case should ideally not happen if insert_one doesn't raise an error
+                logger.error(f"Failed to insert follower {follower_id} into MongoDB, inserted_id mismatch.")
+                raise RuntimeError(f"Failed to create follower {follower_id} in MongoDB.")
+
+        except Exception as e: # Catch potential DuplicateKeyError etc.
+            logger.error(f"Error creating follower in MongoDB: {e}", exc_info=True)
             raise
 
     async def get_follower_by_id(self, follower_id: str) -> Optional[FollowerRead]:
-        """Retrieves a single follower by ID from Firestore."""
-        logger.info(f"Fetching follower with ID: {follower_id}")
+        """Retrieves a single follower by ID (_id) from MongoDB."""
+        logger.info(f"Fetching follower with ID: {follower_id} from MongoDB.")
         try:
-            doc_ref = self.collection_ref.document(follower_id)
-            doc_snapshot = await doc_ref.get()
+            # Find by _id
+            doc = await self.collection.find_one({"_id": follower_id})
 
-            if not doc_snapshot.exists:
-                logger.warning(f"Follower with ID {follower_id} not found.")
+            if doc:
+                # Validate and parse
+                core_follower = Follower.model_validate(doc)
+                logger.info(f"Successfully fetched follower {follower_id} from MongoDB.")
+                return FollowerRead(**core_follower.model_dump())
+            else:
+                logger.warning(f"Follower with ID {follower_id} not found in MongoDB.")
                 return None
-
-            follower_data = doc_snapshot.to_dict()
-            core_follower = Follower.from_dict(id=doc_snapshot.id, data=follower_data)
-            logger.info(f"Successfully fetched follower {follower_id}.")
-            return FollowerRead(**core_follower.model_dump())
         except Exception as e:
-            logger.error(f"Error fetching follower {follower_id} from Firestore: {e}", exc_info=True)
+            logger.error(f"Error fetching follower {follower_id} from MongoDB: {e}", exc_info=True)
             raise
 
     async def toggle_follower_enabled(self, follower_id: str) -> Optional[FollowerRead]:
-        """Toggles the enabled status of a follower."""
-        logger.info(f"Toggling enabled status for follower ID: {follower_id}")
+        """Toggles the enabled status of a follower in MongoDB."""
+        logger.info(f"Toggling enabled status for follower ID: {follower_id} in MongoDB.")
         try:
-            doc_ref = self.collection_ref.document(follower_id)
-            doc_snapshot = await doc_ref.get()
+            # Find the follower first to get current state
+            doc = await self.collection.find_one({"_id": follower_id})
 
-            if not doc_snapshot.exists:
-                logger.warning(f"Follower with ID {follower_id} not found for toggling.")
+            if not doc:
+                logger.warning(f"Follower with ID {follower_id} not found for toggling in MongoDB.")
                 return None
 
-            current_enabled = doc_snapshot.get("enabled")
-            new_enabled = not current_enabled
+            current_follower = Follower.model_validate(doc)
+            new_enabled = not current_follower.enabled
             new_state = FollowerState.ACTIVE if new_enabled else FollowerState.DISABLED
             now = datetime.utcnow()
 
-            await doc_ref.update({
-                "enabled": new_enabled,
-                "state": new_state.value,
-                "updatedAt": now
-            })
-            logger.info(f"Successfully toggled follower {follower_id} enabled status to {new_enabled}.")
+            # Update the document
+            update_result = await self.collection.update_one(
+                {"_id": follower_id},
+                {"$set": {
+                    "enabled": new_enabled,
+                    "state": new_state.value,
+                    "updated_at": now
+                }}
+            )
 
-            # Fetch the updated document to return
-            updated_doc = await doc_ref.get()
-            updated_data = updated_doc.to_dict()
-            core_follower = Follower.from_dict(id=updated_doc.id, data=updated_data)
-            return FollowerRead(**core_follower.model_dump())
+            if update_result.modified_count == 1:
+                logger.info(f"Successfully toggled follower {follower_id} enabled status to {new_enabled} in MongoDB.")
+                # Fetch the updated document to return the latest state
+                updated_doc = await self.collection.find_one({"_id": follower_id})
+                if updated_doc:
+                     updated_follower = Follower.model_validate(updated_doc)
+                     return FollowerRead(**updated_follower.model_dump())
+                else:
+                     # Should not happen if update succeeded, but log if it does
+                     logger.error(f"Follower {follower_id} disappeared after successful toggle update.")
+                     return None # Or raise error
+            elif update_result.matched_count == 1 and update_result.modified_count == 0:
+                 logger.warning(f"Follower {follower_id} found but status was already {new_enabled}. No change made.")
+                 # Return current state
+                 return FollowerRead(**current_follower.model_dump())
+            else:
+                # This case implies the document wasn't found during the update,
+                # despite being found initially. Could be a race condition.
+                logger.error(f"Failed to toggle follower {follower_id} status. Matched: {update_result.matched_count}, Modified: {update_result.modified_count}")
+                return None # Or raise error
 
         except Exception as e:
-            logger.error(f"Error toggling follower {follower_id} status: {e}", exc_info=True)
+            logger.error(f"Error toggling follower {follower_id} status in MongoDB: {e}", exc_info=True)
             raise
 
     async def trigger_close_positions(self, follower_id: str) -> bool:
         """
-        Triggers the close positions command for a follower by publishing a message to a topic.
+        Triggers the close positions command for a follower by publishing a message.
+        (No database interaction here, remains unchanged).
         """
         logger.info(f"Triggering close positions for follower ID: {follower_id}")
-
         try:
-            # Create the message payload
             payload = {
                 "follower_id": follower_id,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            
-            # Convert to JSON string
             message_json = json.dumps(payload)
-            
-            # Publish the message to the close-positions topic
-            result = await publish_message("close-positions", message_json)
-            
+            result = await publish_message("close-positions", message_json) # Use correct topic name if different
+
             if result:
                 logger.info(f"Successfully triggered close positions for {follower_id}")
                 # Optionally update follower state after successful trigger
                 # await self.update_follower_state(follower_id, FollowerState.MANUAL_INTERVENTION)
                 return True
             else:
-                logger.error(f"Failed to trigger close positions for {follower_id}")
+                logger.error(f"Failed to trigger close positions for {follower_id} via Pub/Sub.")
                 return False
-                
         except Exception as e:
-            # Catch any unexpected errors
             logger.error(f"Unexpected error triggering close positions for {follower_id}: {e}", exc_info=True)
             return False
 
     async def update_follower_state(self, follower_id: str, state: FollowerState) -> Optional[FollowerRead]:
-        """Updates the state of a follower."""
-        logger.info(f"Updating state for follower ID: {follower_id} to {state.value}")
+        """Updates the state of a follower in MongoDB."""
+        logger.info(f"Updating state for follower ID: {follower_id} to {state.value} in MongoDB.")
         try:
-            doc_ref = self.collection_ref.document(follower_id)
             now = datetime.utcnow()
-            await doc_ref.update({
-                "state": state.value,
-                "updatedAt": now
-            })
-            logger.info(f"Successfully updated follower {follower_id} state to {state.value}.")
+            update_result = await self.collection.update_one(
+                {"_id": follower_id},
+                {"$set": {
+                    "state": state.value,
+                    "updated_at": now
+                }}
+            )
 
-            # Fetch the updated document to return
-            updated_doc = await doc_ref.get()
-            if not updated_doc.exists: # Should not happen if update succeeded, but check anyway
+            if update_result.modified_count == 1:
+                logger.info(f"Successfully updated follower {follower_id} state to {state.value} in MongoDB.")
+                # Fetch the updated document
+                updated_doc = await self.collection.find_one({"_id": follower_id})
+                if updated_doc:
+                    updated_follower = Follower.model_validate(updated_doc)
+                    return FollowerRead(**updated_follower.model_dump())
+                else:
+                    logger.error(f"Follower {follower_id} disappeared after successful state update.")
+                    return None
+            elif update_result.matched_count == 1 and update_result.modified_count == 0:
+                 logger.warning(f"Follower {follower_id} found but state was already {state.value}. No change made.")
+                 # Fetch and return current state
+                 current_doc = await self.collection.find_one({"_id": follower_id})
+                 if current_doc:
+                     current_follower = Follower.model_validate(current_doc)
+                     return FollowerRead(**current_follower.model_dump())
+                 else:
+                     logger.error(f"Follower {follower_id} disappeared after no-op state update.")
+                     return None
+            else:
+                logger.error(f"Failed to update follower {follower_id} state. Matched: {update_result.matched_count}, Modified: {update_result.modified_count}")
                 return None
-            updated_data = updated_doc.to_dict()
-            core_follower = Follower.from_dict(id=updated_doc.id, data=updated_data)
-            return FollowerRead(**core_follower.model_dump())
+
         except Exception as e:
-            logger.error(f"Error updating follower {follower_id} state: {e}", exc_info=True)
+            logger.error(f"Error updating follower {follower_id} state in MongoDB: {e}", exc_info=True)
             raise

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 admin_api_api = importlib.import_module('admin-api.app.api.v1.api')
 admin_api_config = importlib.import_module('admin-api.app.core.config')
 admin_api_dashboard = importlib.import_module('admin-api.app.api.v1.endpoints.dashboard')
-admin_api_firestore = importlib.import_module('admin-api.app.db.firestore') # Keep for now, remove later
+# admin_api_firestore = importlib.import_module('admin-api.app.db.firestore') # Removed Firestore import
 admin_api_mongodb = importlib.import_module('admin-api.app.db.mongodb')
 
 # Get specific imports
@@ -35,48 +35,35 @@ async def lifespan(app: FastAPI):
 
     # Create a follower service instance (will need db dependency update later)
     # For now, let's prepare the service import
-    admin_api_follower_service = importlib.import_module('admin-api.app.services.follower_service')
-    # FollowerService = admin_api_follower_service.FollowerService # Instantiation moved inside task group
-    # follower_service = FollowerService(db=db, settings=settings) # Instantiation moved
-
     # Use a task group to manage background tasks
     try:
         async with anyio.create_task_group() as task_group:
-            # Instantiate FollowerService here, assuming it will use Depends(get_mongo_db) later
-            # For the background task, we might need to pass the db instance explicitly if Depends isn't used directly
-            # Let's assume for now the task itself will resolve the dependency or we adapt it later.
-            # Placeholder: We need to figure out how periodic_follower_update_task gets its DB dependency.
-            # For now, let's comment out the task start until FollowerService is refactored.
-            # db_instance = await get_mongo_db() # Get DB instance for the task if needed
-            # follower_service = FollowerService(db=db_instance, settings=settings) # Example if explicit passing needed
+            # Get DB instance for background task dependencies
+            db_instance = await get_mongo_db()
 
-            # task_group._spawn( # Corrected method name and argument passing
-            #     periodic_follower_update_task,
-            #     follower_service, # Pass follower_service positionally
-            #     15 # Pass interval_seconds positionally
-            # )
+            # Import and instantiate FollowerService for the background task
+            admin_api_follower_service = importlib.import_module('admin-api.app.services.follower_service')
+            FollowerService = admin_api_follower_service.FollowerService
+            follower_service_bg = FollowerService(db=db_instance, settings=settings) # Use db_instance
 
-            yield # Application starts here
+            # Start the periodic background task
+            # Use start_soon for background tasks that run indefinitely
+            task_group.start_soon(
+                periodic_follower_update_task,
+                follower_service_bg, # Pass the instantiated service
+                15 # interval_seconds
+            )
+            # Note: periodic_follower_update_task itself needs to be an async function
+            # accepting (service, interval) as arguments.
+
+            yield # Application runs while tasks are in the background
+            # Task group automatically handles cancellation on exit from the 'with' block
+
     finally:
-        # Close MongoDB connection on shutdown
+        # Close MongoDB connection on shutdown (ensures cleanup even if task group errors)
         await close_mongo_connection()
 
-    # Shutdown background tasks - Task group handles cancellation and waiting on exit
-        # Start the periodic task
-        task_group._spawn( # Corrected method name and argument passing
-            periodic_follower_update_task,
-            follower_service, # Pass follower_service positionally
-            15 # Pass interval_seconds positionally
-        )
-        
-        yield # Application starts here
-
-    # Shutdown background tasks - Task group handles cancellation and waiting on exit
-    # for task in background_tasks: # Removed
-    #     task.cancel() # Removed
-    
-    # Wait for tasks to complete # Removed
-    # await asyncio.gather(*background_tasks, return_exceptions=True) # Removed
+    # Removed duplicated/old shutdown logic below
 
 app = FastAPI(
     title="SpreadPilot Admin API",

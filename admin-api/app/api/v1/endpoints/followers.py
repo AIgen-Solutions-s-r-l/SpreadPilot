@@ -2,20 +2,21 @@ from typing import List
 import importlib
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from google.cloud import firestore
+# from google.cloud import firestore # Removed Firestore import
+from motor.motor_asyncio import AsyncIOMotorDatabase # Added MongoDB import
 
 from spreadpilot_core.logging.logger import get_logger
 
 # Import modules using importlib
 admin_api_config = importlib.import_module('admin-api.app.core.config')
-admin_api_db = importlib.import_module('admin-api.app.db.firestore')
+admin_api_db = importlib.import_module('admin-api.app.db.mongodb') # Changed to mongodb
 admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
 admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
 
 # Get specific imports
 Settings = admin_api_config.Settings
 get_settings = admin_api_config.get_settings
-get_db = admin_api_db.get_db
+get_mongo_db = admin_api_db.get_mongo_db # Changed to get_mongo_db
 FollowerCreate = admin_api_schemas.FollowerCreate
 FollowerRead = admin_api_schemas.FollowerRead
 FollowerService = admin_api_services.FollowerService
@@ -24,12 +25,12 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
-# Dependency to get the FollowerService instance, now also injecting settings
+# Dependency to get the FollowerService instance, using MongoDB
 def get_follower_service(
-    db: firestore.AsyncClient = Depends(get_db),
-    settings: Settings = Depends(get_settings) # Add settings dependency
+    db: AsyncIOMotorDatabase = Depends(get_mongo_db), # Changed dependency and type hint
+    settings: Settings = Depends(get_settings)
 ) -> FollowerService:
-    # Pass both db and settings to the service constructor
+    # Pass MongoDB db and settings to the service constructor
     return FollowerService(db=db, settings=settings)
 
 

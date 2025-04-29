@@ -1,5 +1,7 @@
 # Development dependencies for SpreadPilot
 
+# Include application dependencies needed for integration tests
+-r admin-api/requirements.in
 # Testing
 pytest>=7.3.1
 pytest-cov>=4.1.0
@@ -8,9 +10,13 @@ pytest-mock>=3.10.0
 pytest-xdist>=3.3.1  # For parallel test execution
 pytest-timeout>=2.1.0  # For test timeouts
 httpx>=0.27.0,<0.28.0  # For async HTTP client testing - Aligned with admin-api requirements
-starlette>=0.28.0 # Ensure compatibility with httpx
+
 aioresponses>=0.7.4  # For mocking async HTTP requests
 
+testcontainers # For managing Docker containers in tests
+motor>=3.4.0 # Async MongoDB driver
+firebase-admin>=6.0.0 # Added dependency for trading-bot service
+pydantic-settings>=2.0.0 # Added dependency for trading-bot config
 # Linting and formatting
 black>=23.3.0
 isort>=5.12.0
@@ -20,6 +26,7 @@ mypy>=1.3.0
 # Type stubs
 types-requests>=2.30.0.0
 types-PyYAML>=6.0.12.10
+
 
 # Documentation
 sphinx>=7.0.0
@@ -35,7 +42,7 @@ ipython>=8.13.2
 ipdb>=0.13.13
 
 # Docker
-docker-compose>=1.29.2
+
 
 # GCP
 # google-cloud-sdk>=430.0.0 - This is a system package, not a Python package

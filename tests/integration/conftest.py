@@ -6,11 +6,18 @@ import os
 import uuid
 from typing import Dict, List, Optional, Any, Generator, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
+import motor.motor_asyncio # Added for MongoDB
+from testcontainers.mongodb import MongoDbContainer # Added for Testcontainers
 
 import pytest
 import pytest_asyncio
-from google.cloud import firestore
+# from google.cloud import firestore # Removed Firestore
 from fastapi.testclient import TestClient
+from fastapi import Depends # Added for dependency override
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # Added for MongoDB types
+
+# Import the dependency getter to override using importlib
+# from admin-api.app.db.mongodb import get_mongo_db # Replaced with importlib below
 
 from spreadpilot_core.models.follower import Follower, FollowerState
 from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
@@ -27,6 +34,7 @@ trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
 alert_router_service = importlib.import_module('alert-router.app.service.router')
 report_worker_service = importlib.import_module('report-worker.app.service.pnl')
 admin_api_main = importlib.import_module('admin-api.app.main')
+admin_api_mongodb_db = importlib.import_module('admin-api.app.db.mongodb') # Added for get_mongo_db
 
 # Get specific imports
 SignalProcessor = trading_bot_service.SignalProcessor
@@ -34,6 +42,7 @@ GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient
 route_alert = alert_router_service.route_alert
 calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl
 admin_app = admin_api_main.app
+get_mongo_db = admin_api_mongodb_db.get_mongo_db # Get the function to override
 
 
 # ---- Environment Setup ----
@@ -42,10 +51,12 @@ admin_app = admin_api_main.app
 def setup_test_environment():
     """Set up the test environment variables."""
     # Set environment variables for testing
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Match docker-compose.yml host port
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test"
+    # os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Removed Firestore emulator env var
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if needed elsewhere, otherwise remove
     os.environ["TESTING"] = "true"
-    
+    # Add MongoDB URI override if needed by settings, otherwise Testcontainers handles it
+    # os.environ["MONGO_URI_OVERRIDE"] = "mongodb://test:test@localhost:27017" # Example
+
     # Yield to allow tests to run
     yield
     
@@ -240,142 +251,93 @@ async def patched_sheets_client(mock_sheets_client):
         yield mock_sheets_client
 
 
-# ---- Firestore Emulator Client ----
+# ---- MongoDB Testcontainer Fixture ----
 
-@pytest_asyncio.fixture
-async def firestore_client():
-    """Fixture for Firestore client using emulator."""
-    # Ensure environment variables are set
-    assert os.environ.get("FIRESTORE_EMULATOR_HOST"), "Firestore emulator host not set"
-    assert os.environ.get("GOOGLE_CLOUD_PROJECT"), "Google Cloud project not set"
-    
-    # Create client
-    client = firestore.Client()
-    
-    # Clear collections before tests
-    collections = ["followers", "trades", "positions", "alerts", "daily_pnl", "monthly_reports"]
-    for collection in collections:
-        docs = client.collection(collection).stream()
-        for doc in docs:
-            doc.reference.delete()
-    
-    yield client
-    
-    # Clean up after tests
-    for collection in collections:
-        docs = client.collection(collection).stream()
-        for doc in docs:
-            doc.reference.delete()
+@pytest.fixture(scope="session")
+def mongodb_container() -> Generator[MongoDbContainer, None, None]:
+    """Starts and stops a MongoDB Testcontainer for the test session."""
+    # Using a specific image version known to work well
+    with MongoDbContainer("mongo:6.0") as mongo:
+        yield mongo
 
+# ---- MongoDB Test Database Fixture ----
 
-# ---- Test Data Fixtures ----
+@pytest_asyncio.fixture(scope="function")
+async def test_mongo_db(mongodb_container: MongoDbContainer) -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+    """Provides a connection to a unique test database within the MongoDB container."""
+    mongo_uri = mongodb_container.get_connection_url()
+    test_db_name = f"test_db_{uuid.uuid4().hex}"
+    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
+    db = client[test_db_name]
+    print(f"Using test MongoDB: {mongo_uri}/{test_db_name}") # For debugging
 
-@pytest_asyncio.fixture
-async def test_follower(firestore_client):
-    """Fixture to create a test follower in Firestore."""
-    follower_id = f"test-follower-{uuid.uuid4()}"
-    follower = Follower(
-        id=follower_id,
-        email="test@example.com",
-        iban="NL91ABNA0417164300",
-        ibkr_username="testuser",
-        ibkr_secret_ref="projects/spreadpilot-test/secrets/ibkr-password-testuser",
-        commission_pct=20.0,
-        enabled=True,
-        state=FollowerState.ACTIVE,
-    )
-    
-    # Save to Firestore
-    firestore_client.collection("followers").document(follower_id).set(follower.to_dict())
-    
-    yield follower
-    
-    # Clean up
-    firestore_client.collection("followers").document(follower_id).delete()
+    yield db # Provide the database object to the test
 
+    # Cleanup: Drop the test database after the test function completes
+    await client.drop_database(test_db_name)
+    client.close()
+    print(f"Dropped test MongoDB database: {test_db_name}") # For debugging
 
-@pytest_asyncio.fixture
-async def test_trade(firestore_client, test_follower):
-    """Fixture to create a test trade in Firestore."""
-    trade_id = f"test-trade-{uuid.uuid4()}"
-    trade = Trade(
-        id=trade_id,
-        follower_id=test_follower.id,
-        side=TradeSide.LONG,
-        qty=1,
-        strike=380.0,
-        limit_price_requested=0.75,
-        status=TradeStatus.FILLED,
-        timestamps={
-            "submitted": datetime.datetime.now(),
-            "filled": datetime.datetime.now(),
-        },
-    )
-    
-    # Save to Firestore
-    firestore_client.collection("trades").document(trade_id).set(trade.to_dict())
-    
-    yield trade
-    
-    # Clean up
-    firestore_client.collection("trades").document(trade_id).delete()
+# ---- FastAPI Dependency Override ----
 
-
-@pytest_asyncio.fixture
-async def test_position(firestore_client, test_follower):
-    """Fixture to create a test position in Firestore."""
-    date = datetime.datetime.now().strftime("%Y%m%d")
-    position = Position(
-        follower_id=test_follower.id,
-        date=date,
-        short_qty=1,
-        long_qty=1,
-        pnl_realized=0.0,
-        pnl_mtm=0.0,
-        assignment_state=AssignmentState.NONE,
-    )
-    
-    # Save to Firestore
-    doc_path = f"positions/{test_follower.id}/daily/{date}"
-    firestore_client.document(doc_path).set(position.to_dict())
-    
-    yield position
-    
-    # Clean up
-    firestore_client.document(doc_path).delete()
-
+async def override_get_mongo_db(test_db: AsyncIOMotorDatabase = Depends(test_mongo_db)) -> AsyncIOMotorDatabase:
+    """Dependency override function that returns the test_mongo_db fixture."""
+    return test_db
 
 # ---- Service Fixtures ----
 
+# Note: signal_processor fixture still uses firestore_client.
+# This will need to be updated if signal_processor also moves to MongoDB.
+# For now, we focus on admin_api_client.
 @pytest_asyncio.fixture
-async def signal_processor(patched_ibkr_client, firestore_client):
-    """Fixture for SignalProcessor with mocked dependencies."""
+async def signal_processor(patched_ibkr_client): # Removed firestore_client dependency
+    """Fixture for SignalProcessor with mocked dependencies.
+       WARNING: Database dependency needs update if SignalProcessor uses MongoDB.
+    """
     # Create a mock trading service
     mock_service = MagicMock()
     mock_service.active_followers = {"test-follower-id": True}
     mock_service.ibkr_manager.place_vertical_spread = patched_ibkr_client.place_vertical_spread
     mock_service.ibkr_manager.check_margin_for_trade = patched_ibkr_client.check_margin_for_trade
-    mock_service.db = firestore_client
-    
+    # mock_service.db = firestore_client # Removed Firestore dependency
+
     # Create alert manager mock
     mock_service.alert_manager.create_alert = AsyncMock()
-    
+
     # Create position manager mock
     mock_service.position_manager.update_position = AsyncMock()
-    
+
     # Create settings mock
     mock_service.settings = MagicMock()
     mock_service.settings.min_price = 0.70
-    
+
     processor = SignalProcessor(mock_service)
     yield processor
 
 
 @pytest.fixture
-def admin_api_client():
-    """Fixture for FastAPI TestClient for admin API."""
-    with TestClient(admin_app) as client:
-        yield client
+def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
+    """Fixture for FastAPI TestClient for admin API with MongoDB override."""
+    # Override the get_mongo_db dependency for the test client (used by endpoints via Depends)
+    admin_app.dependency_overrides[get_mongo_db] = lambda: test_mongo_db
+
+    # Patch the direct async call within the dashboard's background task fallback logic
+    # The patch needs to return an awaitable that yields the test_mongo_db instance
+    async def mock_get_mongo_db_for_task():
+        return test_mongo_db
+
+    # Patch both the endpoint dependency injection AND the direct call in the dashboard background task
+    # Use the correct import path for patching
+    dashboard_endpoint_path = "admin-api.app.api.v1.endpoints.dashboard"
+    followers_endpoint_path = "admin-api.app.api.v1.endpoints.followers"
+
+    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
+         patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task): # Ensure followers endpoint is also patched if direct calls exist
+        with TestClient(admin_app) as client:
+            yield client
+
+    # Clean up the override after the fixture scope ends
+    admin_app.dependency_overrides.clear()
 
 
 # ---- Mock Email and Telegram ----
