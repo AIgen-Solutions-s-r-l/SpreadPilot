@@ -202,24 +202,25 @@ async def test_assignment_compensation(
 
     # Verify position update mock was called (set was called twice: once for ASSIGNED, once for COMPENSATED)
     # Check the *last* call to set to verify the COMPENSATED state
-    assert mock_doc_ref.set.call_count >= 1 # Should be called at least once to update state
+    assert mock_daily_doc_ref.set.call_count >= 1 # Use correct mock name: mock_daily_doc_ref
     # More specific check on the *content* of the last set call if needed:
-    # last_set_call_args = mock_doc_ref.set.call_args[0][0] # Get the dict passed to set
+    # last_set_call_args = mock_daily_doc_ref.set.call_args[0][0] # Get the dict passed to set
     # assert last_set_call_args["assignmentState"] == AssignmentState.COMPENSATED.value
 
-    # Verify alert was created (should be called for ASSIGNMENT_COMPENSATED)
-    mock_service.alert_manager.create_alert.assert_called_once()
-    call_args = mock_service.alert_manager.create_alert.call_args[1]
-    assert call_args["follower_id"] == test_follower.id
-    assert call_args["alert_type"] == AlertType.ASSIGNMENT_COMPENSATED
+    # Verify alerts were created (detection AND compensation)
+    assert mock_service.alert_manager.create_alert.call_count == 2
+    # Optionally, check the arguments of each call if needed
+    calls = mock_service.alert_manager.create_alert.call_args_list
+    assert calls[0][1]["alert_type"] == AlertType.ASSIGNMENT_DETECTED # First call
+    assert calls[1][1]["alert_type"] == AlertType.ASSIGNMENT_COMPENSATED # Second call
+    assert calls[1][1]["follower_id"] == test_follower.id
 
 
 @pytest.mark.asyncio
 async def test_alert_routing_for_assignment(
-    mock_email_sender,
-    mock_telegram_sender,
+    # Remove mock fixtures from signature, we'll patch directly
     test_follower,
-    monkeypatch, # Add monkeypatch fixture
+    monkeypatch,
 ):
     """
     Test that alerts are sent via the alert-router for assignment events.
@@ -228,15 +229,13 @@ async def test_alert_routing_for_assignment(
     1. Assignment alert is routed to email and Telegram
     2. Alert contains correct information
     """
-    from spreadpilot_core.models.alert import AlertEvent
-    import importlib
-    
-    # Import module using importlib (updated path)
-    alert_router_service = importlib.import_module('alert_router.app.service.router')
+    from spreadpilot_core.models.alert import AlertEvent, AlertType # Ensure AlertType is imported
+    from unittest.mock import patch # Import patch
+    import datetime # Ensure datetime is imported
 
-    # Get specific import
-    route_alert = alert_router_service.route_alert
-    
+    # Import the function directly
+    from alert_router.app.service.router import route_alert
+
     # Create test alert event
     alert_event = AlertEvent(
         event_type=AlertType.ASSIGNMENT_DETECTED,
@@ -248,46 +247,46 @@ async def test_alert_routing_for_assignment(
             "short_qty": 1,
         },
     )
-    
-    # Patch the settings used by the router to simulate email AND Telegram being configured
-    with patch("alert_router.app.service.router.settings") as mock_settings:
-        # Email Settings
+
+    # Patch settings AND the send functions directly within the router module's context
+    # Target the functions where they are imported/used in the router module
+    with patch("alert_router.app.service.router.settings") as mock_settings, \
+         patch("alert_router.app.service.router.send_email") as mock_send_email, \
+         patch("alert_router.app.service.router.send_telegram_message") as mock_send_telegram:
+
+        # Configure mock settings to appear valid
         mock_settings.EMAIL_SENDER = "test-sender@example.com"
         mock_settings.EMAIL_ADMIN_RECIPIENTS = ["test-admin@example.com"]
-        mock_settings.SMTP_HOST = "smtp.example.com"
-        mock_settings.SMTP_PORT = 587
-        mock_settings.SMTP_USER = None
-        mock_settings.SMTP_PASSWORD = None
-        mock_settings.SMTP_TLS = True
-        # Telegram Settings
+        mock_settings.SMTP_HOST = "smtp.example.com" # Still needed if checked by router logic
         mock_settings.TELEGRAM_BOT_TOKEN = "dummy_token_123"
-        mock_settings.TELEGRAM_ADMIN_IDS = ["98765"] # Use a distinct dummy ID
+        mock_settings.TELEGRAM_ADMIN_IDS = ["98765"]
 
-        # Route the alert
+        # Configure the return value or side effect of the patched send functions if needed
+        # For simple assertion, just ensuring they are called is enough.
+        # mock_send_email.return_value = True # Example
+        # mock_send_telegram.return_value = True # Example
+
+        # Route the alert using the patched context
         await route_alert(alert_event)
 
-    # Verify email and telegram were sent
-    mock_email_sender.assert_called_once()
-    mock_telegram_sender.assert_called_once() # Add assertion for Telegram
+        # Verify the mocks patched *within this context* were called
+        mock_send_email.assert_called_once()
+        mock_send_telegram.assert_called_once()
 
-    # Optional: Check arguments passed by the router logic
-    email_call_args = mock_email_sender.call_args[1]
-    assert email_call_args['recipient'] in mock_settings.EMAIL_ADMIN_RECIPIENTS
-    assert "Assignment Detected" in email_call_args['subject'] # Check subject contains expected text
-    assert test_follower.id in email_call_args['body'] # Check body contains follower ID
+        # Optional: Check arguments passed by the router logic to our mocks
+        email_call_args = mock_send_email.call_args[1]
+        assert email_call_args['to_email'] in mock_settings.EMAIL_ADMIN_RECIPIENTS
+        # Check for the enum value in the subject and body
+        assert alert_event.event_type.value in email_call_args['subject']
+        assert alert_event.event_type.value in email_call_args['html_content']
+        assert test_follower.id in email_call_args['html_content']
 
-    telegram_call_args = mock_telegram_sender.call_args[1]
-    assert telegram_call_args['chat_id'] in mock_settings.TELEGRAM_ADMIN_IDS
-    assert "Assignment Detected" in telegram_call_args['message'] # Check message contains expected text
-    assert test_follower.id in telegram_call_args['message'] # Check message contains follower ID
-    email_args = mock_email_sender.call_args[1]
-    assert "Assignment detected" in email_args["subject"]
-    assert test_follower.id in email_args["body"]
-    
-    # Verify Telegram message was sent
-    mock_telegram_sender.assert_called_once()
-    telegram_args = mock_telegram_sender.call_args[1]
-    assert test_follower.id in telegram_args["message"]
+        telegram_call_args = mock_send_telegram.call_args[1]
+        assert telegram_call_args['chat_id'] in mock_settings.TELEGRAM_ADMIN_IDS
+        # Check for the enum value in the message
+        assert alert_event.event_type.value in telegram_call_args['message']
+        assert test_follower.id in telegram_call_args['message']
+        # Remove leftover assertions using old fixture names
 
 
 @pytest.mark.asyncio
@@ -388,8 +387,10 @@ async def test_daily_position_check(
     # and compensated for second check
     mock_ibkr_client.check_assignment = AsyncMock(
         side_effect=[
-            (AssignmentState.ASSIGNED, 1, 0),  # First call - assignment detected
-            (AssignmentState.COMPENSATED, 0, 0),  # Second call - after compensation
+            # First call: Return ASSIGNED, short=0, long=1 (Needs compensation)
+            (AssignmentState.ASSIGNED, 0, 1),
+            # Second call: Return COMPENSATED (or NONE) after compensation logic runs
+            (AssignmentState.COMPENSATED, 0, 0),
         ]
     )
     
@@ -399,7 +400,9 @@ async def test_daily_position_check(
             "qty_exercised": 1,
         }
     )
-    
+    # Add mock for get_positions needed for compensation logic
+    mock_ibkr_client.get_positions = AsyncMock(return_value={'400-C': 1}) # Example long position
+
     # Create position manager with mocked dependencies
     mock_service = MagicMock()
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
@@ -414,11 +417,13 @@ async def test_daily_position_check(
         assignment_state=AssignmentState.NONE, # Initial state
         short_qty=1, # Assume initial position exists
         long_qty=1,
-    ).to_dict() # Use the model's dict method
+    ).model_dump() # Use model_dump for Pydantic v2
 
     mock_doc_ref_daily = MagicMock()
+    # Configure get() as SYNCHRONOUS
     mock_doc_ref_daily.get.return_value = mock_doc_snap_daily
-    mock_doc_ref_daily.set.return_value = None # Mock set to do nothing
+    # Configure set() as SYNCHRONOUS
+    mock_doc_ref_daily.set.return_value = None
 
     # Configure the mock chain to match db.collection(...).document(...).collection(...).document(...)
     mock_daily_collection_ref_check = MagicMock()
