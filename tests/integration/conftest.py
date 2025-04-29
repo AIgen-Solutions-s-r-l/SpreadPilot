@@ -357,7 +357,6 @@ class UvicornServer(uvicorn.Server):
         if hasattr(self, 'thread') and self.thread.is_alive():
              self.thread.join(timeout=1) # Wait briefly for thread to exit
 
-
 @pytest_asyncio.fixture(scope="function")
 async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[httpx.AsyncClient, None]:
     """
@@ -375,12 +374,13 @@ async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerato
     dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
     followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
 
+    # Patching ensures the override is active for the app instance used by httpx
     with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance), \
          patch(f"{followers_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance):
         try:
             # Create the client directly against the ASGI app
             async with httpx.AsyncClient(app=admin_app, base_url="http://testserver") as client:
-                 yield client # Yield the configured client
+                 yield client # Yield only the httpx client
 
         finally:
             # Clean up the override
@@ -391,10 +391,15 @@ async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerato
 @pytest.fixture(scope="function") # Use standard pytest fixture for synchronous TestClient
 def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
     """Synchronous fixture providing a FastAPI TestClient against the admin_api app with MongoDB override."""
-    # Override the get_mongo_db dependency for the test client
-    # Note: The override function itself remains async, but TestClient handles the event loop
-    admin_app.dependency_overrides[get_mongo_db] = lambda: test_mongo_db
 
+    # Define an async override function
+    async def override_get_db_for_test_client():
+        return test_mongo_db
+
+    # Override the get_mongo_db dependency using the async function
+    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_test_client
+
+    # Keep defensive patches for now
     # Patch the direct async call within the dashboard's background task fallback logic
     # This might still be needed if the background task runs during TestClient usage,
     # though TestClient typically doesn't run the full lifespan. Patching defensively.
@@ -412,35 +417,12 @@ def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[Test
     # Clean up the override after the fixture scope ends
     admin_app.dependency_overrides.clear()
 
-@pytest.fixture(scope="function")
-def admin_api_ws_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
-    """
-    Fixture providing a FastAPI TestClient against the admin_api app
-    with the database dependency overridden. Suitable for WebSocket testing.
-    """
-    # Override get_mongo_db to return the exact same test_mongo_db instance
-    async def override_get_db_for_app_instance():
-        return test_mongo_db
+# ---- Test Data Fixtures ---- is the next logical line after removing this fixture
 
-    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_app_instance
+# Remove the admin_api_ws_client fixture as it's replaced by the modified admin_api_client
 
-    # Patch direct calls if necessary
-    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
-    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
-
-    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance), \
-         patch(f"{followers_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance):
-        try:
-            # Create the synchronous TestClient
-            # TestClient handles the event loop internally for WebSocket testing
-            with TestClient(admin_app) as client:
-                yield client
-        finally:
-            # Clean up the override
-            admin_app.dependency_overrides.clear()
 
 # ---- Test Data Fixtures ----
-
 @pytest_asyncio.fixture(scope="function")
 async def test_follower(test_mongo_db: AsyncIOMotorDatabase) -> Follower:
     """Fixture to create a sample follower in the test MongoDB."""

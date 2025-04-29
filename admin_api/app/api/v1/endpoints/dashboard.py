@@ -115,6 +115,7 @@ async def websocket_dashboard_endpoint(
         logger.info(f"Sent initial state to client: {websocket.client}")
     except Exception as e:
         logger.error(f"Error sending initial state to {websocket.client}: {e}", exc_info=True)
+        await websocket.close() # Explicitly close on initial state error
 
     try:
         while True:
