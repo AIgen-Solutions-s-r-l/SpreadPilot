@@ -85,11 +85,11 @@ class ReportService:
         success_count = 0
         failure_count = 0
         for follower in active_followers:
-            logger.info(f"Processing report for follower: {follower.id} ({follower.name or 'No Name'})")
+            logger.info(f"Processing report for follower: {follower.id}") # Removed reference to non-existent follower.name
             try:
                 # --- 3a: Calculate Commission ---
                 # Use the follower's specific commission % or default
-                commission_pct = follower.commission_percentage if follower.commission_percentage is not None else config.DEFAULT_COMMISSION_PERCENTAGE
+                commission_pct = follower.commission_pct if follower.commission_pct is not None else config.DEFAULT_COMMISSION_PERCENTAGE # Corrected attribute name
                 commission_amount = pnl.calculate_commission(total_monthly_pnl, follower)
 
                 # --- 3b: Generate Reports ---

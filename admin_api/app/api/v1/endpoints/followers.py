@@ -115,11 +115,15 @@ async def toggle_follower(
                 detail=f"Follower with ID '{follower_id}' not found.",
             )
         return updated_follower
+    except HTTPException as http_exc:
+        # Re-raise HTTPExceptions (like the 404) directly
+        raise http_exc
     except Exception as e:
-        logger.error(f"Error toggling follower {follower_id}: {e}", exc_info=True)
+        # Catch other unexpected errors and return 500
+        logger.error(f"Unexpected error toggling follower {follower_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to toggle follower {follower_id}.",
+            detail="An unexpected server error occurred while toggling follower status.", # Generic message for 500
         )
 
 

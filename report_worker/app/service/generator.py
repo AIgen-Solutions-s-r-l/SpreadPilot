@@ -31,7 +31,7 @@ def _prepare_report_data(
 ) -> Dict[str, Any]:
     """Prepares the data dictionary for the report utilities."""
     return {
-        "follower_name": follower.name or follower.id, # Use name if available
+        "follower_name": follower.id, # Use follower.id directly as name doesn't exist
         "follower_email": follower.email,
         "period": report_period,
         "total_pnl": total_pnl, # Pass Decimal, utils should handle formatting

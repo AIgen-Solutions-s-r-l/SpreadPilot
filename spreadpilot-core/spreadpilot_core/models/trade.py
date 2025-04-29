@@ -36,7 +36,7 @@ class Trade(BaseModel):
     strike: float = Field(..., description="Strike price")
     limit_price_requested: float = Field(..., description="Requested limit price")
     status: TradeStatus = Field(..., description="Trade status")
-    timestamps: Dict[str, datetime] = Field(default_factory=dict, description="Timestamps")
+    timestamps: Dict[str, Optional[datetime]] = Field(default_factory=dict, description="Timestamps (e.g., 'submitted', 'filled', 'closed')")
     error_code: Optional[str] = Field(None, description="Error code (if any)")
     error_msg: Optional[str] = Field(None, description="Error message (if any)")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")

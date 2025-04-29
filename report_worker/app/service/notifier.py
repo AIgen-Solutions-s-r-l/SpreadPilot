@@ -35,9 +35,9 @@ def send_report_email(
         logger.warning(f"No report files generated for follower {follower.id} for period {report_period}. Skipping email.")
         return True # Nothing to attach
 
-    subject = f"SpreadPilot Monthly Report - {report_period} - {follower.name or follower.id}"
+    subject = f"SpreadPilot Monthly Report - {report_period} - {follower.id}" # Use follower.id directly
     body = f"""
-Dear {follower.name or 'Follower'},
+Dear {follower.email}, # Use follower.email for salutation
 
 Please find attached your SpreadPilot performance report for the period {report_period}.
 

@@ -43,7 +43,12 @@ class Position(BaseModel):
             "updatedAt": self.updated_at,
         }
 
-    @classmethod
+    @classmethod # Correct indentation
+    def collection_name(cls) -> str:
+        """Returns the Firestore collection name."""
+        return "positions"
+
+    @classmethod # Correct indentation
     def from_dict(cls, follower_id: str, date: str, data: dict):
         """Create from Firestore dict."""
         return cls(
