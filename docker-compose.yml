@@ -62,18 +62,21 @@ services:
     container_name: spreadpilot-admin-api
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      # - FIRESTORE_EMULATOR_HOST=firestore:8080 # Removed Firestore
+      - MONGO_URI=mongodb://mongodb:27017 # Added MongoDB URI
+      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
       - TRADING_BOT_HOST=trading-bot
       - TRADING_BOT_PORT=8080
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-testsecret} # Added default for testing
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - trading-bot
       - otel-collector
     ports:
@@ -134,13 +137,7 @@ services:
     restart: unless-stopped
 
   # Infrastructure services
-  firestore:
-    image: google/cloud-sdk:latest
-    container_name: spreadpilot-firestore
-    entrypoint: gcloud beta emulators firestore start --host-port=0.0.0.0:8080
-    ports:
-      - "8084:8080"
-    restart: unless-stopped
+  # Removed Firestore service definition
 
   ib-gateway:
     image: ghcr.io/spreadpilot/ib-gateway:latest

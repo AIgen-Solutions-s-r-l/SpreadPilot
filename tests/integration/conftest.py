@@ -15,13 +15,11 @@ from testcontainers.mongodb import MongoDbContainer # Added for Testcontainers
 
 import pytest
 import pytest_asyncio
-# from google.cloud import firestore # Removed Firestore
-from fastapi.testclient import TestClient
-from fastapi import Depends # Added for dependency override
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # Added for MongoDB types
-# from fastapi.testclient import TestClient # Remove TestClient
-import httpx # Re-add httpx import
-# from anyio.abc import TestClient as AnyioTestClient # Remove anyio import
+# from google.cloud import firestore # Removed Firestore import
+from fastapi.testclient import TestClient # Add TestClient import
+from fastapi import Depends
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+import httpx
 
 # Import the dependency getter to override using importlib
 # from admin_api.app.db.mongodb import get_mongo_db # Replaced with importlib below
@@ -58,19 +56,19 @@ get_mongo_db = admin_api_mongodb_db.get_mongo_db # Get the function to override
 def setup_test_environment():
     """Set up the test environment variables and mock external services."""
     # Set environment variables for testing
-    # os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Removed Firestore emulator env var
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if needed elsewhere, otherwise remove
+    # os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Removed Firestore env var
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if other services might need it, but admin-api doesn't directly use it now
     os.environ["TESTING"] = "true"
-    # Add MongoDB URI override if needed by settings, otherwise Testcontainers handles it
-    # os.environ["MONGO_URI_OVERRIDE"] = "mongodb://test:test@localhost:27017" # Example
+    # MongoDB URI is handled by Testcontainers and dependency injection override
 
-    # Mock firestore client globally to prevent credential errors during collection/imports
-    with patch("google.cloud.firestore.Client", MagicMock()) as mock_firestore:
-        # Yield to allow tests to run with the mock active
-        yield mock_firestore
+    # Remove global Firestore mock - no longer needed
+    # with patch("google.cloud.firestore.Client", MagicMock()) as mock_firestore:
+    #     yield mock_firestore
+    yield # Yield control to run tests
 
     # Clean up (if needed)
-    pass
+    # Remove potentially conflicting env vars if set elsewhere, though testcontainers is preferred
+    os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
 
 
 # ---- Mock IBKR Client ----
@@ -306,14 +304,16 @@ async def override_get_mongo_db(test_db: AsyncIOMotorDatabase = Depends(test_mon
 @pytest_asyncio.fixture
 async def signal_processor(patched_ibkr_client): # Removed firestore_client dependency
     """Fixture for SignalProcessor with mocked dependencies.
-       WARNING: Database dependency needs update if SignalProcessor uses MongoDB.
+       WARNING: This fixture is likely outdated as SignalProcessor probably uses Firestore.
+       It's kept here for structure but might need removal or update in a separate task
+       focused on refactoring the trading-bot tests.
     """
     # Create a mock trading service
     mock_service = MagicMock()
     mock_service.active_followers = {"test-follower-id": True}
     mock_service.ibkr_manager.place_vertical_spread = patched_ibkr_client.place_vertical_spread
     mock_service.ibkr_manager.check_margin_for_trade = patched_ibkr_client.check_margin_for_trade
-    # mock_service.db = firestore_client # Removed Firestore dependency
+    # mock_service.db = firestore_client # Ensure no lingering Firestore reference
 
     # Create alert manager mock
     mock_service.alert_manager.create_alert = AsyncMock()
@@ -352,6 +352,31 @@ async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerato
         # Use ASGITransport for testing ASGI apps like FastAPI with httpx
         transport = httpx.ASGITransport(app=admin_app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            yield client
+
+    # Clean up the override after the fixture scope ends
+    admin_app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function") # Use standard pytest fixture for synchronous TestClient
+def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
+    """Synchronous fixture providing a FastAPI TestClient against the admin_api app with MongoDB override."""
+    # Override the get_mongo_db dependency for the test client
+    # Note: The override function itself remains async, but TestClient handles the event loop
+    admin_app.dependency_overrides[get_mongo_db] = lambda: test_mongo_db
+
+    # Patch the direct async call within the dashboard's background task fallback logic
+    # This might still be needed if the background task runs during TestClient usage,
+    # though TestClient typically doesn't run the full lifespan. Patching defensively.
+    async def mock_get_mongo_db_for_task():
+        return test_mongo_db
+
+    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
+    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
+
+    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
+         patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task):
+        with TestClient(admin_app) as client:
             yield client
 
     # Clean up the override after the fixture scope ends
