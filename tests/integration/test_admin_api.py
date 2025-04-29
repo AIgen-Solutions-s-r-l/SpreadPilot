@@ -5,8 +5,11 @@ import datetime
 import json
 import pytest
 import uuid
+import anyio # Import anyio
+import time # Import time
 from unittest.mock import AsyncMock, MagicMock, patch
 from bson import ObjectId # Added for MongoDB IDs
+import websockets # Import websockets library
 
 import httpx # Re-add import
 from fastapi.testclient import TestClient # Import TestClient
@@ -31,7 +34,7 @@ FollowerService = admin_api_services.FollowerService
 
 @pytest.mark.asyncio
 async def test_list_followers(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -41,6 +44,7 @@ async def test_list_followers(
     1. Endpoint returns all followers from MongoDB
     2. Response format is correct (assuming service converts _id to id)
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Create test followers directly in MongoDB
     followers_data = []
     follower_ids_to_cleanup = []
@@ -67,8 +71,8 @@ async def test_list_followers(
 
     # Mock the get_settings dependency (get_db is handled by admin_api_client fixture)
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-        # Call the endpoint
-        response = await admin_api_client.get("/api/v1/followers") # Added await
+        # Call the endpoint using the client fixture directly
+        response = await admin_api_client.get("/api/v1/followers") # Use admin_api_client
 
     # Verify response
     assert response.status_code == 200
@@ -95,7 +99,7 @@ async def test_list_followers(
 
 @pytest.mark.asyncio
 async def test_create_follower(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -106,6 +110,7 @@ async def test_create_follower(
     2. Response contains the created follower (with 'id' as string)
     3. Follower is stored in MongoDB (with '_id' as ObjectId)
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Create follower data
     follower_payload = {
         "email": "create-test@example.com",
@@ -119,8 +124,8 @@ async def test_create_follower(
     try:
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-            # Call the endpoint
-            response = await admin_api_client.post( # Added await
+            # Call the endpoint using the client fixture directly
+            response = await admin_api_client.post( # Use admin_api_client
                 "/api/v1/followers",
                 json=follower_payload,
             )
@@ -152,7 +157,7 @@ async def test_create_follower(
 
 @pytest.mark.asyncio
 async def test_toggle_follower(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -163,6 +168,7 @@ async def test_toggle_follower(
     2. Response contains the updated follower
     3. Follower is updated in MongoDB
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Insert a test follower
     initial_enabled = True
     follower_id_str = str(uuid.uuid4()) # Generate UUID string ID
@@ -186,8 +192,8 @@ async def test_toggle_follower(
     try:
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-            # Call the endpoint to toggle
-            response = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Added await
+            # Call the endpoint to toggle using the client fixture directly
+            response = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Use admin_api_client
 
         # Verify response
         assert response.status_code == 200
@@ -202,7 +208,7 @@ async def test_toggle_follower(
 
         # Toggle back
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-            response_toggle_back = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Added await
+            response_toggle_back = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Use admin_api_client
         assert response_toggle_back.status_code == 200
         data_toggle_back = response_toggle_back.json()
         assert data_toggle_back["enabled"] is initial_enabled # Should be back to True
@@ -221,7 +227,7 @@ async def test_toggle_follower(
 # Note: This test needs to be async now because admin_api_client is async
 @pytest.mark.asyncio
 async def test_toggle_nonexistent_follower(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase, # Fixture needed for client override, but not used directly
 ):
     """
@@ -231,13 +237,14 @@ async def test_toggle_nonexistent_follower(
     1. Appropriate error is returned
     2. Status code is 404
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Generate a random follower ID that doesn't exist (use ObjectId format)
     nonexistent_id = str(ObjectId())
 
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-        # Call the endpoint
-        response = await admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle") # Added await
+        # Call the endpoint using the client fixture directly
+        response = await admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle") # Use admin_api_client
 
     # Verify response
     assert response.status_code == 404
@@ -247,7 +254,7 @@ async def test_toggle_nonexistent_follower(
 
 @pytest.mark.asyncio
 async def test_trigger_close_positions(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -257,6 +264,7 @@ async def test_trigger_close_positions(
     1. Close positions command is triggered via service method mock
     2. Response indicates success
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Insert a test follower
     follower_id_str = str(uuid.uuid4()) # Generate UUID string ID
     follower = Follower(
@@ -285,8 +293,8 @@ async def test_trigger_close_positions(
 
             # Mock the get_settings dependency
             with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-                # Call the endpoint
-                response = await admin_api_client.post(f"/api/v1/close/{follower_id_str}") # Added await
+                # Call the endpoint using the client fixture directly
+                response = await admin_api_client.post(f"/api/v1/close/{follower_id_str}") # Use admin_api_client
 
         # Verify response
         assert response.status_code == 202  # Accepted
@@ -306,7 +314,7 @@ async def test_trigger_close_positions(
 # Note: This test needs to be async now because admin_api_client is async
 @pytest.mark.asyncio
 async def test_trigger_close_positions_nonexistent_follower(
-    admin_api_client: httpx.AsyncClient, # Reverted type hint
+    admin_api_client: httpx.AsyncClient, # Use httpx client directly
     test_mongo_db: AsyncIOMotorDatabase, # Fixture needed for client override
 ):
     """
@@ -316,13 +324,14 @@ async def test_trigger_close_positions_nonexistent_follower(
     1. Appropriate error is returned
     2. Status code is 404
     """
+    # client, _ = admin_api_client # No longer need to unpack
     # Generate a random follower ID that doesn't exist (use ObjectId format)
     nonexistent_id = str(ObjectId())
 
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-        # Call the endpoint
-        response = await admin_api_client.post(f"/api/v1/close/{nonexistent_id}") # Added await
+        # Call the endpoint using the client fixture directly
+        response = await admin_api_client.post(f"/api/v1/close/{nonexistent_id}") # Use admin_api_client
 
     # Verify response
     assert response.status_code == 404
@@ -449,18 +458,19 @@ async def test_trigger_close_positions_service(
 
 # --- WebSocket Dashboard Tests ---
 
-# Note: These tests now use the synchronous TestClient fixture for WebSockets
+# --- WebSocket Dashboard Tests ---
 
+# TestClient is synchronous, change back to def
 def test_websocket_dashboard_connect_initial_state(
-    admin_api_test_client: TestClient, # Use synchronous TestClient fixture
-    test_mongo_db: AsyncIOMotorDatabase, # Still need async DB for setup/cleanup
+    admin_api_ws_client: TestClient, # Use WS TestClient fixture
+    test_mongo_db: AsyncIOMotorDatabase, # Need DB to check initial state source
 ):
-    """Test connecting to the dashboard WebSocket and receiving initial state."""
-    # Need to run async setup/cleanup in a separate event loop for sync test
+    """Test connecting to the dashboard WebSocket and receiving initial state using TestClient."""
+    # Insert a known follower to check for in initial state (run async helper)
     async def setup_db():
-        follower_id_str = str(uuid.uuid4())
+        follower_id_str_local = str(uuid.uuid4())
         follower = Follower(
-            id=follower_id_str,
+            id=follower_id_str_local,
             email="ws-initial@example.com",
             iban="NL91ABNA0417164306",
             ibkr_username="ws-initial-user",
@@ -468,84 +478,99 @@ def test_websocket_dashboard_connect_initial_state(
             commission_pct=10.0, enabled=True, state=FollowerState.ACTIVE,
         )
         mongo_data = follower.model_dump(by_alias=True)
-        await test_mongo_db.followers.insert_one(mongo_data)
-        return follower_id_str
+        await test_mongo_db.followers.insert_one(mongo_data) # Use await
+        return follower_id_str_local
+    follower_id_str = asyncio.run(setup_db()) # Run the async setup
+    # Removed duplicated block below
+    # No need for ws_base_url or origin with TestClient
 
-    async def cleanup_db(follower_id_str):
-         await test_mongo_db.followers.delete_one({"_id": follower_id_str})
-
-    follower_id_str = asyncio.run(setup_db()) # Run async setup
-
+    # ws_session = None # No longer need this with 'with' statement
     try:
-        with admin_api_test_client.websocket_connect("/ws/dashboard") as websocket:
-            # Receive the initial state message
-            initial_message = websocket.receive_json()
+        # Use TestClient's websocket_connect context manager directly
+        with admin_api_ws_client.websocket_connect("/ws/dashboard") as websocket:
+            initial_message = websocket.receive_json() # Use TestClient method
+
             assert initial_message["type"] == "initial_state"
+            # Fix indentation for the following asserts:
             assert "data" in initial_message
             assert "followers" in initial_message["data"]
             assert isinstance(initial_message["data"]["followers"], list)
             # Check if the test follower is present in the initial state
             assert any(f["id"] == follower_id_str for f in initial_message["data"]["followers"])
     finally:
-        asyncio.run(cleanup_db(follower_id_str)) # Run async cleanup
+        # Clean up (run async helper)
+        async def cleanup_db():
+            await test_mongo_db.followers.delete_one({"_id": follower_id_str})
+        asyncio.run(cleanup_db())
 
 
-# This test requires careful handling of async broadcast within sync test context
-# Patching broadcast_updates might be simpler than running it async
+# TestClient is synchronous, change back to def
 def test_websocket_dashboard_broadcast(
-    admin_api_test_client: TestClient, # Use synchronous TestClient fixture
-    test_mongo_db: AsyncIOMotorDatabase, # Needed for service instantiation if broadcast not patched
+    admin_api_ws_client: TestClient, # Use WS TestClient fixture
+    test_mongo_db: AsyncIOMotorDatabase, # Needed for service instantiation in broadcast
 ):
-    """Test receiving a broadcast message on the dashboard WebSocket."""
+    """Test receiving a broadcast message on the dashboard WebSocket using TestClient."""
+    # Fix indentation for the following lines:
     from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates, active_connections
-
+    import time # Keep time import
     active_connections.clear()
+    # ws_session = None # No longer need this
 
-    # Patch the broadcast function to avoid async issues in sync test
-    with patch("admin_api.app.api.v1.endpoints.dashboard.broadcast_updates", new_callable=AsyncMock) as mock_broadcast:
-        with admin_api_test_client.websocket_connect("/ws/dashboard") as websocket1:
-            # Receive initial state (and discard)
+    try:
+        with admin_api_ws_client.websocket_connect("/ws/dashboard") as websocket1:
+            # Receive initial state (and discard for this test)
             websocket1.receive_json()
 
-            # Check connection was added (might not be reliable with sync client, depends on implementation)
-            # assert len(active_connections) == 1 # Commenting out as it might be flaky
+            # Check connection was added (allow time for registration)
+            time.sleep(0.1) # Add small delay for connection registration
+            assert len(active_connections) == 1
 
-            # Simulate the broadcast being called (doesn't actually send via mock)
+            # Manually trigger broadcast (run async helper)
             test_update_data = {"type": "followers_update", "data": [{"id": "fake-id", "email": "Updated Follower"}]}
-            # Manually send the data the client *would* have received
-            websocket1.send_json(test_update_data)
+            async def run_broadcast():
+                await broadcast_updates(test_update_data)
+            asyncio.run(run_broadcast()) # Run the async broadcast
 
-            # Receive the manually sent message
-            received_message = websocket1.receive_json()
+            # Receive broadcast message
+            received_message = websocket1.receive_json() # Use TestClient method
             assert received_message == test_update_data
 
-    # active_connections check after exit might also be unreliable here
-    # assert len(active_connections) == 0
+    finally:
+        # Context manager handles close
+        # Check connection removed
+        time.sleep(0.1) # Allow time for disconnect
+        assert len(active_connections) == 0
 
 
-# Similar approach for multiple clients - patch broadcast
+# TestClient is synchronous, change back to def
 def test_websocket_dashboard_multiple_clients(
-    admin_api_test_client: TestClient, # Use synchronous TestClient fixture
-    test_mongo_db: AsyncIOMotorDatabase, # Needed if broadcast not patched
+    admin_api_ws_client: TestClient, # Use WS TestClient fixture
+    test_mongo_db: AsyncIOMotorDatabase, # Needed for service instantiation in broadcast
 ):
-    """Test broadcast to multiple connected clients."""
+    """Test broadcast to multiple connected clients using TestClient."""
+    # Fix indentation for the following lines:
     from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates, active_connections
+    import time # Keep time import
     active_connections.clear()
-
-    # Patch broadcast
-    with patch("admin_api.app.api.v1.endpoints.dashboard.broadcast_updates", new_callable=AsyncMock) as mock_broadcast:
-        with admin_api_test_client.websocket_connect("/ws/dashboard") as ws1, \
-             admin_api_test_client.websocket_connect("/ws/dashboard") as ws2:
+    # ws1_session = None # No longer need this
+    # ws2_session = None # No longer need this
+    try:
+        # Connect clients using context managers
+        with admin_api_ws_client.websocket_connect("/ws/dashboard") as ws1, \
+             admin_api_ws_client.websocket_connect("/ws/dashboard") as ws2:
 
             # Discard initial states
             ws1.receive_json()
             ws2.receive_json()
 
-            # Simulate broadcast call
+            time.sleep(0.1) # Allow connections to register
+            assert len(active_connections) == 2
+
+            # Broadcast an update (run async helper)
             test_update_data = {"type": "test_broadcast", "data": "hello"}
-            # Manually send to each client
-            ws1.send_json(test_update_data)
-            ws2.send_json(test_update_data)
+            async def run_broadcast():
+                await broadcast_updates(test_update_data)
+            asyncio.run(run_broadcast()) # Run the async broadcast
 
             # Verify both clients receive it
             received1 = ws1.receive_json()
@@ -553,4 +578,8 @@ def test_websocket_dashboard_multiple_clients(
             assert received1 == test_update_data
             assert received2 == test_update_data
 
-    # assert len(active_connections) == 0 # Potentially flaky
+    finally:
+        # Context managers handle close
+        # Check connections removed
+        time.sleep(0.1) # Allow disconnects to register
+        assert len(active_connections) == 0

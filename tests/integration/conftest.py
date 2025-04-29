@@ -20,6 +20,10 @@ from fastapi.testclient import TestClient # Add TestClient import
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import httpx
+import uvicorn
+import threading
+import socket
+import time
 
 # Import the dependency getter to override using importlib
 # from admin_api.app.db.mongodb import get_mongo_db # Replaced with importlib below
@@ -331,31 +335,57 @@ async def signal_processor(patched_ibkr_client): # Removed firestore_client depe
 
 # Re-add httpx import
 
-@pytest_asyncio.fixture # Keep as async fixture
-async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[httpx.AsyncClient, None]: # Change type hint back to httpx
-    """Async fixture providing an httpx.AsyncClient against the admin_api app with MongoDB override."""
-    # Override the get_mongo_db dependency for the test client (used by endpoints via Depends)
-    admin_app.dependency_overrides[get_mongo_db] = lambda: test_mongo_db
+# Helper function to find a free port
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
-    # Patch the direct async call within the dashboard's background task fallback logic
-    # The patch needs to return an awaitable that yields the test_mongo_db instance
-    async def mock_get_mongo_db_for_task():
+# Uvicorn server runner
+class UvicornServer(uvicorn.Server):
+    def install_signal_handlers(self):
+        pass # Prevent uvicorn from handling signals in tests
+
+    def run_in_thread(self):
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
+        # Wait briefly for server to start - adjust sleep time if needed
+        time.sleep(1.5)
+
+    def stop(self):
+        self.should_exit = True
+        if hasattr(self, 'thread') and self.thread.is_alive():
+             self.thread.join(timeout=1) # Wait briefly for thread to exit
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """
+    Async fixture providing an httpx.AsyncClient against the admin_api app
+    with the database dependency overridden to use the test_mongo_db instance.
+    Uses the ASGI interface directly, no running server needed.
+    """
+    # Override get_mongo_db to return the exact same test_mongo_db instance
+    async def override_get_db_for_app_instance():
         return test_mongo_db
 
-    # Patch both the endpoint dependency injection AND the direct call in the dashboard background task
-    # Use the correct import path for patching
-    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard" # Use underscore
-    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers" # Use underscore
+    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_app_instance
 
-    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
-         patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task): # Ensure followers endpoint is also patched if direct calls exist
-        # Use ASGITransport for testing ASGI apps like FastAPI with httpx
-        transport = httpx.ASGITransport(app=admin_app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            yield client
+    # Patch direct calls if necessary (less likely needed now, but keep for safety)
+    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
+    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
 
-    # Clean up the override after the fixture scope ends
-    admin_app.dependency_overrides.clear()
+    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance), \
+         patch(f"{followers_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance):
+        try:
+            # Create the client directly against the ASGI app
+            async with httpx.AsyncClient(app=admin_app, base_url="http://testserver") as client:
+                 yield client # Yield the configured client
+
+        finally:
+            # Clean up the override
+            admin_app.dependency_overrides.clear()
+            # No need to clean up DB here, test_mongo_db fixture handles its own cleanup
 
 
 @pytest.fixture(scope="function") # Use standard pytest fixture for synchronous TestClient
@@ -382,6 +412,32 @@ def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[Test
     # Clean up the override after the fixture scope ends
     admin_app.dependency_overrides.clear()
 
+@pytest.fixture(scope="function")
+def admin_api_ws_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
+    """
+    Fixture providing a FastAPI TestClient against the admin_api app
+    with the database dependency overridden. Suitable for WebSocket testing.
+    """
+    # Override get_mongo_db to return the exact same test_mongo_db instance
+    async def override_get_db_for_app_instance():
+        return test_mongo_db
+
+    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_app_instance
+
+    # Patch direct calls if necessary
+    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
+    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
+
+    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance), \
+         patch(f"{followers_endpoint_path}.get_mongo_db", new=override_get_db_for_app_instance):
+        try:
+            # Create the synchronous TestClient
+            # TestClient handles the event loop internally for WebSocket testing
+            with TestClient(admin_app) as client:
+                yield client
+        finally:
+            # Clean up the override
+            admin_app.dependency_overrides.clear()
 
 # ---- Test Data Fixtures ----
 
