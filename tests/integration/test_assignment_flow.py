@@ -139,11 +139,15 @@ async def test_assignment_compensation(
     mock_doc_snap = MagicMock()
     mock_doc_snap.exists = True
     # Ensure the dict returned matches what Position.from_dict expects
-    mock_doc_snap.to_dict.return_value = initial_position.model_dump() # Use model_dump for Pydantic v2
+    # Ensure the dict returned matches what Position.from_dict expects
+    # Use model_dump() for Pydantic v2 compatibility if Position uses it internally
+    mock_doc_snap.to_dict.return_value = initial_position.model_dump()
 
     mock_daily_doc_ref = MagicMock()
-    mock_daily_doc_ref.get = AsyncMock(return_value=mock_doc_snap) # get() is async
-    mock_daily_doc_ref.set = AsyncMock(return_value=None) # set() is async
+    # Configure get() as a SYNCHRONOUS method returning the snap object
+    mock_daily_doc_ref.get.return_value = mock_doc_snap
+    # Configure set() as SYNCHRONOUS for now
+    mock_daily_doc_ref.set.return_value = None
 
     mock_daily_collection_ref = MagicMock()
     mock_daily_collection_ref.document.return_value = mock_daily_doc_ref
@@ -180,6 +184,8 @@ async def test_assignment_compensation(
     # Create position manager with mocked dependencies
     mock_service = MagicMock()
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
+    # Ensure the ibkr_manager mock also has the exercise_options method pointing to the correct AsyncMock
+    mock_service.ibkr_manager.exercise_options = mock_ibkr_client.exercise_options
     # mock_service.db = firestore_client # Removed Firestore dependency
     mock_service.db = mock_db_compensation # Use the configured mock DB
     mock_service.alert_manager.create_alert = AsyncMock()
@@ -244,7 +250,7 @@ async def test_alert_routing_for_assignment(
     )
     
     # Patch the settings used by the router to simulate email AND Telegram being configured
-    with patch("alert_router.app.config.settings") as mock_settings:
+    with patch("alert_router.app.service.router.settings") as mock_settings:
         # Email Settings
         mock_settings.EMAIL_SENDER = "test-sender@example.com"
         mock_settings.EMAIL_ADMIN_RECIPIENTS = ["test-admin@example.com"]
