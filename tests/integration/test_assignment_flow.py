@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from spreadpilot_core.models.position import Position, AssignmentState
 from spreadpilot_core.models.alert import Alert, AlertType, AlertSeverity
 from spreadpilot_core.ibkr.client import IBKRClient
+from spreadpilot_core.utils.time import get_current_trading_date # Added import
 import importlib
 
 # Import modules using importlib
@@ -173,9 +174,9 @@ async def test_alert_routing_for_assignment(
     from spreadpilot_core.models.alert import AlertEvent
     import importlib
     
-    # Import module using importlib
-    alert_router_service = importlib.import_module('alert-router.app.service.router')
-    
+    # Import module using importlib (updated path)
+    alert_router_service = importlib.import_module('alert_router.app.service.router')
+
     # Get specific import
     route_alert = alert_router_service.route_alert
     
@@ -191,8 +192,8 @@ async def test_alert_routing_for_assignment(
         },
     )
     
-    # Patch the settings used by the router to simulate email being configured
-    with patch("alert-router.app.config.settings") as mock_settings:
+    # Patch the settings used by the router to simulate email being configured (updated path)
+    with patch("alert_router.app.config.settings") as mock_settings:
         mock_settings.EMAIL_SENDER = "test-sender@example.com"
         mock_settings.EMAIL_ADMIN_RECIPIENTS = ["test-admin@example.com"]
         mock_settings.SMTP_HOST = "smtp.example.com"

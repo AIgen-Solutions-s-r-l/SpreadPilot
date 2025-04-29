@@ -91,9 +91,6 @@ async def test_daily_pnl_calculation(
         mock_snap.to_dict.return_value = trade_data
         mock_snaps.append(mock_snap)
 
-    # Need to import firestore for the spec
-    # No need to import firestore here anymore
-
     # Patch the 'db' object in pnl.py with a mock that handles the chained calls
     # Remove spec=firestore.Client because firestore.Client itself is mocked globally
     mock_db = MagicMock()
