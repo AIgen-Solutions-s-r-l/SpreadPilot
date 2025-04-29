@@ -14,8 +14,8 @@ from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower, FollowerState
 
 # Import modules using importlib
-admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
-admin_api_config = importlib.import_module('admin-api.app.core.config')
+admin_api_schemas = importlib.import_module('admin_api.app.schemas.follower')
+admin_api_config = importlib.import_module('admin_api.app.core.config')
 
 # Get specific imports
 FollowerCreate = admin_api_schemas.FollowerCreate

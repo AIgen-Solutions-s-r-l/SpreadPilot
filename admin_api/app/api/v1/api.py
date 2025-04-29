@@ -2,8 +2,8 @@ from fastapi import APIRouter
 import importlib
 
 # Import endpoint routers using importlib
-admin_api_followers = importlib.import_module('admin-api.app.api.v1.endpoints.followers')
-admin_api_dashboard = importlib.import_module('admin-api.app.api.v1.endpoints.dashboard')
+admin_api_followers = importlib.import_module('admin_api.app.api.v1.endpoints.followers')
+admin_api_dashboard = importlib.import_module('admin_api.app.api.v1.endpoints.dashboard')
 
 # Create the main router for API v1
 api_router = APIRouter()

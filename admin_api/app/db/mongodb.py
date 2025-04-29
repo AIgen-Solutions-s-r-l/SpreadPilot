@@ -6,7 +6,7 @@ from spreadpilot_core.logging.logger import get_logger
 # from functools import lru_cache # Not using lru_cache for client instance
 
 # Import settings using importlib
-admin_api_config = importlib.import_module('admin-api.app.core.config')
+admin_api_config = importlib.import_module('admin_api.app.core.config')
 get_settings = admin_api_config.get_settings
 settings = get_settings() # Load settings once
 

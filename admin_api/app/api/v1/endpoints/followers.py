@@ -8,10 +8,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase # Added MongoDB import
 from spreadpilot_core.logging.logger import get_logger
 
 # Import modules using importlib
-admin_api_config = importlib.import_module('admin-api.app.core.config')
-admin_api_db = importlib.import_module('admin-api.app.db.mongodb') # Changed to mongodb
-admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
-admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
+admin_api_config = importlib.import_module('admin_api.app.core.config')
+admin_api_db = importlib.import_module('admin_api.app.db.mongodb') # Changed to mongodb
+admin_api_schemas = importlib.import_module('admin_api.app.schemas.follower')
+admin_api_services = importlib.import_module('admin_api.app.services.follower_service')
 
 # Get specific imports
 Settings = admin_api_config.Settings
