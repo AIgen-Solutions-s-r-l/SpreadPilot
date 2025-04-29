@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import importlib
 import anyio # Import anyio
+import os # Add os import
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,15 +47,18 @@ async def lifespan(app: FastAPI):
             FollowerService = admin_api_follower_service.FollowerService
             follower_service_bg = FollowerService(db=db_instance, settings=settings) # Use db_instance
 
-            # Start the periodic background task
-            # Use start_soon for background tasks that run indefinitely
-            task_group.start_soon(
-                periodic_follower_update_task,
-                follower_service_bg, # Pass the instantiated service
-                15 # interval_seconds
-            )
-            # Note: periodic_follower_update_task itself needs to be an async function
-            # accepting (service, interval) as arguments.
+            # Start the periodic background task ONLY if not testing
+            if not os.getenv("TESTING"):
+                # Use start_soon for background tasks that run indefinitely
+                task_group.start_soon(
+                    periodic_follower_update_task,
+                    follower_service_bg, # Pass the instantiated service
+                    15 # interval_seconds
+                )
+                # Note: periodic_follower_update_task itself needs to be an async function
+                # accepting (service, interval) as arguments.
+            else:
+                print("TESTING environment detected, skipping background task.") # Optional: for debugging
 
             yield # Application runs while tasks are in the background
             # Task group automatically handles cancellation on exit from the 'with' block
