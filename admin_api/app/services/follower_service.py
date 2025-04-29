@@ -115,7 +115,7 @@ class FollowerService:
         """Retrieves a single follower by ID (_id) from MongoDB."""
         logger.info(f"Fetching follower with ID: {follower_id} from MongoDB.")
         try:
-            # Find by _id
+            # Find by _id using the provided string ID (assuming _id is stored as string)
             doc = await self.collection.find_one({"_id": follower_id})
 
             if doc:
@@ -134,7 +134,7 @@ class FollowerService:
         """Toggles the enabled status of a follower in MongoDB."""
         logger.info(f"Toggling enabled status for follower ID: {follower_id} in MongoDB.")
         try:
-            # Find the follower first to get current state
+            # Find the follower first to get current state using string ID
             doc = await self.collection.find_one({"_id": follower_id})
 
             if not doc:
@@ -148,7 +148,7 @@ class FollowerService:
 
             # Update the document
             update_result = await self.collection.update_one(
-                {"_id": follower_id},
+                {"_id": follower_id}, # Use string ID for update filter
                 {"$set": {
                     "enabled": new_enabled,
                     "state": new_state.value,
@@ -159,7 +159,7 @@ class FollowerService:
             if update_result.modified_count == 1:
                 logger.info(f"Successfully toggled follower {follower_id} enabled status to {new_enabled} in MongoDB.")
                 # Fetch the updated document to return the latest state
-                updated_doc = await self.collection.find_one({"_id": follower_id})
+                updated_doc = await self.collection.find_one({"_id": follower_id}) # Use string ID
                 if updated_doc:
                      updated_follower = Follower.model_validate(updated_doc)
                      return FollowerRead(**updated_follower.model_dump())
@@ -212,6 +212,7 @@ class FollowerService:
         logger.info(f"Updating state for follower ID: {follower_id} to {state.value} in MongoDB.")
         try:
             now = datetime.utcnow()
+            # Use string ID for update filter
             update_result = await self.collection.update_one(
                 {"_id": follower_id},
                 {"$set": {
@@ -223,7 +224,7 @@ class FollowerService:
             if update_result.modified_count == 1:
                 logger.info(f"Successfully updated follower {follower_id} state to {state.value} in MongoDB.")
                 # Fetch the updated document
-                updated_doc = await self.collection.find_one({"_id": follower_id})
+                updated_doc = await self.collection.find_one({"_id": follower_id}) # Use string ID
                 if updated_doc:
                     updated_follower = Follower.model_validate(updated_doc)
                     return FollowerRead(**updated_follower.model_dump())
@@ -233,7 +234,7 @@ class FollowerService:
             elif update_result.matched_count == 1 and update_result.modified_count == 0:
                  logger.warning(f"Follower {follower_id} found but state was already {state.value}. No change made.")
                  # Fetch and return current state
-                 current_doc = await self.collection.find_one({"_id": follower_id})
+                 current_doc = await self.collection.find_one({"_id": follower_id}) # Use string ID
                  if current_doc:
                      current_follower = Follower.model_validate(current_doc)
                      return FollowerRead(**current_follower.model_dump())

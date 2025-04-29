@@ -1,10 +1,7 @@
-import sys
+import sys # Keep sys import if needed elsewhere, otherwise remove if only used for path
 import os
 
-# Add project root to sys.path to allow imports like 'admin_api.app...'
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# """Pytest fixtures for SpreadPilot integration tests.""" # Moved path logic to test files
 """Pytest fixtures for SpreadPilot integration tests."""
 
 import asyncio
@@ -22,6 +19,9 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from fastapi import Depends # Added for dependency override
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # Added for MongoDB types
+# from fastapi.testclient import TestClient # Remove TestClient
+import httpx # Re-add httpx import
+# from anyio.abc import TestClient as AnyioTestClient # Remove anyio import
 
 # Import the dependency getter to override using importlib
 # from admin_api.app.db.mongodb import get_mongo_db # Replaced with importlib below
@@ -56,7 +56,7 @@ get_mongo_db = admin_api_mongodb_db.get_mongo_db # Get the function to override
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
-    """Set up the test environment variables."""
+    """Set up the test environment variables and mock external services."""
     # Set environment variables for testing
     # os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Removed Firestore emulator env var
     os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if needed elsewhere, otherwise remove
@@ -64,9 +64,11 @@ def setup_test_environment():
     # Add MongoDB URI override if needed by settings, otherwise Testcontainers handles it
     # os.environ["MONGO_URI_OVERRIDE"] = "mongodb://test:test@localhost:27017" # Example
 
-    # Yield to allow tests to run
-    yield
-    
+    # Mock firestore client globally to prevent credential errors during collection/imports
+    with patch("google.cloud.firestore.Client", MagicMock()) as mock_firestore:
+        # Yield to allow tests to run with the mock active
+        yield mock_firestore
+
     # Clean up (if needed)
     pass
 
@@ -169,8 +171,11 @@ class MockIBKRClient:
         qty_per_leg: int,
         strike_long: float,
         strike_short: float,
+        follower_id: Optional[str] = None, # Add follower_id
+        **kwargs # Add kwargs to accept unexpected args
     ) -> tuple[bool, Optional[str]]:
         """Mock check_margin_for_trade method."""
+        # Basic mock logic, can be enhanced if needed
         return True, None
     
     async def get_pnl(self) -> Dict[str, float]:
@@ -275,9 +280,8 @@ async def test_mongo_db(mongodb_container: MongoDbContainer) -> AsyncGenerator[A
     mongo_uri = mongodb_container.get_connection_url()
     test_db_name = f"test_db_{uuid.uuid4().hex}"
     # Get the current event loop provided by pytest-asyncio
-    loop = asyncio.get_running_loop()
-    # Pass the loop to the Motor client
-    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri, io_loop=loop)
+    # Motor should pick up the correct loop automatically when run via pytest-asyncio/anyio
+    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
     db = client[test_db_name]
     print(f"Using test MongoDB: {mongo_uri}/{test_db_name}") # For debugging
 
@@ -325,9 +329,11 @@ async def signal_processor(patched_ibkr_client): # Removed firestore_client depe
     yield processor
 
 
-@pytest.fixture
-def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
-    """Fixture for FastAPI TestClient for admin API with MongoDB override."""
+# Re-add httpx import
+
+@pytest_asyncio.fixture # Keep as async fixture
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[httpx.AsyncClient, None]: # Change type hint back to httpx
+    """Async fixture providing an httpx.AsyncClient against the admin_api app with MongoDB override."""
     # Override the get_mongo_db dependency for the test client (used by endpoints via Depends)
     admin_app.dependency_overrides[get_mongo_db] = lambda: test_mongo_db
 
@@ -343,11 +349,51 @@ def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClien
 
     with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
          patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task): # Ensure followers endpoint is also patched if direct calls exist
-        with TestClient(admin_app) as client:
+        # Use ASGITransport for testing ASGI apps like FastAPI with httpx
+        transport = httpx.ASGITransport(app=admin_app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             yield client
 
     # Clean up the override after the fixture scope ends
     admin_app.dependency_overrides.clear()
+
+
+# ---- Test Data Fixtures ----
+
+@pytest_asyncio.fixture(scope="function")
+async def test_follower(test_mongo_db: AsyncIOMotorDatabase) -> Follower:
+    """Fixture to create a sample follower in the test MongoDB."""
+    follower_data = {
+        "_id": "test-follower-id", # Use a fixed ID for predictability
+        "name": "Test Follower",
+        "email": "test.follower@example.com",
+        "phone": "+1234567890",
+        "ibkr_account_id": "U123456",
+        "commission_pct": 20.0,
+        "state": FollowerState.ACTIVE.value,
+        "created_at": datetime.datetime.now(datetime.timezone.utc),
+        "updated_at": datetime.datetime.now(datetime.timezone.utc),
+        "telegram_chat_id": "12345",
+        "max_risk_per_trade": 100.0,
+        "assigned_options": [],
+        "daily_pnl": 0.0,
+        "monthly_pnl": 0.0,
+        "total_pnl": 0.0,
+        # Add missing required fields
+        "iban": "DE89 3704 0044 0532 0130 00",
+        "ibkr_username": "testuser",
+        "ibkr_secret_ref": "projects/spreadpilot-test/secrets/test-ibkr-secret/versions/latest", # Example ref
+    }
+    # Insert the follower data
+    await test_mongo_db.followers.insert_one(follower_data)
+    print(f"Inserted test follower: {follower_data['_id']}") # Debugging
+
+    # Yield a Pydantic model instance
+    yield Follower(**follower_data)
+
+    # Cleanup: Remove the follower after the test
+    await test_mongo_db.followers.delete_one({"_id": follower_data["_id"]})
+    print(f"Deleted test follower: {follower_data['_id']}") # Debugging
 
 
 # ---- Mock Email and Telegram ----

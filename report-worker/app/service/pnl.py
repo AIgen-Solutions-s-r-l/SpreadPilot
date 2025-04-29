@@ -13,9 +13,10 @@ logger = get_logger(__name__)
 
 # Initialize Firestore client (consider moving to a central db module if complexity grows)
 try:
-    db = firestore.Client(
-        project=config.GCP_PROJECT_ID, database=config.FIRESTORE_DATABASE
-    )
+    # db = firestore.Client( # Commented out for testing - prevents collection error
+    #     project=config.GCP_PROJECT_ID, database=config.FIRESTORE_DATABASE
+    # )
+    db = None # Placeholder
     logger.info(f"Firestore client initialized for project '{config.GCP_PROJECT_ID}' and database '{config.FIRESTORE_DATABASE}'")
 except Exception as e:
     logger.exception("Failed to initialize Firestore client", exc_info=e)

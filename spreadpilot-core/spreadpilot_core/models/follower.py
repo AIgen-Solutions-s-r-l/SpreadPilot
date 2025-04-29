@@ -3,6 +3,9 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+from typing import Any, Annotated # Added Annotated
+from bson import ObjectId # Added ObjectId
+from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
 
 from pydantic import BaseModel, EmailStr, Field, validator
 
@@ -15,14 +18,24 @@ class FollowerState(str, Enum):
     MANUAL_INTERVENTION = "MANUAL_INTERVENTION"
 
 
+# Validator function to convert ObjectId to str
+def validate_objectid_to_str(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    # If it's already a string (e.g., during creation), keep it
+    if isinstance(v, str):
+        return v
+    # Raise error for other unexpected types
+    raise TypeError('ObjectId or str required')
+
 class Follower(BaseModel):
     """Follower model.
-    
-    Maps to Firestore collection: followers/{followerId}
+
+    Maps to MongoDB collection: followers
     """
 
-    # Use alias for MongoDB compatibility (_id)
-    id: str = Field(..., description="Unique follower ID", alias='_id')
+    # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique follower ID", alias='_id')
     email: EmailStr = Field(..., description="Follower email address")
     iban: str = Field(..., description="Follower IBAN for commission payments")
     ibkr_username: str = Field(..., description="IBKR username")

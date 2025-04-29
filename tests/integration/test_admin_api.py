@@ -8,7 +8,9 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 from bson import ObjectId # Added for MongoDB IDs
 
-from fastapi.testclient import TestClient
+import httpx # Re-add import
+# from fastapi.testclient import TestClient # Keep removed
+# from anyio.abc import TestClient as AnyioTestClient # Remove anyio import
 from fastapi import Depends # Added for service dependency injection
 from admin_api.app.api.v1.endpoints.followers import get_follower_service # Added for service dependency
 # from google.cloud import firestore # Removed Firestore
@@ -29,7 +31,7 @@ FollowerService = admin_api_services.FollowerService
 
 @pytest.mark.asyncio
 async def test_list_followers(
-    admin_api_client: TestClient,
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -66,7 +68,7 @@ async def test_list_followers(
     # Mock the get_settings dependency (get_db is handled by admin_api_client fixture)
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint
-        response = admin_api_client.get("/api/v1/followers")
+        response = await admin_api_client.get("/api/v1/followers") # Added await
 
     # Verify response
     assert response.status_code == 200
@@ -93,7 +95,7 @@ async def test_list_followers(
 
 @pytest.mark.asyncio
 async def test_create_follower(
-    admin_api_client: TestClient,
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -118,7 +120,7 @@ async def test_create_follower(
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
             # Call the endpoint
-            response = admin_api_client.post(
+            response = await admin_api_client.post( # Added await
                 "/api/v1/followers",
                 json=follower_payload,
             )
@@ -150,7 +152,7 @@ async def test_create_follower(
 
 @pytest.mark.asyncio
 async def test_toggle_follower(
-    admin_api_client: TestClient,
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -163,8 +165,9 @@ async def test_toggle_follower(
     """
     # Insert a test follower
     initial_enabled = True
+    follower_id_str = str(uuid.uuid4()) # Generate UUID string ID
     follower = Follower(
-        id=str(ObjectId()), # Not used for insertion, just for model validation
+        id=follower_id_str, # Use the generated UUID string
         email="toggle-test@example.com",
         iban="NL91ABNA0417164302",
         ibkr_username="toggle-testuser",
@@ -173,16 +176,18 @@ async def test_toggle_follower(
         enabled=initial_enabled,
         state=FollowerState.ACTIVE,
     )
-    mongo_data = follower.model_dump(exclude={'id'})
+    # Use model_dump(by_alias=True) to get {'_id': follower_id_str, ...}
+    mongo_data = follower.model_dump(by_alias=True)
+    # Insert data including the '_id'
     insert_result = await test_mongo_db.followers.insert_one(mongo_data)
-    follower_oid = insert_result.inserted_id
-    follower_id_str = str(follower_oid)
+    # Verify insertion used our ID
+    assert insert_result.inserted_id == follower_id_str
 
     try:
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
             # Call the endpoint to toggle
-            response = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle")
+            response = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Added await
 
         # Verify response
         assert response.status_code == 200
@@ -191,30 +196,32 @@ async def test_toggle_follower(
         assert data["enabled"] is not initial_enabled  # Should be toggled to False
 
         # Verify follower was updated in MongoDB
-        updated_doc = await test_mongo_db.followers.find_one({"_id": follower_oid})
+        updated_doc = await test_mongo_db.followers.find_one({"_id": follower_id_str}) # Use string ID
         assert updated_doc is not None
         assert updated_doc["enabled"] is False # Check toggled state
 
         # Toggle back
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-            response_toggle_back = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle")
+            response_toggle_back = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Added await
         assert response_toggle_back.status_code == 200
         data_toggle_back = response_toggle_back.json()
         assert data_toggle_back["enabled"] is initial_enabled # Should be back to True
 
         # Verify in DB again
-        final_doc = await test_mongo_db.followers.find_one({"_id": follower_oid})
+        final_doc = await test_mongo_db.followers.find_one({"_id": follower_id_str}) # Query by string ID
         assert final_doc is not None
         assert final_doc["enabled"] is initial_enabled
 
     finally:
         # Clean up
-        await test_mongo_db.followers.delete_one({"_id": follower_oid})
+        await test_mongo_db.followers.delete_one({"_id": follower_id_str}) # Delete by string ID
 
 
 # Note: No async needed as it doesn't interact with DB directly for setup/cleanup
-def test_toggle_nonexistent_follower(
-    admin_api_client: TestClient,
+# Note: This test needs to be async now because admin_api_client is async
+@pytest.mark.asyncio
+async def test_toggle_nonexistent_follower(
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase, # Fixture needed for client override, but not used directly
 ):
     """
@@ -230,7 +237,7 @@ def test_toggle_nonexistent_follower(
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint
-        response = admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle")
+        response = await admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle") # Added await
 
     # Verify response
     assert response.status_code == 404
@@ -240,7 +247,7 @@ def test_toggle_nonexistent_follower(
 
 @pytest.mark.asyncio
 async def test_trigger_close_positions(
-    admin_api_client: TestClient,
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
@@ -251,8 +258,9 @@ async def test_trigger_close_positions(
     2. Response indicates success
     """
     # Insert a test follower
+    follower_id_str = str(uuid.uuid4()) # Generate UUID string ID
     follower = Follower(
-        id=str(ObjectId()), # Not used for insertion
+        id=follower_id_str, # Use the generated UUID string
         email="close-test@example.com",
         iban="NL91ABNA0417164303",
         ibkr_username="close-testuser",
@@ -261,10 +269,12 @@ async def test_trigger_close_positions(
         enabled=True,
         state=FollowerState.ACTIVE,
     )
-    mongo_data = follower.model_dump(exclude={'id'})
+    # Use model_dump(by_alias=True) to get {'_id': follower_id_str, ...}
+    mongo_data = follower.model_dump(by_alias=True)
+    # Insert data including the '_id'
     insert_result = await test_mongo_db.followers.insert_one(mongo_data)
-    follower_oid = insert_result.inserted_id
-    follower_id_str = str(follower_oid)
+    # Verify insertion used our ID
+    assert insert_result.inserted_id == follower_id_str
 
     try:
         # Mock the follower service's trigger_close_positions method
@@ -276,7 +286,7 @@ async def test_trigger_close_positions(
             # Mock the get_settings dependency
             with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
                 # Call the endpoint
-                response = admin_api_client.post(f"/api/v1/close/{follower_id_str}")
+                response = await admin_api_client.post(f"/api/v1/close/{follower_id_str}") # Added await
 
         # Verify response
         assert response.status_code == 202  # Accepted
@@ -289,12 +299,14 @@ async def test_trigger_close_positions(
 
     finally:
         # Clean up
-        await test_mongo_db.followers.delete_one({"_id": follower_oid})
+        await test_mongo_db.followers.delete_one({"_id": follower_id_str}) # Delete by string ID
 
 
 # Note: No async needed as it doesn't interact with DB directly for setup/cleanup
-def test_trigger_close_positions_nonexistent_follower(
-    admin_api_client: TestClient,
+# Note: This test needs to be async now because admin_api_client is async
+@pytest.mark.asyncio
+async def test_trigger_close_positions_nonexistent_follower(
+    admin_api_client: httpx.AsyncClient, # Reverted type hint
     test_mongo_db: AsyncIOMotorDatabase, # Fixture needed for client override
 ):
     """
@@ -310,7 +322,7 @@ def test_trigger_close_positions_nonexistent_follower(
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint
-        response = admin_api_client.post(f"/api/v1/close/{nonexistent_id}")
+        response = await admin_api_client.post(f"/api/v1/close/{nonexistent_id}") # Added await
 
     # Verify response
     assert response.status_code == 404

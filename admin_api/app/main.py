@@ -6,6 +6,7 @@ import os # Add os import
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.exceptions import ExceptionMiddleware # Add this
 
 # Import modules using importlib
 admin_api_api = importlib.import_module('admin_api.app.api.v1.api')

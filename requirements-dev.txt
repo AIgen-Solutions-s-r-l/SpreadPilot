@@ -4,7 +4,7 @@
 #
 #    pip-compile --output-file=requirements-dev.txt requirements-dev.in
 #
--e file:///home/alessio/NeuralTrading/SpreadPilot/spreadpilot-core
+-e ./spreadpilot-core
     # via -r /home/alessio/NeuralTrading/SpreadPilot/admin_api/requirements.in
 aiohappyeyeballs==2.6.1
     # via aiohttp
@@ -534,10 +534,8 @@ urllib3==2.4.0
     #   testcontainers
     #   twine
     #   types-requests
-uvicorn[standard]==0.29.0
+uvicorn==0.29.0
     # via -r /home/alessio/NeuralTrading/SpreadPilot/admin_api/requirements.in
-uvloop==0.21.0
-    # via uvicorn
 watchfiles==1.0.5
     # via uvicorn
 wcwidth==0.2.13

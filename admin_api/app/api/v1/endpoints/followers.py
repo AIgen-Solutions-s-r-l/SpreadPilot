@@ -124,7 +124,7 @@ async def toggle_follower(
 
 
 @router.post(
-    "/close/{follower_id}",
+    "/close/{follower_id}", # Removed redundant /api/v1 prefix
     status_code=status.HTTP_202_ACCEPTED, # Accepted, as the action is asynchronous
     summary="Trigger Close Positions for Follower",
     description="Sends a command to the trading bot to close all positions for a specific follower.",
