@@ -14,6 +14,7 @@ httpx>=0.27.0,<0.28.0  # For async HTTP client testing - Aligned with admin-api 
 aioresponses>=0.7.4  # For mocking async HTTP requests
 
 testcontainers # For managing Docker containers in tests
+wrapt>=1.15.0 # Force newer version compatible with Python 3.12+
 motor>=3.4.0 # Async MongoDB driver
 firebase-admin>=6.0.0 # Added dependency for trading-bot service
 pydantic-settings>=2.0.0 # Added dependency for trading-bot config

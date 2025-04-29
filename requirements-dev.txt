@@ -548,6 +548,7 @@ wheel==0.45.1
     # via pip-tools
 wrapt==1.17.2
     # via
+    #   -r requirements-dev.in
     #   deprecated
     #   testcontainers
 yarl==1.20.0

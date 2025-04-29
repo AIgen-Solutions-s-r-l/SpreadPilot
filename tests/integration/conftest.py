@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add project root to sys.path to allow imports like 'admin_api.app...'
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 """Pytest fixtures for SpreadPilot integration tests."""
 
 import asyncio
@@ -17,7 +24,7 @@ from fastapi import Depends # Added for dependency override
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # Added for MongoDB types
 
 # Import the dependency getter to override using importlib
-# from admin-api.app.db.mongodb import get_mongo_db # Replaced with importlib below
+# from admin_api.app.db.mongodb import get_mongo_db # Replaced with importlib below
 
 from spreadpilot_core.models.follower import Follower, FollowerState
 from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
@@ -33,8 +40,8 @@ trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
 trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
 alert_router_service = importlib.import_module('alert-router.app.service.router')
 report_worker_service = importlib.import_module('report-worker.app.service.pnl')
-admin_api_main = importlib.import_module('admin-api.app.main')
-admin_api_mongodb_db = importlib.import_module('admin-api.app.db.mongodb') # Added for get_mongo_db
+admin_api_main = importlib.import_module('admin_api.app.main')
+admin_api_mongodb_db = importlib.import_module('admin_api.app.db.mongodb') # Added for get_mongo_db
 
 # Get specific imports
 SignalProcessor = trading_bot_service.SignalProcessor
@@ -328,8 +335,8 @@ def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClien
 
     # Patch both the endpoint dependency injection AND the direct call in the dashboard background task
     # Use the correct import path for patching
-    dashboard_endpoint_path = "admin-api.app.api.v1.endpoints.dashboard"
-    followers_endpoint_path = "admin-api.app.api.v1.endpoints.followers"
+    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard" # Use underscore
+    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers" # Use underscore
 
     with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
          patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task): # Ensure followers endpoint is also patched if direct calls exist

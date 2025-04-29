@@ -329,7 +329,7 @@ async def test_follower_service_integration(
     """
     # Create a follower service instance
     service = FollowerService(db=test_mongo_db, settings=MagicMock())
-    follower_oid_to_cleanup = None
+    follower_id_to_cleanup = None # Store string ID
 
     try:
         # Create a new follower
@@ -344,28 +344,28 @@ async def test_follower_service_integration(
         # Test create_follower
         follower = await service.create_follower(follower_payload)
         assert follower.id is not None # Service should return string ID
-        follower_oid_to_cleanup = ObjectId(follower.id) # Store ObjectId for cleanup/verification
+        follower_id_to_cleanup = follower.id # Store string ID for cleanup/verification
         assert follower.email == follower_payload.email
         assert follower.enabled is False
 
-        # Verify in DB
-        db_doc = await test_mongo_db.followers.find_one({"_id": follower_oid_to_cleanup})
+        # Verify in DB (assuming service stores string UUID as _id)
+        db_doc = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert db_doc is not None
         assert db_doc["email"] == follower_payload.email
 
         # Test get_follower_by_id
-        retrieved_follower = await service.get_follower_by_id(follower.id)
+        retrieved_follower = await service.get_follower_by_id(follower.id) # Pass string ID
         assert retrieved_follower is not None
         assert retrieved_follower.id == follower.id
         assert retrieved_follower.email == follower.email
 
         # Test toggle_follower_enabled
-        updated_follower = await service.toggle_follower_enabled(follower.id)
+        updated_follower = await service.toggle_follower_enabled(follower.id) # Pass string ID
         assert updated_follower is not None
         assert updated_follower.enabled is True
 
-        # Verify in DB
-        db_doc_toggled = await test_mongo_db.followers.find_one({"_id": follower_oid_to_cleanup})
+        # Verify in DB (assuming service stores string UUID as _id)
+        db_doc_toggled = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert db_doc_toggled is not None
         assert db_doc_toggled["enabled"] is True
 
@@ -376,8 +376,8 @@ async def test_follower_service_integration(
 
     finally:
         # Clean up
-        if follower_oid_to_cleanup:
-            await test_mongo_db.followers.delete_one({"_id": follower_oid_to_cleanup})
+        if follower_id_to_cleanup:
+            await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup}) # Use string ID
 
 
 @pytest.mark.asyncio
