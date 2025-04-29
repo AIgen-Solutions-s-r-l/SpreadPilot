@@ -274,7 +274,10 @@ async def test_mongo_db(mongodb_container: MongoDbContainer) -> AsyncGenerator[A
     """Provides a connection to a unique test database within the MongoDB container."""
     mongo_uri = mongodb_container.get_connection_url()
     test_db_name = f"test_db_{uuid.uuid4().hex}"
-    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
+    # Get the current event loop provided by pytest-asyncio
+    loop = asyncio.get_running_loop()
+    # Pass the loop to the Motor client
+    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri, io_loop=loop)
     db = client[test_db_name]
     print(f"Using test MongoDB: {mongo_uri}/{test_db_name}") # For debugging
 

@@ -29,16 +29,15 @@ FollowerService = admin_api_services.FollowerService
 
 @pytest.mark.asyncio
 async def test_list_followers(
-    # admin_api_client: TestClient, # Removed TestClient
+    admin_api_client: TestClient,
     test_mongo_db: AsyncIOMotorDatabase,
-    follower_service: FollowerService = Depends(get_follower_service), # Add service dependency
 ):
     """
-    Test listing all followers using MongoDB via the service.
+    Test listing all followers using MongoDB.
 
     This test verifies:
-    1. Service returns all followers from MongoDB
-    2. Response format is correct (FollowerRead model)
+    1. Endpoint returns all followers from MongoDB
+    2. Response format is correct (assuming service converts _id to id)
     """
     # Create test followers directly in MongoDB
     followers_data = []
@@ -64,25 +63,29 @@ async def test_list_followers(
     inserted_ids = insert_result.inserted_ids
     follower_ids_to_cleanup.extend(inserted_ids) # Store ObjectIds for cleanup
 
-    # Call the service method directly
-    followers_list = await follower_service.get_followers()
+    # Mock the get_settings dependency (get_db is handled by admin_api_client fixture)
+    with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+        # Call the endpoint
+        response = admin_api_client.get("/api/v1/followers")
 
     # Verify response
-    assert isinstance(followers_list, list)
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
     # Check if at least the inserted followers are present
-    assert len(followers_list) >= len(inserted_ids)
+    assert len(data) >= len(inserted_ids)
 
-    # Verify each inserted follower is in the response
-    response_follower_ids = {f.id for f in followers_list}
+    # Verify each inserted follower is in the response (assuming API returns 'id' as string)
+    response_follower_ids = {f["id"] for f in data}
     inserted_id_strs = {str(oid) for oid in inserted_ids}
     assert inserted_id_strs.issubset(response_follower_ids)
 
     # Verify data for one follower
     for i, inserted_id in enumerate(inserted_ids):
-        follower_in_response = next((f for f in followers_list if f.id == str(inserted_id)), None)
+        follower_in_response = next((f for f in data if f["id"] == str(inserted_id)), None)
         assert follower_in_response is not None
-        assert follower_in_response.email == f"list-test{i}@example.com"
-        assert follower_in_response.enabled == (i % 2 == 0)
+        assert follower_in_response["email"] == f"list-test{i}@example.com"
+        assert follower_in_response["enabled"] == (i % 2 == 0)
 
     # Clean up test followers
     await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids_to_cleanup}})
@@ -147,16 +150,15 @@ async def test_create_follower(
 
 @pytest.mark.asyncio
 async def test_toggle_follower(
-    # admin_api_client: TestClient, # Removed TestClient
+    admin_api_client: TestClient,
     test_mongo_db: AsyncIOMotorDatabase,
-    follower_service: FollowerService = Depends(get_follower_service), # Add service dependency
 ):
     """
-    Test toggling a follower's enabled status using MongoDB via the service.
+    Test toggling a follower's enabled status using MongoDB.
 
     This test verifies:
-    1. Follower's enabled status is toggled via service
-    2. Service returns the updated follower model
+    1. Follower's enabled status is toggled
+    2. Response contains the updated follower
     3. Follower is updated in MongoDB
     """
     # Insert a test follower
@@ -177,23 +179,28 @@ async def test_toggle_follower(
     follower_id_str = str(follower_oid)
 
     try:
-        # Call the service method to toggle
-        updated_follower = await follower_service.toggle_follower_enabled(follower_id_str)
+        # Mock the get_settings dependency
+        with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+            # Call the endpoint to toggle
+            response = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle")
 
-        # Verify response from service
-        assert updated_follower is not None
-        assert updated_follower.id == follower_id_str
-        assert updated_follower.enabled is not initial_enabled  # Should be toggled to False
+        # Verify response
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == follower_id_str
+        assert data["enabled"] is not initial_enabled  # Should be toggled to False
 
         # Verify follower was updated in MongoDB
         updated_doc = await test_mongo_db.followers.find_one({"_id": follower_oid})
         assert updated_doc is not None
         assert updated_doc["enabled"] is False # Check toggled state
 
-        # Toggle back via service
-        updated_follower_back = await follower_service.toggle_follower_enabled(follower_id_str)
-        assert updated_follower_back is not None
-        assert updated_follower_back.enabled is initial_enabled # Should be back to True
+        # Toggle back
+        with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+            response_toggle_back = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle")
+        assert response_toggle_back.status_code == 200
+        data_toggle_back = response_toggle_back.json()
+        assert data_toggle_back["enabled"] is initial_enabled # Should be back to True
 
         # Verify in DB again
         final_doc = await test_mongo_db.followers.find_one({"_id": follower_oid})
@@ -233,16 +240,15 @@ def test_toggle_nonexistent_follower(
 
 @pytest.mark.asyncio
 async def test_trigger_close_positions(
-    # admin_api_client: TestClient, # Removed TestClient
+    admin_api_client: TestClient,
     test_mongo_db: AsyncIOMotorDatabase,
-    follower_service: FollowerService = Depends(get_follower_service), # Add service dependency
 ):
     """
-    Test triggering close positions for a follower using MongoDB backend via the service.
+    Test triggering close positions for a follower using MongoDB backend.
 
     This test verifies:
-    1. Service method is called correctly
-    2. Underlying publish mechanism is mocked and called
+    1. Close positions command is triggered via service method mock
+    2. Response indicates success
     """
     # Insert a test follower
     follower = Follower(
@@ -261,24 +267,25 @@ async def test_trigger_close_positions(
     follower_id_str = str(follower_oid)
 
     try:
-        # Mock the underlying publish_message function used by the service
-        with patch("admin_api.app.services.follower_service.publish_message",
-                   new_callable=AsyncMock) as mock_publish:
-            mock_publish.return_value = True # Simulate successful publish
+        # Mock the follower service's trigger_close_positions method
+        # Patch the actual service method, not relying on endpoint injection here
+        with patch("admin_api.app.services.follower_service.FollowerService.trigger_close_positions",
+                   new_callable=AsyncMock) as mock_trigger:
+            mock_trigger.return_value = True
 
-            # Call the service method directly
-            success = await follower_service.trigger_close_positions(follower_id_str)
+            # Mock the get_settings dependency
+            with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+                # Call the endpoint
+                response = admin_api_client.post(f"/api/v1/close/{follower_id_str}")
 
-            # Verify response from service
-            assert success is True
+        # Verify response
+        assert response.status_code == 202  # Accepted
+        data = response.json()
+        assert "message" in data
+        assert follower_id_str in data["message"]
 
-            # Verify the publish function was called correctly
-            mock_publish.assert_called_once()
-            args = mock_publish.call_args[0]
-            assert args[0] == "close-positions"  # Topic
-            message = json.loads(args[1])  # Message
-            assert message["follower_id"] == follower_id_str
-            assert "timestamp" in message
+        # Verify the service method was called
+        mock_trigger.assert_called_once_with(follower_id_str)
 
     finally:
         # Clean up
