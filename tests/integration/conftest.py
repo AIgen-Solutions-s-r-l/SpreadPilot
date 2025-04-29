@@ -39,7 +39,7 @@ import importlib
 trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
 trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
 alert_router_service = importlib.import_module('alert-router.app.service.router')
-report_worker_service = importlib.import_module('report-worker.app.service.pnl')
+# report_worker_service = importlib.import_module('report-worker.app.service.pnl') # Removed - Not needed for admin_api tests, causes credential error
 admin_api_main = importlib.import_module('admin_api.app.main')
 admin_api_mongodb_db = importlib.import_module('admin_api.app.db.mongodb') # Added for get_mongo_db
 
@@ -47,7 +47,7 @@ admin_api_mongodb_db = importlib.import_module('admin_api.app.db.mongodb') # Add
 SignalProcessor = trading_bot_service.SignalProcessor
 GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient
 route_alert = alert_router_service.route_alert
-calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl
+# calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl # Removed
 admin_app = admin_api_main.app
 get_mongo_db = admin_api_mongodb_db.get_mongo_db # Get the function to override
 

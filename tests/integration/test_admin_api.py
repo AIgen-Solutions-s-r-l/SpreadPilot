@@ -16,8 +16,8 @@ from spreadpilot_core.models.follower import Follower, FollowerState
 import importlib
 
 # Import modules using importlib
-admin_api_schemas = importlib.import_module('admin-api.app.schemas.follower')
-admin_api_services = importlib.import_module('admin-api.app.services.follower_service')
+admin_api_schemas = importlib.import_module('admin_api.app.schemas.follower')
+admin_api_services = importlib.import_module('admin_api.app.services.follower_service')
 
 # Get specific imports
 FollowerCreate = admin_api_schemas.FollowerCreate

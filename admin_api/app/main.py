@@ -7,11 +7,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import modules using importlib
-admin_api_api = importlib.import_module('admin-api.app.api.v1.api')
-admin_api_config = importlib.import_module('admin-api.app.core.config')
-admin_api_dashboard = importlib.import_module('admin-api.app.api.v1.endpoints.dashboard')
-# admin_api_firestore = importlib.import_module('admin-api.app.db.firestore') # Removed Firestore import
-admin_api_mongodb = importlib.import_module('admin-api.app.db.mongodb')
+admin_api_api = importlib.import_module('admin_api.app.api.v1.api')
+admin_api_config = importlib.import_module('admin_api.app.core.config')
+admin_api_dashboard = importlib.import_module('admin_api.app.api.v1.endpoints.dashboard')
+# admin_api_firestore = importlib.import_module('admin_api.app.db.firestore') # Removed Firestore import
+admin_api_mongodb = importlib.import_module('admin_api.app.db.mongodb')
 
 # Get specific imports
 api_router = admin_api_api.api_router
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
             db_instance = await get_mongo_db()
 
             # Import and instantiate FollowerService for the background task
-            admin_api_follower_service = importlib.import_module('admin-api.app.services.follower_service')
+            admin_api_follower_service = importlib.import_module('admin_api.app.services.follower_service')
             FollowerService = admin_api_follower_service.FollowerService
             follower_service_bg = FollowerService(db=db_instance, settings=settings) # Use db_instance
 
