@@ -44,7 +44,26 @@ async def test_assignment_detection(
     mock_service = MagicMock()
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
     # mock_service.db = firestore_client # Removed Firestore dependency
-    mock_service.db = MagicMock() # Use a generic mock for now if db attribute is needed
+    # Setup a more specific DB mock for position reads/writes
+    mock_doc_snap_assign = MagicMock()
+    mock_doc_snap_assign.exists = True # Simulate existing position
+    # Return a dict representing a Position *before* assignment detection
+    mock_doc_snap_assign.to_dict.return_value = Position(
+        follower_id=test_follower.id,
+        date=get_current_trading_date(), # Use helper
+        assignment_state=AssignmentState.NONE, # Initial state
+        short_qty=1, # Assume initial position exists
+        long_qty=1,
+    ).to_dict() # Use the model's dict method
+
+    mock_doc_ref_assign = MagicMock()
+    mock_doc_ref_assign.get.return_value = mock_doc_snap_assign
+    mock_doc_ref_assign.set.return_value = None # Mock set to do nothing
+
+    mock_db_assign = MagicMock()
+    mock_db_assign.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref_assign # Adjust chain based on actual usage if needed
+
+    mock_service.db = mock_db_assign # Assign the configured mock
     mock_service.alert_manager.create_alert = AsyncMock()
 
     position_manager = PositionManager(mock_service)
@@ -332,7 +351,28 @@ async def test_daily_position_check(
     mock_service = MagicMock()
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
     # mock_service.db = firestore_client # Removed Firestore dependency
-    mock_service.db = MagicMock() # Use a generic mock for now
+    # Setup a more specific DB mock for position reads/writes
+    mock_doc_snap_daily = MagicMock()
+    mock_doc_snap_daily.exists = True # Simulate existing position
+    # Return a dict representing a Position *before* assignment detection
+    mock_doc_snap_daily.to_dict.return_value = Position(
+        follower_id=test_follower.id,
+        date=get_current_trading_date(), # Use helper
+        assignment_state=AssignmentState.NONE, # Initial state
+        short_qty=1, # Assume initial position exists
+        long_qty=1,
+    ).to_dict() # Use the model's dict method
+
+    mock_doc_ref_daily = MagicMock()
+    mock_doc_ref_daily.get.return_value = mock_doc_snap_daily
+    mock_doc_ref_daily.set.return_value = None # Mock set to do nothing
+
+    mock_db_daily = MagicMock()
+    # Adjust chain based on actual usage in check_positions if needed
+    # The path is db.collection("positions").document(follower_id).collection("daily").document(trading_date)
+    mock_db_daily.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref_daily
+
+    mock_service.db = mock_db_daily # Assign the configured mock
     mock_service.alert_manager.create_alert = AsyncMock()
     mock_service.active_followers = {test_follower.id: True}
 

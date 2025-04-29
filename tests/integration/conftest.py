@@ -38,7 +38,7 @@ import importlib
 # Import modules using importlib
 trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
 trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
-alert_router_service = importlib.import_module('alert-router.app.service.router')
+alert_router_service = importlib.import_module('alert_router.app.service.router') # Updated path
 # report_worker_service = importlib.import_module('report-worker.app.service.pnl') # Removed - Not needed for admin_api tests, causes credential error
 admin_api_main = importlib.import_module('admin_api.app.main')
 admin_api_mongodb_db = importlib.import_module('admin_api.app.db.mongodb') # Added for get_mongo_db
