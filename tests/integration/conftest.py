@@ -272,6 +272,8 @@ def mongodb_container() -> Generator[MongoDbContainer, None, None]:
     """Starts and stops a MongoDB Testcontainer for the test session."""
     # Using a specific image version known to work well
     with MongoDbContainer("mongo:6.0") as mongo:
+        # Add a small delay to allow Docker networking to stabilize, especially on Windows/WSL
+        time.sleep(5) # Give Docker a moment to sort out port mapping
         yield mongo
 
 # ---- MongoDB Test Database Fixture ----
