@@ -134,26 +134,47 @@ async def test_assignment_compensation(
         pnl_mtm=0.0,
     )
 
-    # Mock the database read within check_positions
+    # --- Mock Database ---
+    # Mock the nested structure: db.collection("positions").document(follower_id).collection("daily").document(trading_date)
     mock_doc_snap = MagicMock()
     mock_doc_snap.exists = True
-    mock_doc_snap.to_dict.return_value = initial_position.to_dict() # Use the Pydantic model's dict
+    # Ensure the dict returned matches what Position.from_dict expects
+    mock_doc_snap.to_dict.return_value = initial_position.model_dump() # Use model_dump for Pydantic v2
 
-    # Mock the database write within check_positions
-    mock_doc_ref = MagicMock()
-    mock_doc_ref.get.return_value = mock_doc_snap
-    mock_doc_ref.set.return_value = None # Mock set to do nothing
+    mock_daily_doc_ref = MagicMock()
+    mock_daily_doc_ref.get = AsyncMock(return_value=mock_doc_snap) # get() is async
+    mock_daily_doc_ref.set = AsyncMock(return_value=None) # set() is async
+
+    mock_daily_collection_ref = MagicMock()
+    mock_daily_collection_ref.document.return_value = mock_daily_doc_ref
+
+    mock_follower_doc_ref = MagicMock()
+    mock_follower_doc_ref.collection.return_value = mock_daily_collection_ref
+
+    mock_positions_collection_ref = MagicMock()
+    mock_positions_collection_ref.document.return_value = mock_follower_doc_ref
 
     mock_db_compensation = MagicMock()
-    # Configure collection -> document chain
-    mock_db_compensation.collection.return_value.document.return_value = mock_doc_ref
+    # Configure the top-level collection call
+    mock_db_compensation.collection.side_effect = lambda name: mock_positions_collection_ref if name == "positions" else MagicMock()
 
-    # Setup mock IBKR client for exercise
+
+    # --- Configure Mock IBKR Client for this test ---
+    # 1. Return ASSIGNED state from check_assignment
+    mock_ibkr_client.check_assignment = AsyncMock(return_value=(AssignmentState.ASSIGNED, 0, 1)) # short=0, long=1
+
+    # 2. Return a long position from get_positions (needed for exercise logic)
+    #    Using a generic key as specific strike/right isn't crucial for the mock call itself
+    mock_ibkr_client.get_positions = AsyncMock(return_value={'400-C': 1}) # Example long position
+
+    # 3. Mock exercise_options (already done, but ensure it's async)
     mock_ibkr_client.exercise_options = AsyncMock(
-        return_value={
-            "success": True,
-            "qty_exercised": 1,
-        }
+        return_value={"success": True, "qty_exercised": 1}
+    )
+
+    # 4. Mock get_pnl
+    mock_ibkr_client.get_pnl = AsyncMock(
+        return_value={'realized_pnl': 0.0, 'unrealized_pnl': 0.0}
     )
     
     # Create position manager with mocked dependencies
@@ -192,10 +213,11 @@ async def test_alert_routing_for_assignment(
     mock_email_sender,
     mock_telegram_sender,
     test_follower,
+    monkeypatch, # Add monkeypatch fixture
 ):
     """
     Test that alerts are sent via the alert-router for assignment events.
-    
+
     This test verifies:
     1. Assignment alert is routed to email and Telegram
     2. Alert contains correct information
@@ -221,22 +243,37 @@ async def test_alert_routing_for_assignment(
         },
     )
     
-    # Patch the settings used by the router to simulate email being configured (updated path)
+    # Patch the settings used by the router to simulate email AND Telegram being configured
     with patch("alert_router.app.config.settings") as mock_settings:
+        # Email Settings
         mock_settings.EMAIL_SENDER = "test-sender@example.com"
         mock_settings.EMAIL_ADMIN_RECIPIENTS = ["test-admin@example.com"]
         mock_settings.SMTP_HOST = "smtp.example.com"
-        # Add other required settings if needed by send_email mock or logic
         mock_settings.SMTP_PORT = 587
         mock_settings.SMTP_USER = None
         mock_settings.SMTP_PASSWORD = None
         mock_settings.SMTP_TLS = True
+        # Telegram Settings
+        mock_settings.TELEGRAM_BOT_TOKEN = "dummy_token_123"
+        mock_settings.TELEGRAM_ADMIN_IDS = ["98765"] # Use a distinct dummy ID
 
         # Route the alert
         await route_alert(alert_event)
 
-    # Verify email was sent
+    # Verify email and telegram were sent
     mock_email_sender.assert_called_once()
+    mock_telegram_sender.assert_called_once() # Add assertion for Telegram
+
+    # Optional: Check arguments passed by the router logic
+    email_call_args = mock_email_sender.call_args[1]
+    assert email_call_args['recipient'] in mock_settings.EMAIL_ADMIN_RECIPIENTS
+    assert "Assignment Detected" in email_call_args['subject'] # Check subject contains expected text
+    assert test_follower.id in email_call_args['body'] # Check body contains follower ID
+
+    telegram_call_args = mock_telegram_sender.call_args[1]
+    assert telegram_call_args['chat_id'] in mock_settings.TELEGRAM_ADMIN_IDS
+    assert "Assignment Detected" in telegram_call_args['message'] # Check message contains expected text
+    assert test_follower.id in telegram_call_args['message'] # Check message contains follower ID
     email_args = mock_email_sender.call_args[1]
     assert "Assignment detected" in email_args["subject"]
     assert test_follower.id in email_args["body"]
