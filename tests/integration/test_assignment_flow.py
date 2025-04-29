@@ -406,6 +406,8 @@ async def test_daily_position_check(
     # Create position manager with mocked dependencies
     mock_service = MagicMock()
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
+    # Ensure the ibkr_manager mock also has the exercise_options method pointing to the correct AsyncMock
+    mock_service.ibkr_manager.exercise_options = mock_ibkr_client.exercise_options
     # mock_service.db = firestore_client # Removed Firestore dependency
     # Setup a more specific DB mock for position reads/writes
     mock_doc_snap_daily = MagicMock()
