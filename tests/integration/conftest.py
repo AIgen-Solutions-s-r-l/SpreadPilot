@@ -360,7 +360,7 @@ class UvicornServer(uvicorn.Server):
              self.thread.join(timeout=1) # Wait briefly for thread to exit
 
 @pytest_asyncio.fixture(scope="function")
-async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[tuple[httpx.AsyncClient, Any], None]: # Returns tuple again
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[tuple[httpx.AsyncClient, Any, str], None]: # Returns tuple with base_url
     """
     Async fixture that runs the admin_api app on a free port using Uvicorn
     and provides an httpx.AsyncClient connected to it.
@@ -388,7 +388,7 @@ async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerato
     # Create the httpx client targeting the live server
     async with httpx.AsyncClient(base_url=base_url) as client:
         try:
-            yield client, admin_app # Yield client and app
+            yield client, admin_app, base_url # Yield client, app, and base_url
         finally:
             # Stop the server and clean up overrides
             server.stop()

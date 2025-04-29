@@ -40,11 +40,12 @@ Settings = admin_api_config.Settings # Import Settings class
 admin_app = admin_api_main.app # Get the FastAPI app instance
 
 
-# @pytest.mark.asyncio # No longer async
-def test_list_followers( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep this async fixture for DB setup/teardown
+@pytest.mark.asyncio # Add back async marker
+async def test_list_followers( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple from fixture
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client, ignore app for this test
     """
     Test listing all followers using MongoDB.
 
@@ -80,7 +81,7 @@ def test_list_followers( # No longer async
     # Mock the get_settings dependency (get_db is handled by admin_api_client fixture)
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint using the client fixture directly
-        response = admin_api_client.get("/api/v1/followers") # No await
+        response = await admin_api_client.get("/api/v1/followers") # Add await
 
     # Verify response
     assert response.status_code == 200
@@ -105,11 +106,12 @@ def test_list_followers( # No longer async
     await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids_to_cleanup}})
 
 
-# @pytest.mark.asyncio # No longer async
-def test_create_follower( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Add back async marker
+async def test_create_follower( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test creating a new follower using MongoDB.
 
@@ -133,7 +135,7 @@ def test_create_follower( # No longer async
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
             # Call the endpoint using the client fixture directly
-            response = admin_api_client.post( # No await
+            response = await admin_api_client.post( # Add await
                 "/api/v1/followers",
                 json=follower_payload,
             )
@@ -163,11 +165,12 @@ def test_create_follower( # No longer async
             await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup}) # Use string ID
 
 
-# @pytest.mark.asyncio # No longer async
-def test_toggle_follower( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Add back async marker
+async def test_toggle_follower( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test toggling a follower's enabled status using MongoDB.
 
@@ -201,7 +204,7 @@ def test_toggle_follower( # No longer async
         # Mock the get_settings dependency
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
             # Call the endpoint to toggle using the client fixture directly
-            response = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # No await
+            response = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Add await
 
         # Verify response
         assert response.status_code == 200
@@ -216,7 +219,7 @@ def test_toggle_follower( # No longer async
 
         # Toggle back
         with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
-            response_toggle_back = admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # No await
+            response_toggle_back = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle") # Add await
         assert response_toggle_back.status_code == 200
         data_toggle_back = response_toggle_back.json()
         assert data_toggle_back["enabled"] is initial_enabled # Should be back to True
@@ -233,11 +236,12 @@ def test_toggle_follower( # No longer async
 
 # Note: No async needed as it doesn't interact with DB directly for setup/cleanup
 # Note: This test needs to be async now because admin_api_client is async
-# @pytest.mark.asyncio # No longer async
-def test_toggle_nonexistent_follower( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Add back async marker
+async def test_toggle_nonexistent_follower( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test toggling a non-existent follower using MongoDB backend.
 
@@ -252,7 +256,7 @@ def test_toggle_nonexistent_follower( # No longer async
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint using the client fixture directly
-        response = admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle") # No await
+        response = await admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle") # Add await
 
     # Verify response
     assert response.status_code == 404
@@ -260,11 +264,12 @@ def test_toggle_nonexistent_follower( # No longer async
     assert "not found" in data["detail"].lower()
 
 
-# @pytest.mark.asyncio # No longer async
-def test_trigger_close_positions( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Add back async marker
+async def test_trigger_close_positions( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test triggering close positions for a follower using MongoDB backend.
 
@@ -302,7 +307,7 @@ def test_trigger_close_positions( # No longer async
             # Mock the get_settings dependency
             with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
                 # Call the endpoint using the client fixture directly
-                response = admin_api_client.post(f"/api/v1/close/{follower_id_str}") # No await
+                response = await admin_api_client.post(f"/api/v1/close/{follower_id_str}") # Add await
 
         # Verify response
         assert response.status_code == 202  # Accepted
@@ -320,11 +325,12 @@ def test_trigger_close_positions( # No longer async
 
 # Note: No async needed as it doesn't interact with DB directly for setup/cleanup
 # Note: This test needs to be async now because admin_api_client is async
-# @pytest.mark.asyncio # No longer async
-def test_trigger_close_positions_nonexistent_follower( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Add back async marker
+async def test_trigger_close_positions_nonexistent_follower( # Add back async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test triggering close positions for a non-existent follower using MongoDB backend.
 
@@ -339,7 +345,7 @@ def test_trigger_close_positions_nonexistent_follower( # No longer async
     # Mock the get_settings dependency
     with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
         # Call the endpoint using the client fixture directly
-        response = admin_api_client.post(f"/api/v1/close/{nonexistent_id}") # No await
+        response = await admin_api_client.post(f"/api/v1/close/{nonexistent_id}") # Add await
 
     # Verify response
     assert response.status_code == 404
@@ -469,12 +475,13 @@ async def test_trigger_close_positions_service(
 from httpx_ws import AsyncWebSocketSession
 from httpx_ws.transport import ASGIWebSocketTransport # Import transport
 
+# Ensure WebSocket tests are async and use the tuple fixture correctly
 @pytest.mark.asyncio
 async def test_websocket_dashboard_connect(
-    admin_api_client: tuple[httpx.AsyncClient, Any], # Fixture name is admin_api_client
+    admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    admin_api_client, app = admin_api_client # Unpack tuple
+    admin_api_client, app, base_url = admin_api_client # Unpack tuple
     """
     Test connecting to the dashboard WebSocket and receiving messages.
     
@@ -491,7 +498,7 @@ async def test_websocket_dashboard_connect(
         "ibkr_secret_ref": "test-secret-ref"
     }
     
-    response = await admin_api_client.post(
+    response = await admin_api_client.post( # Add await
         "/api/v1/followers",
         json=follower_data
     )
@@ -501,33 +508,38 @@ async def test_websocket_dashboard_connect(
     # App instance is now unpacked from the fixture tuple
     # app = admin_api_client.transport.app # Remove this line
     
-    # Create a WebSocket session using httpx_ws
-    async with httpx_ws.AsyncWebSocketSession(admin_api_client) as session:
-        ws = await session.connect("/api/v1/ws/dashboard")
+    # Construct WebSocket URL from base_url
+    ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
+
+    # Create a WebSocket session using websockets library
+    async with websockets.connect(ws_url) as ws:
         # Wait for the initial message
-        message = await ws.receive_json() # Removed timeout for simplicity, can add back if needed
-        
+        message_str = await ws.recv()
+        message = json.loads(message_str)
+
         # Verify the message structure
         assert isinstance(message, dict)
         assert "type" in message
-        
+
         # Manually trigger a broadcast to test receiving messages
         from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
         test_message = {"type": "test", "data": {"message": "test"}}
-        await broadcast_updates(test_message)
-        
+        await broadcast_updates(test_message) # Keep await for async function call
+
         # Wait for the broadcast message
-        broadcast_message = await ws.receive_json()
+        broadcast_message_str = await ws.recv()
+        broadcast_message = json.loads(broadcast_message_str)
         assert broadcast_message == test_message
-        await ws.close() # Explicitly close
+        # No explicit close needed with async with
 
 
+# Ensure WebSocket tests are async and use the tuple fixture correctly
 @pytest.mark.asyncio
 async def test_websocket_dashboard_multiple_clients(
-    admin_api_client: tuple[httpx.AsyncClient, Any], # Fixture name is admin_api_client
+    admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    admin_api_client, app = admin_api_client # Unpack tuple
+    admin_api_client, app, base_url = admin_api_client # Unpack tuple
     """
     Test broadcast to multiple connected clients.
     
@@ -538,38 +550,41 @@ async def test_websocket_dashboard_multiple_clients(
     # App instance is now unpacked from the fixture tuple
     # app = admin_api_client.transport.app # Remove this line
     
-    # Create two WebSocket sessions using httpx_ws
-    async with httpx_ws.AsyncWebSocketSession(admin_api_client) as session1, \
-               httpx_ws.AsyncWebSocketSession(admin_api_client) as session2:
-        ws1 = await session1.connect("/api/v1/ws/dashboard")
-        ws2 = await session2.connect("/api/v1/ws/dashboard")
+    # Construct WebSocket URL
+    ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
+
+    # Create two WebSocket sessions using websockets library
+    async with websockets.connect(ws_url) as ws1, \
+               websockets.connect(ws_url) as ws2:
         # Wait for the initial messages
-        await ws1.receive_json()
-        await ws2.receive_json()
-        
+        await ws1.recv()
+        await ws2.recv()
+
         # Manually trigger a broadcast
         from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
         test_message = {"type": "test_multiple", "data": {"message": "test_multiple"}}
-        await broadcast_updates(test_message)
-        
+        await broadcast_updates(test_message) # Keep await
+
         # Wait for the broadcast messages on both connections
-        broadcast_message1 = await ws1.receive_json()
-        broadcast_message2 = await ws2.receive_json()
-        
+        broadcast_message1_str = await ws1.recv()
+        broadcast_message2_str = await ws2.recv()
+        broadcast_message1 = json.loads(broadcast_message1_str)
+        broadcast_message2 = json.loads(broadcast_message2_str)
+
         # Verify both clients received the same message
         assert broadcast_message1 == test_message
         assert broadcast_message2 == test_message
         assert broadcast_message1 == broadcast_message2
-        await ws1.close() # Explicitly close
-        await ws2.close() # Explicitly close
+        # No explicit close needed
 
 
+# Ensure WebSocket tests are async and use the tuple fixture correctly
 @pytest.mark.asyncio
 async def test_websocket_dashboard_disconnection_handling(
-    admin_api_client: tuple[httpx.AsyncClient, Any], # Fixture name is admin_api_client
+    admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    admin_api_client, app = admin_api_client # Unpack tuple
+    admin_api_client, app, base_url = admin_api_client # Unpack tuple
     """
     Test handling of WebSocket disconnections.
     
@@ -586,20 +601,21 @@ async def test_websocket_dashboard_disconnection_handling(
     # Record the initial number of connections
     initial_connection_count = len(active_connections)
     
-    # Create a WebSocket session using the client that we'll disconnect manually
-    ws1 = await admin_api_client.websocket_connect("/api/v1/ws/dashboard")
-    
+    # Construct WebSocket URL
+    ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
+
+    # Create a WebSocket session using websockets library that we'll disconnect manually
+    ws1 = await websockets.connect(ws_url)
     # Wait for the initial message
-    await ws1.receive_json(timeout=2.0)
+    await ws1.recv()
     
     # Verify the connection was added
     assert len(active_connections) == initial_connection_count + 1
     
-    # Create a second WebSocket session using httpx_ws that will remain connected
-    async with httpx_ws.AsyncWebSocketSession(admin_api_client) as session2:
-        ws2 = await session2.connect("/api/v1/ws/dashboard")
+    # Create a second WebSocket session using websockets library that will remain connected
+    async with websockets.connect(ws_url) as ws2:
         # Wait for the initial message
-        await ws2.receive_json()
+        await ws2.recv()
         
         # Verify both connections are active
         assert len(active_connections) == initial_connection_count + 2
@@ -616,12 +632,13 @@ async def test_websocket_dashboard_disconnection_handling(
         # Broadcast a message to the remaining client
         from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
         test_message = {"type": "after_disconnect", "data": {"message": "after_disconnect"}}
-        await broadcast_updates(test_message)
+        await broadcast_updates(test_message) # Keep await
         
         # Verify the remaining client receives the message
-        broadcast_message = await ws2.receive_json()
+        broadcast_message_str = await ws2.recv()
+        broadcast_message = json.loads(broadcast_message_str)
         assert broadcast_message == test_message
-        await ws2.close() # Explicitly close ws2
+        # No explicit close needed for ws2 (async with handles it)
 # Test error handling in the API endpoints
 def test_create_follower_validation_error(
     admin_api_test_client: TestClient,
@@ -792,11 +809,12 @@ def test_service_error_handling(
     anyio.run(test_errors)
 
 
-# @pytest.mark.asyncio # No longer async
-def test_dashboard_api_endpoints( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_dashboard_api_endpoints( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test the dashboard API endpoints.
     
@@ -816,7 +834,7 @@ def test_dashboard_api_endpoints( # No longer async
         "ibkr_secret_ref": "test-secret-ref"
     }
     
-    response = admin_api_client.post( # No await
+    response = await admin_api_client.post( # Ensure await
         "/api/v1/followers",
         json=follower_data
     )
@@ -931,11 +949,12 @@ def test_dashboard_api_endpoints( # No longer async
         active_connections.remove(mock_websocket)
 
 
-# @pytest.mark.asyncio # No longer async
-def test_dashboard_api_error_handling( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_dashboard_api_error_handling( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """
     Test error handling in the dashboard API endpoints.
     
@@ -1067,11 +1086,12 @@ async def test_periodic_follower_update_task(
         active_connections.remove(mock_websocket)
 
 
-# @pytest.mark.asyncio # No longer async
-def test_followers_api_error_handling( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_followers_api_error_handling( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """Test error handling in the followers API endpoints."""
     # Test 404 error when trying to close positions for a non-existent follower
     nonexistent_id = "nonexistent-follower-id"
@@ -1094,7 +1114,7 @@ def test_followers_api_error_handling( # No longer async
         "ibkr_secret_ref": "test-secret-ref"
     }
     
-    response = admin_api_client.post( # No await
+    response = await admin_api_client.post( # Ensure await
         "/api/v1/followers",
         json=follower_data
     )
@@ -1117,11 +1137,12 @@ def test_followers_api_error_handling( # No longer async
         assert "unavailable" in error_detail["detail"].lower() or "error" in error_detail["detail"].lower()
 
 
-# @pytest.mark.asyncio # No longer async
-def test_list_followers_error_handling( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_list_followers_error_handling( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """Test error handling in the list followers endpoint."""
     # Mock the get_followers method to raise an exception
     with patch('admin_api.app.services.follower_service.FollowerService.get_followers',
@@ -1134,11 +1155,12 @@ def test_list_followers_error_handling( # No longer async
         assert "failed to retrieve followers" in error_detail["detail"].lower()
 
 
-# @pytest.mark.asyncio # No longer async
-def test_create_follower_service_error( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_create_follower_service_error( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """Test error handling when the service fails to create a follower."""
     follower_data = {
         "email": "service-error@example.com",
@@ -1162,11 +1184,12 @@ def test_create_follower_service_error( # No longer async
         assert "failed to create follower" in error_detail["detail"].lower()
 
 
-# @pytest.mark.asyncio # No longer async
-def test_toggle_follower_service_error( # No longer async
-    admin_api_client: TestClient, # Use TestClient
-    test_mongo_db: AsyncIOMotorDatabase, # Keep async fixture
+@pytest.mark.asyncio # Ensure async marker
+async def test_toggle_follower_service_error( # Ensure async def
+    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple
+    test_mongo_db: AsyncIOMotorDatabase,
 ):
+    admin_api_client, _ = admin_api_client # Unpack client
     """Test error handling when the service fails to toggle a follower."""
     # Create a follower first
     follower_data = {
@@ -1177,7 +1200,7 @@ def test_toggle_follower_service_error( # No longer async
         "ibkr_secret_ref": "test-secret-ref"
     }
     
-    response = admin_api_client.post( # No await
+    response = await admin_api_client.post( # Ensure await
         "/api/v1/followers",
         json=follower_data
     )
