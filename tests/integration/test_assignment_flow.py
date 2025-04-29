@@ -60,8 +60,18 @@ async def test_assignment_detection(
     mock_doc_ref_assign.get.return_value = mock_doc_snap_assign
     mock_doc_ref_assign.set.return_value = None # Mock set to do nothing
 
+    # Configure the mock chain to match db.collection(...).document(...).collection(...).document(...)
+    mock_daily_collection_ref = MagicMock()
+    mock_daily_collection_ref.document.return_value = mock_doc_ref_assign
+
+    mock_follower_doc_ref = MagicMock()
+    mock_follower_doc_ref.collection.return_value = mock_daily_collection_ref
+
+    mock_positions_collection_ref = MagicMock()
+    mock_positions_collection_ref.document.return_value = mock_follower_doc_ref
+
     mock_db_assign = MagicMock()
-    mock_db_assign.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref_assign # Adjust chain based on actual usage if needed
+    mock_db_assign.collection.return_value = mock_positions_collection_ref # Assume collection("positions") is the first call
 
     mock_service.db = mock_db_assign # Assign the configured mock
     mock_service.alert_manager.create_alert = AsyncMock()
@@ -367,10 +377,18 @@ async def test_daily_position_check(
     mock_doc_ref_daily.get.return_value = mock_doc_snap_daily
     mock_doc_ref_daily.set.return_value = None # Mock set to do nothing
 
+    # Configure the mock chain to match db.collection(...).document(...).collection(...).document(...)
+    mock_daily_collection_ref_check = MagicMock()
+    mock_daily_collection_ref_check.document.return_value = mock_doc_ref_daily
+
+    mock_follower_doc_ref_check = MagicMock()
+    mock_follower_doc_ref_check.collection.return_value = mock_daily_collection_ref_check
+
+    mock_positions_collection_ref_check = MagicMock()
+    mock_positions_collection_ref_check.document.return_value = mock_follower_doc_ref_check
+
     mock_db_daily = MagicMock()
-    # Adjust chain based on actual usage in check_positions if needed
-    # The path is db.collection("positions").document(follower_id).collection("daily").document(trading_date)
-    mock_db_daily.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref_daily
+    mock_db_daily.collection.return_value = mock_positions_collection_ref_check # Assume collection("positions") is the first call
 
     mock_service.db = mock_db_daily # Assign the configured mock
     mock_service.alert_manager.create_alert = AsyncMock()
