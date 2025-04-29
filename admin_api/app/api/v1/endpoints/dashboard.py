@@ -9,7 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase # Added MongoDB import
 
 from spreadpilot_core.logging.logger import get_logger
 from admin_api.app.services.follower_service import FollowerService
-from admin_api.app.db.mongodb import get_database
+from admin_api.app.db.mongodb import get_mongo_db
 from admin_api.app.core.config import get_settings
 
 # Dependency to get the follower service
@@ -17,7 +17,7 @@ async def get_follower_service() -> FollowerService:
     """
     Dependency to get the follower service.
     """
-    db = await get_database()
+    db = await get_mongo_db()
     settings = get_settings()
     return FollowerService(db=db, settings=settings)
 
@@ -134,7 +134,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Send initial data
         follower_service = FollowerService(
-            db=await get_database(),
+            db=await get_mongo_db(),
             settings=get_settings()
         )
         
@@ -179,6 +179,7 @@ async def get_dashboard_summary(
     Returns:
         dict: A dictionary containing summary data for the dashboard.
     """
+    # Wrap in try-except to handle errors
     try:
         followers = await follower_service.get_followers()
         
@@ -188,45 +189,117 @@ async def get_dashboard_summary(
         
         # Return the summary data
         return {
-            "total_followers": total_followers,
-            "active_followers": active_followers,
+            "follower_count": total_followers,
+            "active_follower_count": active_followers,
+            "total_positions": 0,  # Placeholder for now
             "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
     except Exception as e:
+        # Log the error
         logger.error(f"Error getting dashboard summary: {e}", exc_info=True)
+        # Return a 500 error
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get dashboard summary: {str(e)}"
         )
 
-# Dependency to get the FollowerService instance (using MongoDB)
-def get_follower_service(
-    db: AsyncIOMotorDatabase = Depends(get_mongo_db), # Changed dependency and type hint
-    settings: Settings = Depends(get_settings)
-) -> FollowerService:
-    return FollowerService(db=db, settings=settings)
-
-
-async def broadcast_updates(message: dict):
-    """Sends a message to all active WebSocket connections."""
-    disconnected_connections = set()
-    for connection in active_connections:
-        try:
-            await connection.send_json(message)
-        except WebSocketDisconnect:
-            logger.info("Client disconnected during broadcast.")
-            disconnected_connections.add(connection)
-        except Exception as e:
-            logger.error(f"Error sending message to client: {e}", exc_info=True)
-            disconnected_connections.add(connection)
+# Dashboard stats endpoint
+@router.get("/dashboard/stats", response_model=dict)
+async def get_dashboard_stats(
+    follower_service: FollowerService = Depends(get_follower_service)
+):
+    """
+    Get statistics for the dashboard.
     
-    # Remove disconnected clients
-    for conn in disconnected_connections:
-        if conn in active_connections:
-            active_connections.remove(conn)
+    Returns:
+        dict: A dictionary containing statistics for the dashboard.
+    """
+    try:
+        followers = await follower_service.get_followers()
+        
+        # Calculate statistics
+        total_followers = len(followers)
+        active_followers = sum(1 for f in followers if f.enabled)
+        
+        # Return the statistics
+        return {
+            "stats": [
+                {
+                    "type": "followers",
+                    "total": total_followers,
+                    "active": active_followers,
+                    "inactive": total_followers - active_followers
+                },
+                {
+                    "type": "positions",
+                    "total": 0,  # Placeholder
+                    "profitable": 0,  # Placeholder
+                    "losing": 0  # Placeholder
+                }
+            ],
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard stats: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get dashboard stats: {str(e)}"
+        )
 
+# Dashboard alerts endpoint
+@router.get("/dashboard/alerts", response_model=dict)
+async def get_dashboard_alerts():
+    """
+    Get alerts for the dashboard.
+    
+    Returns:
+        dict: A dictionary containing alerts for the dashboard.
+    """
+    try:
+        # Placeholder for now
+        return {
+            "alerts": [],
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard alerts: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get dashboard alerts: {str(e)}"
+        )
 
-async def periodic_follower_update_task(follower_service: FollowerService = None, interval_seconds: int = 15):
+# Dashboard performance endpoint
+@router.get("/dashboard/performance", response_model=dict)
+async def get_dashboard_performance():
+    """
+    Get performance data for the dashboard.
+    
+    Returns:
+        dict: A dictionary containing performance data for the dashboard.
+    """
+    try:
+        # Placeholder for now
+        return {
+            "performance": {
+                "daily": 0,
+                "weekly": 0,
+                "monthly": 0,
+                "yearly": 0
+            },
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard performance: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get dashboard performance: {str(e)}"
+        )
+
+# Keep the original periodic_follower_update_task function
+async def periodic_follower_update_task(
+    follower_service: FollowerService,
+    interval_seconds: float = 5.0
+):
     """Periodically fetches follower data and broadcasts updates."""
     logger.info("Starting periodic follower update task for WebSocket.")
     
