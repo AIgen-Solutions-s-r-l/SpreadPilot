@@ -175,8 +175,10 @@ def calculate_commission(monthly_pnl: Decimal, follower: Follower) -> Decimal:
         logger.debug(f"Monthly P&L is not positive ({monthly_pnl}). No commission for follower {follower.id}.")
         return Decimal("0.0")
 
-    commission_pct = follower.commission_percentage
+    # Correct attribute access from commission_percentage to commission_pct
+    commission_pct = follower.commission_pct
     if commission_pct is None:
+        # This fallback logic might need review if commission_pct is always required by the model
         commission_pct = config.DEFAULT_COMMISSION_PERCENTAGE
         logger.debug(f"Follower {follower.id} has no specific commission percentage, using default: {commission_pct}%")
     else:

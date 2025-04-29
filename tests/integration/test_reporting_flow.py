@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Add project root to sys.path to allow imports like 'report-worker.app...'
+# Add project root to sys.path to allow imports like 'report_worker.app...'
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
@@ -22,7 +22,7 @@ from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
 import importlib
 
 # Import modules using importlib
-report_worker_pnl = importlib.import_module('report-worker.app.service.pnl')
+report_worker_pnl = importlib.import_module('report_worker.app.service.pnl')
 
 # Get specific imports
 calculate_daily_pnl = report_worker_pnl.calculate_daily_pnl
@@ -30,8 +30,8 @@ calculate_monthly_pnl = report_worker_pnl.calculate_monthly_pnl
 calculate_commission = report_worker_pnl.calculate_commission
 
 # Import more modules using importlib
-report_worker_generator = importlib.import_module('report-worker.app.service.generator')
-report_worker_notifier = importlib.import_module('report-worker.app.service.notifier')
+report_worker_generator = importlib.import_module('report_worker.app.service.generator')
+report_worker_notifier = importlib.import_module('report_worker.app.service.notifier')
 
 # Get specific imports
 generate_monthly_report = report_worker_generator.generate_monthly_report
@@ -343,7 +343,7 @@ async def test_end_to_end_reporting_flow(
     with patch("report_worker.app.service.pnl.calculate_daily_pnl", return_value=total_monthly_pnl):
         with patch("report_worker.app.service.generator.generate_pdf_report", return_value=b"mock-pdf-content"):
             # Run the end-to-end flow
-                report_worker_report_service = importlib.import_module('report-worker.app.service.report_service')
+                report_worker_report_service = importlib.import_module('report_worker.app.service.report_service')
                 generate_and_send_monthly_reports = report_worker_report_service.generate_and_send_monthly_reports
                 
                 # Mock get_all_active_followers
