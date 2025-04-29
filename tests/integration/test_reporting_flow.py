@@ -324,10 +324,10 @@ async def test_monthly_report_email_sending(
     # Mock PDF generation
     # Patch report generation and os.path.exists (used by notifier)
     # Patch report generation and os.path.exists (used by notifier)
-    # Try patching os.path.exists directly
+    # Patch PDF generation and os.path.exists (used by notifier)
+    # Removed patch for generate_excel_report as it's not called by send_monthly_report
     with patch("report_worker.app.service.generator.generate_pdf_report", return_value="/tmp/mock_report.pdf") as mock_gen_pdf, \
-         patch("report_worker.app.service.generator.generate_excel_report", return_value="/tmp/mock_report.xlsx") as mock_gen_excel, \
-         patch("os.path.exists", return_value=True) as mock_exists: # Changed patch target
+         patch("os.path.exists", return_value=True) as mock_exists:
 
         # Send report
         result = await send_monthly_report(report, test_follower)
@@ -346,11 +346,11 @@ async def test_monthly_report_email_sending(
     # assert report["total_pnl"] in email_args["body"]
     # assert report["commission_amount"] in email_args["body"]
     assert "attachments" in email_args
-    # Expect 2 attachments since both PDF and Excel generation were patched
-    assert len(email_args["attachments"]) == 2
-    # Check filenames based on the mock paths and report_period
+    # Expect only 1 attachment (PDF) because send_monthly_report passes excel_path=None
+    assert len(email_args["attachments"]) == 1
+    # Check PDF filename based on the mock path and report_period
     assert email_args["attachments"][0][0] == f"SpreadPilot_Report_test-follower-id_{report_period}.pdf"
-    assert email_args["attachments"][1][0] == f"SpreadPilot_Report_test-follower-id_{report_period}.xlsx"
+    # Removed check for Excel filename
 
 
 @pytest.mark.asyncio
