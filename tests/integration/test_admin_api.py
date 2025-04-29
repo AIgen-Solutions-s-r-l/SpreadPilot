@@ -808,7 +808,16 @@ async def test_dashboard_api_endpoints(
     admin_api_client: httpx.AsyncClient,
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    """Test the dashboard API endpoints."""
+    """
+    Test the dashboard API endpoints.
+    
+    This test verifies:
+    1. The dashboard summary endpoint returns the expected data
+    2. The dashboard stats endpoint returns the expected data
+    3. The dashboard alerts endpoint returns the expected data
+    4. The dashboard performance endpoint returns the expected data
+    5. The WebSocket broadcast functionality works correctly
+    """
     # First, create a follower to have some data
     follower_data = {
         "email": "dashboard-test@example.com",
@@ -825,9 +834,53 @@ async def test_dashboard_api_endpoints(
     
     assert response.status_code == 201
     
-    # Test the dashboard API endpoints
-    # Since we can't test the WebSocket endpoint directly with the TestClient,
-    # we'll test the service methods that are used by the WebSocket endpoint
+    # Test the dashboard summary endpoint
+    response = await admin_api_client.get("/api/v1/dashboard/summary")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "follower_count" in data
+    assert "active_follower_count" in data
+    assert "total_positions" in data
+    assert isinstance(data["follower_count"], int)
+    
+    # Test the dashboard stats endpoint
+    response = await admin_api_client.get("/api/v1/dashboard/stats")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "stats" in data
+    assert isinstance(data["stats"], list)
+    
+    # Test the dashboard alerts endpoint
+    response = await admin_api_client.get("/api/v1/dashboard/alerts")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "alerts" in data
+    assert isinstance(data["alerts"], list)
+    
+    # Test the dashboard performance endpoint
+    response = await admin_api_client.get("/api/v1/dashboard/performance")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "performance" in data
+    assert isinstance(data["performance"], dict)
+    assert "daily" in data["performance"]
+    assert "weekly" in data["performance"]
+    assert "monthly" in data["performance"]
+    
+    # Test the dashboard performance endpoint with timeframe parameter
+    response = await admin_api_client.get("/api/v1/dashboard/performance?timeframe=weekly")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "performance" in data
+    assert isinstance(data["performance"], dict)
+    assert "weekly" in data["performance"]
+    
+    # Test the WebSocket functionality
     
     from admin_api.app.services.follower_service import FollowerService
     from admin_api.app.core.config import get_settings
@@ -883,6 +936,150 @@ async def test_dashboard_api_endpoints(
                 pass  # Expected
             
             # Verify broadcast_updates was called at least once
+            assert mock_broadcast.called
+    finally:
+        # Clean up by removing our mock connection
+        active_connections.remove(mock_websocket)
+
+
+@pytest.mark.asyncio
+async def test_dashboard_api_error_handling(
+    admin_api_client: httpx.AsyncClient,
+    test_mongo_db: AsyncIOMotorDatabase,
+):
+    """
+    Test error handling in the dashboard API endpoints.
+    
+    This test verifies:
+    1. The dashboard summary endpoint handles errors correctly
+    2. The dashboard stats endpoint handles errors correctly
+    3. The dashboard alerts endpoint handles errors correctly
+    4. The dashboard performance endpoint handles errors correctly
+    """
+    # Test the dashboard summary endpoint with error
+    with patch('admin_api.app.api.v1.endpoints.dashboard.get_dashboard_summary',
+               side_effect=Exception("Database error")):
+        response = await admin_api_client.get("/api/v1/dashboard/summary")
+        
+        assert response.status_code == 500
+        error_detail = response.json()
+        assert "detail" in error_detail
+        assert "failed to retrieve dashboard summary" in error_detail["detail"].lower()
+    
+    # Test the dashboard stats endpoint with error
+    with patch('admin_api.app.api.v1.endpoints.dashboard.get_dashboard_stats',
+               side_effect=Exception("Database error")):
+        response = await admin_api_client.get("/api/v1/dashboard/stats")
+        
+        assert response.status_code == 500
+        error_detail = response.json()
+        assert "detail" in error_detail
+        assert "failed to retrieve dashboard stats" in error_detail["detail"].lower()
+    
+    # Test the dashboard alerts endpoint with error
+    with patch('admin_api.app.api.v1.endpoints.dashboard.get_dashboard_alerts',
+               side_effect=Exception("Database error")):
+        response = await admin_api_client.get("/api/v1/dashboard/alerts")
+        
+        assert response.status_code == 500
+        error_detail = response.json()
+        assert "detail" in error_detail
+        assert "failed to retrieve dashboard alerts" in error_detail["detail"].lower()
+    
+    # Test the dashboard performance endpoint with error
+    with patch('admin_api.app.api.v1.endpoints.dashboard.get_dashboard_performance',
+               side_effect=Exception("Database error")):
+        response = await admin_api_client.get("/api/v1/dashboard/performance")
+        
+        assert response.status_code == 500
+        error_detail = response.json()
+        assert "detail" in error_detail
+        assert "failed to retrieve dashboard performance" in error_detail["detail"].lower()
+    
+    # Test the dashboard performance endpoint with invalid timeframe
+    response = await admin_api_client.get("/api/v1/dashboard/performance?timeframe=invalid")
+    
+    assert response.status_code == 422
+    error_detail = response.json()
+    assert "detail" in error_detail
+    assert "invalid timeframe" in error_detail["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_periodic_follower_update_task(
+    admin_api_client: httpx.AsyncClient,
+    test_mongo_db: AsyncIOMotorDatabase,
+):
+    """
+    Test the periodic follower update task.
+    
+    This test verifies:
+    1. The task runs and broadcasts updates
+    2. The task handles errors gracefully
+    """
+    # Import the necessary modules
+    from admin_api.app.api.v1.endpoints.dashboard import active_connections, periodic_follower_update_task
+    from admin_api.app.services.follower_service import FollowerService
+    
+    # Create a mock follower service
+    mock_follower_service = MagicMock(spec=FollowerService)
+    mock_follower_service.get_followers.return_value = [
+        MagicMock(id="1", email="test1@example.com", enabled=True),
+        MagicMock(id="2", email="test2@example.com", enabled=False)
+    ]
+    
+    # Create a mock WebSocket connection
+    mock_websocket = MagicMock()
+    mock_websocket.send_json = AsyncMock()
+    active_connections.add(mock_websocket)
+    
+    try:
+        # Mock broadcast_updates to avoid actual WebSocket operations
+        with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', AsyncMock()) as mock_broadcast:
+            # Create a task that will be cancelled immediately
+            import asyncio
+            task = asyncio.create_task(periodic_follower_update_task(
+                follower_service=mock_follower_service,
+                interval_seconds=0.1
+            ))
+            
+            # Wait a longer time to let it run at least one cycle
+            await asyncio.sleep(0.3)
+            
+            # Cancel the task
+            task.cancel()
+            
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass  # Expected
+            
+            # Verify broadcast_updates was called at least once
+            assert mock_broadcast.called
+            
+        # Test error handling in the task
+        mock_follower_service.get_followers.side_effect = Exception("Database error")
+        
+        with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', AsyncMock()) as mock_broadcast:
+            # Create a task that will be cancelled immediately
+            task = asyncio.create_task(periodic_follower_update_task(
+                follower_service=mock_follower_service,
+                interval_seconds=0.1
+            ))
+            
+            # Wait a longer time to let it run at least one cycle
+            await asyncio.sleep(0.3)
+            
+            # Cancel the task
+            task.cancel()
+            
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass  # Expected
+            
+            # Verify the task didn't crash despite the exception
+            # The broadcast should still be called with an error message
             assert mock_broadcast.called
     finally:
         # Clean up by removing our mock connection

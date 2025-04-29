@@ -248,3 +248,75 @@ class FollowerService:
         except Exception as e:
             logger.error(f"Error updating follower {follower_id} state in MongoDB: {e}", exc_info=True)
             raise
+            
+    async def _record_trade_in_db(self, follower_id: str, trade_data: dict) -> bool:
+        """
+        Records a trade in the database for a specific follower.
+        
+        Args:
+            follower_id: The ID of the follower
+            trade_data: Dictionary containing trade details
+            
+        Returns:
+            bool: True if the trade was successfully recorded, False otherwise
+        """
+        logger.info(f"Recording trade for follower ID: {follower_id} in MongoDB")
+        try:
+            # Create a trades collection if it doesn't exist
+            trades_collection = self.db["follower_trades"]
+            
+            # Add metadata to the trade
+            trade_record = {
+                **trade_data,
+                "follower_id": follower_id,
+                "recorded_at": datetime.utcnow(),
+                "trade_id": str(uuid.uuid4())
+            }
+            
+            # Insert the trade record
+            result = await trades_collection.insert_one(trade_record)
+            
+            if result.inserted_id:
+                logger.info(f"Successfully recorded trade {trade_record['trade_id']} for follower {follower_id}")
+                return True
+            else:
+                logger.error(f"Failed to record trade for follower {follower_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error recording trade for follower {follower_id}: {e}", exc_info=True)
+            return False
+            
+    async def get_follower_trades(self, follower_id: str, limit: int = 100) -> List[dict]:
+        """
+        Retrieves the most recent trades for a follower.
+        
+        Args:
+            follower_id: The ID of the follower
+            limit: Maximum number of trades to return
+            
+        Returns:
+            List[dict]: List of trade records
+        """
+        logger.info(f"Fetching trades for follower ID: {follower_id} from MongoDB")
+        try:
+            trades_collection = self.db["follower_trades"]
+            
+            # Query trades for this follower, sorted by timestamp descending
+            cursor = trades_collection.find(
+                {"follower_id": follower_id}
+            ).sort("recorded_at", -1).limit(limit)
+            
+            trades = []
+            async for trade in cursor:
+                # Convert ObjectId to string for JSON serialization
+                if "_id" in trade:
+                    trade["_id"] = str(trade["_id"])
+                trades.append(trade)
+                
+            logger.info(f"Successfully fetched {len(trades)} trades for follower {follower_id}")
+            return trades
+            
+        except Exception as e:
+            logger.error(f"Error fetching trades for follower {follower_id}: {e}", exc_info=True)
+            return []

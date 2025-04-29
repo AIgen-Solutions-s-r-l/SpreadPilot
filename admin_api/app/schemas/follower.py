@@ -37,12 +37,12 @@ class FollowerRead(FollowerBase):
         pass
 
 
-# Properties for updating (if needed later)
-# class FollowerUpdate(BaseModel):
-#     email: Optional[EmailStr] = None
-#     iban: Optional[str] = None
-#     ibkr_username: Optional[str] = None
-#     ibkr_secret_ref: Optional[str] = None
-#     commission_pct: Optional[float] = Field(default=None, ge=0, le=100)
-#     enabled: Optional[bool] = None
-#     state: Optional[FollowerState] = None
+# Properties for updating
+class FollowerUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    iban: Optional[str] = None
+    ibkr_username: Optional[str] = None
+    ibkr_secret_ref: Optional[str] = None
+    commission_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    enabled: Optional[bool] = None
+    state: Optional[FollowerState] = None

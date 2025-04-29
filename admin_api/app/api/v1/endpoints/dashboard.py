@@ -1,12 +1,25 @@
 import asyncio
+import datetime
 from typing import List, Set
 import importlib
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 # from google.cloud import firestore # Removed Firestore import
 from motor.motor_asyncio import AsyncIOMotorDatabase # Added MongoDB import
 
 from spreadpilot_core.logging.logger import get_logger
+from admin_api.app.services.follower_service import FollowerService
+from admin_api.app.db.mongodb import get_database
+from admin_api.app.core.config import get_settings
+
+# Dependency to get the follower service
+async def get_follower_service() -> FollowerService:
+    """
+    Dependency to get the follower service.
+    """
+    db = await get_database()
+    settings = get_settings()
+    return FollowerService(db=db, settings=settings)
 
 # Import modules using importlib
 admin_api_db = importlib.import_module('admin_api.app.db.mongodb') # Changed to mongodb
@@ -27,6 +40,164 @@ router = APIRouter()
 
 # Keep track of active WebSocket connections
 active_connections: Set[WebSocket] = set()
+
+# Function to broadcast updates to all connected WebSocket clients
+async def broadcast_updates(message: dict):
+    """
+    Broadcast a message to all connected WebSocket clients.
+    
+    Args:
+        message: The message to broadcast
+    """
+    if not active_connections:
+        logger.info("No active WebSocket connections to broadcast to")
+        return
+        
+    disconnected_websockets = set()
+    
+    for websocket in active_connections:
+        try:
+            await websocket.send_json(message)
+        except Exception as e:
+            logger.error(f"Error sending message to WebSocket: {e}", exc_info=True)
+            disconnected_websockets.add(websocket)
+            
+    # Remove disconnected WebSockets
+    for websocket in disconnected_websockets:
+        active_connections.remove(websocket)
+        
+    logger.info(f"Broadcast message to {len(active_connections)} WebSocket clients")
+    
+# Periodic task to update followers
+async def periodic_follower_update_task(
+    follower_service: FollowerService,
+    interval_seconds: float = 5.0
+):
+    """
+    Periodic task to fetch follower updates and broadcast them to WebSocket clients.
+    
+    Args:
+        follower_service: The follower service to use
+        interval_seconds: The interval between updates in seconds
+    """
+    logger.info("Starting periodic follower update task for WebSocket.")
+    
+    while True:
+        try:
+            # Fetch followers
+            followers: List[FollowerRead] = await follower_service.get_followers()
+            
+            # Prepare the message
+            message = {
+                "type": "follower_update",
+                "data": {
+                    "followers": [follower.model_dump() for follower in followers],
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                }
+            }
+            
+            # Broadcast the message
+            await broadcast_updates(message)
+            
+        except Exception as e:
+            logger.error(f"Error in periodic follower update task: {e}", exc_info=True)
+            
+            # Send error message to clients
+            error_message = {
+                "type": "error",
+                "data": {
+                    "message": f"Error fetching follower updates: {str(e)}",
+                    "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                }
+            }
+            await broadcast_updates(error_message)
+            
+        # Wait for the next update
+        await asyncio.sleep(interval_seconds)
+        
+# WebSocket endpoint for dashboard updates
+@router.websocket("/ws/dashboard")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for dashboard updates.
+    
+    This endpoint:
+    1. Accepts WebSocket connections
+    2. Adds the connection to the active_connections set
+    3. Listens for messages from the client
+    4. Removes the connection when the client disconnects
+    """
+    await websocket.accept()
+    active_connections.add(websocket)
+    logger.info(f"New WebSocket connection established. Total connections: {len(active_connections)}")
+    
+    try:
+        # Send initial data
+        follower_service = FollowerService(
+            db=await get_database(),
+            settings=get_settings()
+        )
+        
+        followers = await follower_service.get_followers()
+        initial_message = {
+            "type": "initial_data",
+            "data": {
+                "followers": [follower.model_dump() for follower in followers],
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
+        }
+        await websocket.send_json(initial_message)
+        
+        # Listen for messages from the client
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Received message from WebSocket client: {data}")
+            
+            # Process client messages if needed
+            # For now, just echo back
+            await websocket.send_json({
+                "type": "echo",
+                "data": data
+            })
+            
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+        logger.info(f"WebSocket disconnected. Remaining connections: {len(active_connections)}")
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection: {e}", exc_info=True)
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+# Dashboard API endpoints
+@router.get("/dashboard/summary", response_model=dict)
+async def get_dashboard_summary(
+    follower_service: FollowerService = Depends(get_follower_service)
+):
+    """
+    Get a summary of the dashboard data.
+    
+    Returns:
+        dict: A dictionary containing summary data for the dashboard.
+    """
+    try:
+        followers = await follower_service.get_followers()
+        
+        # Calculate summary statistics
+        total_followers = len(followers)
+        active_followers = sum(1 for f in followers if f.enabled)
+        
+        # Return the summary data
+        return {
+            "total_followers": total_followers,
+            "active_followers": active_followers,
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard summary: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get dashboard summary: {str(e)}"
+        )
 
 # Dependency to get the FollowerService instance (using MongoDB)
 def get_follower_service(

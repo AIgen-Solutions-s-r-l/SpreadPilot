@@ -21,7 +21,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - ib-gateway
       - otel-collector
     ports:
@@ -47,7 +48,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - trading-bot
       - ib-gateway
       - otel-collector
@@ -99,7 +101,8 @@ services:
       - ./credentials:/app/credentials
       - ./reports:/app/reports
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - otel-collector
     restart: unless-stopped
 
@@ -121,7 +124,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - otel-collector
     restart: unless-stopped
 
