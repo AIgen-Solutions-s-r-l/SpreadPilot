@@ -92,10 +92,11 @@ async def test_daily_pnl_calculation(
         mock_snaps.append(mock_snap)
 
     # Need to import firestore for the spec
-    from google.cloud import firestore
+    # No need to import firestore here anymore
 
     # Patch the 'db' object in pnl.py with a mock that handles the chained calls
-    mock_db = MagicMock(spec=firestore.Client)
+    # Remove spec=firestore.Client because firestore.Client itself is mocked globally
+    mock_db = MagicMock()
     mock_positions_collection = MagicMock(spec=firestore.CollectionReference)
     mock_daily_pnl_collection = MagicMock(spec=firestore.CollectionReference)
     mock_query = MagicMock(spec=firestore.Query)
@@ -111,10 +112,12 @@ async def test_daily_pnl_calculation(
             return MagicMock() # Default mock for other collections if needed
     mock_db.collection.side_effect = collection_side_effect
 
-    # Setup the chain for fetching positions: db.collection('positions').where(...).where(...).stream()
+    # Setup the chain for fetching positions: db.collection('positions').where(...).where(...).where(...).stream()
     mock_positions_collection.where.return_value = mock_query
-    mock_query.where.return_value = mock_query # where can be chained
-    mock_query.stream.return_value = mock_snaps # Return our list of mock snapshots
+    mock_query.where.return_value = mock_query # First where returns query
+    mock_query.where.return_value = mock_query # Second where returns query
+    mock_query.where.return_value = mock_query # Third where returns query
+    mock_query.stream.return_value = mock_snaps # stream returns our list of mock snapshots
 
     # Setup the chain for setting daily pnl: db.collection('daily_pnl').document(...).set(...)
     mock_daily_pnl_collection.document.return_value = mock_doc_ref
@@ -323,9 +326,11 @@ async def test_monthly_report_email_sending(
     
     # Mock PDF generation
     # Patch report generation and os.path.exists (used by notifier)
+    # Patch report generation and os.path.exists (used by notifier)
+    # Try patching os.path.exists directly
     with patch("report_worker.app.service.generator.generate_pdf_report", return_value="/tmp/mock_report.pdf") as mock_gen_pdf, \
          patch("report_worker.app.service.generator.generate_excel_report", return_value="/tmp/mock_report.xlsx") as mock_gen_excel, \
-         patch("report_worker.app.service.notifier.os.path.exists", return_value=True) as mock_exists:
+         patch("os.path.exists", return_value=True) as mock_exists: # Changed patch target
 
         # Send report
         result = await send_monthly_report(report, test_follower)
