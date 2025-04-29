@@ -94,10 +94,11 @@ async def test_daily_pnl_calculation(
     # Patch the 'db' object in pnl.py with a mock that handles the chained calls
     # Remove spec=firestore.Client because firestore.Client itself is mocked globally
     mock_db = MagicMock()
-    mock_positions_collection = MagicMock(spec=firestore.CollectionReference)
-    mock_daily_pnl_collection = MagicMock(spec=firestore.CollectionReference)
-    mock_query = MagicMock(spec=firestore.Query)
-    mock_doc_ref = MagicMock(spec=firestore.DocumentReference)
+    # Remove spec arguments as firestore is mocked globally
+    mock_positions_collection = MagicMock()
+    mock_daily_pnl_collection = MagicMock()
+    mock_query = MagicMock()
+    mock_doc_ref = MagicMock()
 
     # Configure collection calls based on name
     def collection_side_effect(name):
