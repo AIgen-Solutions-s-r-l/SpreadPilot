@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import uvicorn
+import asyncio # Import asyncio
+from motor.motor_asyncio import AsyncIOMotorClient # Import motor
 
 from fastapi import FastAPI, Request, HTTPException, status
 from pydantic import ValidationError
@@ -10,8 +12,9 @@ from pydantic import ValidationError
 # Assuming spreadpilot_core is installed or available in the Python path
 # Adjust import if necessary based on project structure/installation
 try:
-    from spreadpilot_core.logging.logger import setup_logging
+    from spreadpilot_core.logging.logger import setup_logging, get_logger # Import get_logger
     from spreadpilot_core.models.alert import AlertEvent
+    from spreadpilot_core.utils.secrets import get_secret_from_mongo # Import secret getter
 except ImportError:
     # Handle case where core library might not be directly importable
     # This might happen during Docker build if not installed correctly
@@ -26,18 +29,88 @@ except ImportError:
         pass
 
 
-from .config import settings
+# --- Secret Pre-loading ---
+
+# Initialize logger early for pre-loading
+# Note: setup_logging is called later, but we need a logger instance now.
+# This might log to stdout initially before file handlers are set up.
+preload_logger = logging.getLogger(__name__ + ".preload") # Use a distinct name initially
+
+# Define secrets needed by this specific service
+SECRETS_TO_FETCH = [
+    "TELEGRAM_BOT_TOKEN",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    # Add other secrets like API keys if they become necessary
+]
+
+async def load_secrets_into_env():
+    """Fetches secrets from MongoDB and sets them as environment variables."""
+    preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
+    mongo_uri = os.environ.get("MONGO_URI")
+    # Use a dedicated DB name for secrets or reuse admin one if appropriate
+    mongo_db_name = os.environ.get("MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")) # Default to 'spreadpilot_secrets'
+
+    if not mongo_uri:
+        preload_logger.warning("MONGO_URI environment variable not set. Skipping MongoDB secret loading.")
+        return
+
+    client: AsyncIOMotorClient | None = None
+    try:
+        preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
+        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000) # Add timeout
+        # Optionally ping server to check connection early
+        await client.admin.command('ping')
+        db = client[mongo_db_name]
+        preload_logger.info(f"Connected to MongoDB database '{mongo_db_name}'.")
+
+        app_env = os.environ.get("APP_ENV", "development") # Determine environment
+
+        for secret_name in SECRETS_TO_FETCH:
+            preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
+            secret_value = await get_secret_from_mongo(db, secret_name, environment=app_env)
+            if secret_value is not None:
+                os.environ[secret_name] = secret_value
+                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
+            else:
+                preload_logger.info(f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set.")
+
+        preload_logger.info("Finished loading secrets into environment.")
+
+    except Exception as e:
+        preload_logger.error(f"Failed to load secrets from MongoDB into environment: {e}", exc_info=True)
+    finally:
+        if client:
+            client.close()
+            preload_logger.info("MongoDB connection for secret loading closed.")
+
+
+# Run secret loading BEFORE initializing settings
+# Skips if TESTING env var is set
+if __name__ != "__main__" and not os.getenv("TESTING"):
+    try:
+        asyncio.run(load_secrets_into_env())
+    except RuntimeError as e:
+        preload_logger.error(f"Could not run async secret loading: {e}")
+elif os.getenv("TESTING"):
+     preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading.")
+
+
+# --- Regular Application Setup ---
+
+from .config import settings # Settings instance created AFTER env vars are potentially populated
 from .service.router import route_alert
 
-# Setup Logging
+# Setup Logging (Now uses the final logger instance)
 # Determine log level from environment or default
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 setup_logging(service_name="alert-router", level=log_level)
-logger = logging.getLogger(__name__)
+# Note: setup_logging might reconfigure the root logger. Get the specific logger after setup.
+logger = get_logger(__name__) # Use get_logger from core library
 
 app = FastAPI(title="SpreadPilot Alert Router")
 
-logger.info("Alert Router service starting...")
+logger.info("Alert Router service starting...") # This log now happens AFTER potential secret loading
 logger.info(f"GCP Project ID: {settings.GCP_PROJECT_ID}")
 logger.info(f"Dashboard URL: {settings.DASHBOARD_BASE_URL}")
 logger.info(

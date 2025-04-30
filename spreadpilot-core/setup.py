@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "google-cloud-firestore>=2.11.0",
         "google-cloud-logging>=3.5.0",
-        "google-cloud-secret-manager>=2.16.0",
+        # "google-cloud-secret-manager>=2.16.0", # Removed as part of refactoring to MongoDB secrets
         "ib-insync>=0.9.85",  # IBKR API wrapper
         "pydantic>=2.0.0",    # Data validation
         "opentelemetry-api>=1.18.0",
