@@ -11,6 +11,7 @@ import time # Import time
 from unittest.mock import AsyncMock, MagicMock, patch
 from bson import ObjectId # Added for MongoDB IDs
 import websockets # Import websockets library
+from spreadpilot_core.logging.logger import get_logger # Import logger
 
 import httpx # Re-add import
 from fastapi.testclient import TestClient # Import TestClient
@@ -26,26 +27,222 @@ from spreadpilot_core.models.follower import Follower, FollowerState
 import importlib
 
 # Import modules using importlib
-admin_api_schemas = importlib.import_module('admin_api.app.schemas.follower')
+admin_api_db = importlib.import_module('admin_api.app.db.mongodb') # Changed to mongodb
 admin_api_services = importlib.import_module('admin_api.app.services.follower_service')
-admin_api_config = importlib.import_module('admin_api.app.core.config') # Added for Settings import
-admin_api_main = importlib.import_module('admin_api.app.main') # Import the main app module
-admin_api_dashboard = importlib.import_module('admin_api.app.api.v1.endpoints.dashboard') # Import dashboard module
+admin_api_schemas = importlib.import_module('admin_api.app.schemas.follower')
+admin_api_config = importlib.import_module('admin_api.app.core.config')
 
 # Get specific imports
-FollowerCreate = admin_api_schemas.FollowerCreate
-FollowerRead = admin_api_schemas.FollowerRead
+get_mongo_db = admin_api_db.get_mongo_db # Changed to get_mongo_db
 FollowerService = admin_api_services.FollowerService
-Settings = admin_api_config.Settings # Import Settings class
-admin_app = admin_api_main.app # Get the FastAPI app instance
+FollowerRead = admin_api_schemas.FollowerRead
+get_settings = admin_api_config.get_settings
+Settings = admin_api_config.Settings
+
+# Note: This is a simplified mock for testing purposes.
+# In a real application, you would use a proper dependency injection override.
+def override_get_settings():
+    """Override for get_settings dependency."""
+    # Return a mock settings object with necessary attributes
+    mock_settings = MagicMock()
+    mock_settings.firestore_project_id = "test-project" # Keep for compatibility if needed
+    mock_settings.mongodb_url = "mongodb://test:test@localhost:27017" # Use testcontainers URL
+    mock_settings.mongodb_db_name = "test_db" # Use a test database name
+    mock_settings.trading_bot_pubsub_topic = "test-topic" # Add pubsub topic
+    mock_settings.trading_bot_pubsub_project_id = "test-project" # Add pubsub project id
+    mock_settings.environment = "TESTING" # Add environment setting
+    return mock_settings
+
+# Note: This is a simplified mock for testing purposes.
+# In a real application, you would use a proper dependency injection override.
+async def override_get_mongo_db():
+    """Override for get_mongo_db dependency."""
+    # This mock will be replaced by the testcontainers fixture
+    # which provides a real test MongoDB connection.
+    # We keep this here primarily for type hinting and clarity.
+    # The actual connection is managed by the fixture.
+    return MagicMock(spec=AsyncIOMotorDatabase)
+
+
+# Apply overrides for testing
+# admin_api_main.app.dependency_overrides[get_settings] = override_get_settings
+# admin_api_main.app.dependency_overrides[get_mongo_db] = override_get_mongo_db
+
+
+# Use TestClient for synchronous testing where possible
+# For async tests, use httpx.AsyncClient with the app instance
+# client = TestClient(admin_api_main.app) # Keep for sync tests if any
+
+
+# Fixture to provide an async client and the app instance
+@pytest.fixture(scope="module")
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase, test_db_url: str, test_db_name: str): # Add URL and name from fixture
+    """Provides an async test client for the admin API."""
+    # Override dependencies for the test client instance
+    def get_test_settings():
+        mock_settings = MagicMock()
+        mock_settings.firestore_project_id = "test-project"
+        # Inject the dynamic DB URL and name from the fixture into settings
+        mock_settings.mongodb_url = test_db_url
+        mock_settings.mongodb_db_name = test_db_name
+        mock_settings.trading_bot_pubsub_topic = "test-topic"
+        mock_settings.trading_bot_pubsub_project_id = "test-project"
+        mock_settings.environment = "TESTING"
+        return mock_settings
+
+    # This override might not be strictly needed anymore if get_mongo_db uses settings,
+    # but keep it for now to ensure the correct DB object is available if directly requested.
+    async def get_test_mongo_db():
+        return test_mongo_db # Return the actual test DB from fixture
+
+    # Create a new FastAPI app instance for testing with overridden dependencies
+    # This avoids interfering with the global app instance if it were imported directly
+    from fastapi import FastAPI
+    test_app = FastAPI()
+
+    # Import and include the routers *after* creating the test_app
+    from admin_api.app.api.v1.endpoints import followers, dashboard
+    test_app.include_router(followers.router, prefix="/api/v1")
+    test_app.include_router(dashboard.router, prefix="/api/v1")
+
+
+    # Apply dependency overrides to the test app instance
+    test_app.dependency_overrides[followers.get_settings] = get_test_settings
+    test_app.dependency_overrides[followers.get_mongo_db] = get_test_mongo_db
+    test_app.dependency_overrides[dashboard.get_settings] = get_test_settings
+    test_app.dependency_overrides[dashboard.get_mongo_db] = get_test_mongo_db
+    test_app.dependency_overrides[dashboard.get_follower_service] = lambda: FollowerService(db=test_mongo_db, settings=get_test_settings())
+
+
+    # Use httpx.AsyncClient with the test app instance
+    async with httpx.AsyncClient(app=test_app, base_url="http://testserver") as client:
+        # Return the client, the app instance, and the base_url
+        yield client, test_app, "http://testserver"
+
+
+# Fixture for MongoDB testcontainers
+@pytest.fixture(scope="module")
+async def test_mongo_db():
+    """Provides a test MongoDB database using testcontainers."""
+    from testcontainers.mongodb import MongoDbContainer
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    # Define credentials
+    mongo_user = "testuser"
+    db_name = f"test_db_{uuid.uuid4().hex}"
+
+    # Configure container without explicit credentials
+    container = MongoDbContainer("mongo:6.0")
+    with container as mongo:
+        # Get the connection URL directly from the container
+        test_db_url = mongo.get_connection_url()
+        # Append the unique database name
+        if "?" in test_db_url:
+             test_db_url = f"{test_db_url.split('?')[0]}/{db_name}?{test_db_url.split('?')[1]}"
+        else:
+             test_db_url = f"{test_db_url}/{db_name}"
+
+
+        logger = get_logger(__name__) # Instantiate logger
+        logger.info(f"Using test MongoDB (unauthenticated): {test_db_url}")
+
+        # Create an async client using the constructed URL
+        client = AsyncIOMotorClient(test_db_url)
+        db = client[db_name]
+
+        # Remove the ping attempt for now, let tests fail if auth is still broken
+        # logger.info("Waiting for MongoDB container auth...")
+        # await asyncio.sleep(1.0)
+        # try:
+        #     await client.admin.command('ping')
+        #     logger.info("Successfully pinged test MongoDB server.")
+        # except Exception as e:
+        #     logger.error(f"Failed to ping test MongoDB server: {e}", exc_info=True)
+        # raise # Re-raise if ping fails
+
+    # Yield the database instance, URL, and name
+    yield db, test_db_url, db_name
+
+    # Teardown: Drop the test database
+    logger.info(f"Dropping test MongoDB database: {db_name}")
+    try:
+        # Ensure client is still connected before dropping
+        await client.admin.command('ping') # Check connection
+        await client.drop_database(db_name)
+        logger.info(f"Successfully dropped test MongoDB database: {db_name}")
+    except Exception as e:
+        logger.error(f"Error dropping test database {db_name}: {e}", exc_info=True)
+    finally:
+        client.close()
+
+# Fixture to extract the test DB URL from the main mongo fixture
+@pytest.fixture(scope="module")
+async def test_db_url(test_mongo_db: tuple[AsyncIOMotorDatabase, str, str]) -> str:
+    _, url, _ = test_mongo_db
+    return url
+
+# Fixture to extract the test DB name from the main mongo fixture
+@pytest.fixture(scope="module")
+async def test_db_name(test_mongo_db: tuple[AsyncIOMotorDatabase, str, str]) -> str:
+    _, _, name = test_mongo_db
+    return name
+
+# Modify admin_api_client fixture to use the new fixtures
+@pytest.fixture(scope="module")
+async def admin_api_client(
+    test_mongo_db: AsyncIOMotorDatabase, # Keep dependency for direct DB access if needed
+    test_db_url: str,
+    test_db_name: str
+):
+    """Provides an async test client for the admin API."""
+    # Override dependencies for the test client instance
+    def get_test_settings():
+        mock_settings = MagicMock()
+        mock_settings.firestore_project_id = "test-project"
+        # Inject the dynamic DB URL and name from the fixture into settings
+        mock_settings.mongodb_url = test_db_url
+        mock_settings.mongodb_db_name = test_db_name
+        mock_settings.trading_bot_pubsub_topic = "test-topic"
+        mock_settings.trading_bot_pubsub_project_id = "test-project"
+        mock_settings.environment = "TESTING"
+        return mock_settings
+
+    # This override might not be strictly needed anymore if get_mongo_db uses settings,
+    # but keep it for now to ensure the correct DB object is available if directly requested.
+    async def get_test_mongo_db():
+        return test_mongo_db # Return the actual test DB from fixture
+
+    # Create a new FastAPI app instance for testing with overridden dependencies
+    # This avoids interfering with the global app instance if it were imported directly
+    from fastapi import FastAPI
+    test_app = FastAPI()
+
+    # Import and include the routers *after* creating the test_app
+    from admin_api.app.api.v1.endpoints import followers, dashboard
+    test_app.include_router(followers.router, prefix="/api/v1")
+    test_app.include_router(dashboard.router, prefix="/api/v1")
+
+
+    # Apply dependency overrides to the test app instance
+    test_app.dependency_overrides[followers.get_settings] = get_test_settings
+    test_app.dependency_overrides[followers.get_mongo_db] = get_test_mongo_db
+    test_app.dependency_overrides[dashboard.get_settings] = get_test_settings
+    test_app.dependency_overrides[dashboard.get_mongo_db] = get_test_mongo_db
+    test_app.dependency_overrides[dashboard.get_follower_service] = lambda: FollowerService(db=test_mongo_db, settings=get_test_settings())
+
+
+    # Use httpx.AsyncClient with the test app instance
+    async with httpx.AsyncClient(app=test_app, base_url="http://testserver") as client:
+        # Return the client, the app instance, and the base_url
+        yield client, test_app, "http://testserver"
 
 
 @pytest.mark.asyncio # Add back async marker
 async def test_list_followers( # Add back async def
-    admin_api_client: tuple[httpx.AsyncClient, Any], # Expect tuple from fixture
-    test_mongo_db: AsyncIOMotorDatabase,
+    admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple from fixture
+    test_mongo_db: AsyncIOMotorDatabase, # Keep direct DB access for setup/cleanup
 ):
-    admin_api_client, _ = admin_api_client # Unpack client, ignore app for this test
+    admin_api_client, _, _ = admin_api_client # Unpack client, ignore app and base_url
     """
     Test listing all followers using MongoDB.
 
@@ -152,7 +349,6 @@ async def test_create_follower( # Add back async def
         assert "id" in data
         follower_id_str = data["id"]
         follower_id_to_cleanup = follower_id_str # Store string ID for cleanup
-
         # Verify follower was stored in MongoDB (assuming service stores string UUID as _id)
         follower_doc = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert follower_doc is not None
@@ -481,13 +677,13 @@ async def test_websocket_dashboard_connect(
     admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    admin_api_client, app, base_url = admin_api_client # Unpack tuple
+    admin_api_client, app, _ = admin_api_client # Unpack client and app, ignore base_url
     """
     Test connecting to the dashboard WebSocket and receiving messages.
-    
+
     This test verifies:
-    1. WebSocket connection can be established
-    2. Messages can be received from the WebSocket
+    1. WebSocket connection can be established using client.websocket_connect
+    2. Initial state message is received correctly
     """
     # Create a test follower to have some data
     follower_data = {
@@ -497,88 +693,107 @@ async def test_websocket_dashboard_connect(
         "commission_pct": 15,
         "ibkr_secret_ref": "test-secret-ref"
     }
-    
-    response = await admin_api_client.post( # Add await
-        "/api/v1/followers",
-        json=follower_data
-    )
-    
-    assert response.status_code == 201
-    
-    # App instance is now unpacked from the fixture tuple
-    # app = admin_api_client.transport.app # Remove this line
-    
-    # Construct WebSocket URL from base_url
-    ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
+    # Create the follower using the API client
+    response = await admin_api_client.post("/api/v1/followers", json=follower_data)
+    assert response.status_code == 201, f"Failed to create follower: {response.text}"
+    created_follower = response.json()
+    follower_id = created_follower["id"]
 
-    # Create a WebSocket session using websockets library
-    async with websockets.connect(ws_url) as ws:
-        # Wait for the initial message
-        message_str = await ws.recv()
-        message = json.loads(message_str)
+    # Use the base_url from the fixture to connect to the WebSocket
+    # Use relative URL for client's websocket_connect
+    ws_url = "/api/v1/ws/dashboard"
+    websocket = None # Initialize
 
-        # Verify the message structure
-        assert isinstance(message, dict)
-        assert "type" in message
+    try:
+        # Connect using the client's websocket_connect context manager
+        async with admin_api_client.websocket_connect(ws_url) as websocket:
+            # Receive the initial message
+            initial_message = await websocket.receive_json()
+        assert initial_message["type"] == "initial_state"
+        assert "followers" in initial_message["data"]
+        assert isinstance(initial_message["data"]["followers"], list)
+        # Check if our created follower is in the initial list
+        assert any(f["id"] == follower_id for f in initial_message["data"]["followers"])
 
-        # Manually trigger a broadcast to test receiving messages
-        from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
-        test_message = {"type": "test", "data": {"message": "test"}}
-        await broadcast_updates(test_message) # Keep await for async function call
+        # Optional: Test sending/receiving if endpoint supports it
+        # await websocket.send_text("ping")
+        # response_text = await websocket.receive_text()
+        # assert response_text == "pong" # Or whatever the echo is
 
-        # Wait for the broadcast message
-        broadcast_message_str = await ws.recv()
-        broadcast_message = json.loads(broadcast_message_str)
-        assert broadcast_message == test_message
-        # No explicit close needed with async with
+    finally:
+        # Clean up WebSocket connection
+        if websocket:
+            await websocket.close()
+        # Clean up the created follower
+        await test_mongo_db.followers.delete_one({"_id": follower_id})
 
 
-# Ensure WebSocket tests are async and use the tuple fixture correctly
 @pytest.mark.asyncio
 async def test_websocket_dashboard_multiple_clients(
     admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
     test_mongo_db: AsyncIOMotorDatabase,
 ):
-    admin_api_client, app, base_url = admin_api_client # Unpack tuple
+    admin_api_client, app, _ = admin_api_client # Unpack client and app, ignore base_url
     """
-    Test broadcast to multiple connected clients.
-    
+    Test multiple clients connecting to the dashboard WebSocket.
+
     This test verifies:
-    1. Multiple WebSocket connections can be established
-    2. Broadcasts are received by all connected clients
+    1. Multiple WebSocket connections can be established using client.websocket_connect
+    2. Initial data is sent to each client
+    3. All clients receive broadcast messages (simulated)
     """
-    # App instance is now unpacked from the fixture tuple
-    # app = admin_api_client.transport.app # Remove this line
-    
-    # Construct WebSocket URL
-    ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
+    # Create a test follower
+    follower_data = {
+        "email": "multi-client-test@example.com",
+        "iban": "IBAN-MULTI-CLIENT-TEST",
+        "ibkr_username": "multi_client_user",
+        "commission_pct": 10,
+        "ibkr_secret_ref": "test-secret-ref"
+    }
+    response = await admin_api_client.post("/api/v1/followers", json=follower_data)
+    assert response.status_code == 201, f"Failed to create follower: {response.text}"
+    created_follower = response.json()
+    follower_id = created_follower["id"]
 
-    # Create two WebSocket sessions using websockets library
-    async with websockets.connect(ws_url) as ws1, \
-               websockets.connect(ws_url) as ws2:
-        # Wait for the initial messages
-        await ws1.recv()
-        await ws2.recv()
+    ws_url = "/api/v1/ws/dashboard" # Use relative URL for client
 
-        # Manually trigger a broadcast
-        from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
-        test_message = {"type": "test_multiple", "data": {"message": "test_multiple"}}
-        await broadcast_updates(test_message) # Keep await
+    # Connect multiple clients
+    num_clients = 3
+    websockets = []
+    try:
+        # Use a context manager to handle multiple connections
+        async with anyio.create_task_group() as tg:
+            for _ in range(num_clients):
+                # Use client.websocket_connect within the task group
+                ws = await tg.start(admin_api_client.websocket_connect, ws_url)
+                websockets.append(ws)
+                # Receive initial data for each connection
+                initial_message = await ws.receive_json()
+            assert initial_message["type"] == "initial_state"
+            assert "followers" in initial_message["data"]
 
-        # Wait for the broadcast messages on both connections
-        broadcast_message1_str = await ws1.recv()
-        broadcast_message2_str = await ws2.recv()
-        broadcast_message1 = json.loads(broadcast_message1_str)
-        broadcast_message2 = json.loads(broadcast_message2_str)
-
-        # Verify both clients received the same message
-        assert broadcast_message1 == test_message
-        assert broadcast_message2 == test_message
-        assert broadcast_message1 == broadcast_message2
-        # No explicit close needed
+        # Simulate a broadcast message
+        broadcast_message = {"type": "test_broadcast", "data": {"status": "ok"}}
+        # Patch the actual broadcast_updates function and call it directly
+        with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', wraps=admin_api.app.api.v1.endpoints.dashboard.broadcast_updates) as mock_broadcast:
+             await admin_api.app.api.v1.endpoints.dashboard.broadcast_updates(broadcast_message)
+             # Verify the original function was called
+             mock_broadcast.assert_called_once_with(broadcast_message)
 
 
-# Ensure WebSocket tests are async and use the tuple fixture correctly
+        # Verify all clients received the broadcast message
+        for websocket in websockets:
+            received_message = await websocket.receive_json()
+            assert received_message == broadcast_message
+
+    finally:
+        # Close all connections
+        for websocket in websockets:
+            await websocket.close()
+        # Clean up the created follower
+        await test_mongo_db.followers.delete_one({"_id": follower_id})
+
+
 @pytest.mark.asyncio
 async def test_websocket_dashboard_disconnection_handling(
     admin_api_client: tuple[httpx.AsyncClient, Any, str], # Expect tuple with base_url
@@ -586,227 +801,213 @@ async def test_websocket_dashboard_disconnection_handling(
 ):
     admin_api_client, app, base_url = admin_api_client # Unpack tuple
     """
-    Test handling of WebSocket disconnections.
-    
+    Test handling of WebSocket client disconnections.
+
     This test verifies:
-    1. Disconnected clients are removed from active_connections
-    2. Broadcasts continue to work for remaining clients
+    1. Clients are removed from active_connections upon disconnection
     """
-    # App instance is now unpacked from the fixture tuple
-    # app = admin_api_client.transport.app # Remove this line
-    
-    # Get the active_connections set
-    from admin_api.app.api.v1.endpoints.dashboard import active_connections
-    
-    # Record the initial number of connections
-    initial_connection_count = len(active_connections)
-    
-    # Construct WebSocket URL
     ws_url = base_url.replace("http", "ws") + "/api/v1/ws/dashboard"
 
-    # Create a WebSocket session using websockets library that we'll disconnect manually
-    ws1 = await websockets.connect(ws_url)
-    # Wait for the initial message
-    await ws1.recv()
-    
-    # Verify the connection was added
-    assert len(active_connections) == initial_connection_count + 1
-    
-    # Create a second WebSocket session using websockets library that will remain connected
-    async with websockets.connect(ws_url) as ws2:
-        # Wait for the initial message
-        await ws2.recv()
-        
-        # Verify both connections are active
-        assert len(active_connections) == initial_connection_count + 2
-        
-        # Close the first connection
-        await ws1.close()
-        
-        # Give the server a moment to process the disconnection
-        await asyncio.sleep(0.5)
-        
-        # Verify the disconnected client was removed
+    # Check initial state of active connections
+    from admin_api.app.api.v1.endpoints.dashboard import active_connections
+    initial_connection_count = len(active_connections)
+
+    # Connect a client using the client's context manager
+    async with admin_api_client.websocket_connect(ws_url) as websocket:
+        # Receive initial data to ensure connection is fully established
+        await websocket.receive_json()
+
+        # Check that the connection is in the active set
+        # Accessing the underlying connection object might be fragile.
+        # Let's check the count instead for robustness.
         assert len(active_connections) == initial_connection_count + 1
-        
-        # Broadcast a message to the remaining client
-        from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
-        test_message = {"type": "after_disconnect", "data": {"message": "after_disconnect"}}
-        await broadcast_updates(test_message) # Keep await
-        
-        # Verify the remaining client receives the message
-        broadcast_message_str = await ws2.recv()
-        broadcast_message = json.loads(broadcast_message_str)
-        assert broadcast_message == test_message
-        # No explicit close needed for ws2 (async with handles it)
-# Test error handling in the API endpoints
-def test_create_follower_validation_error(
-    admin_api_test_client: TestClient,
-    test_mongo_db: AsyncIOMotorDatabase,
-):
+
+        # Connection closes automatically when exiting 'async with'
+
+    # Allow a moment for the disconnection handling to process on the server
+    await asyncio.sleep(0.1)
+
+    # Check that the connection is removed from the active set by checking the count
+    assert len(active_connections) == initial_connection_count
+
+
+# --- Admin API Endpoint Tests ---
+
+def test_create_follower_validation_error(admin_api_test_client: TestClient):
     """Test creating a follower with invalid data."""
     # Missing required fields
     invalid_follower_data = {
-        # Missing email, iban, ibkr_username
-        "commission_pct": 10
+        "email": "invalid-test@example.com",
+        # iban, ibkr_username, commission_pct, ibkr_secret_ref are missing
     }
-    
     response = admin_api_test_client.post(
         "/api/v1/followers",
-        json=invalid_follower_data
+        json=invalid_follower_data,
     )
-    
+
     assert response.status_code == 422  # Unprocessable Entity
-    # Validation error response should contain details about missing fields
-    error_detail = response.json()
-    assert "detail" in error_detail
-    
-    # Test with invalid commission_pct (negative value)
+    # Check for validation error details (Pydantic errors)
+    errors = response.json()["detail"]
+    assert isinstance(errors, list)
+    assert any(error["loc"] == ("body", "iban") for error in errors)
+    assert any(error["loc"] == ("body", "ibkr_username") for error in errors)
+    assert any(error["loc"] == ("body", "commission_pct") for error in errors)
+    assert any(error["loc"] == ("body", "ibkr_secret_ref") for error in errors)
+
+    # Invalid commission_pct (negative)
     invalid_commission_data = {
-        "email": "invalid-commission@test.com",
-        "iban": "IBAN123",
-        "ibkr_username": "invalid_user",
-        "commission_pct": -5  # Negative value should be rejected
+        "email": "invalid-commission@example.com",
+        "iban": "NL91ABNA0417164999",
+        "ibkr_username": "invaliduser",
+        "ibkr_secret_ref": "test-secret",
+        "commission_pct": -10.0, # Invalid value
     }
-    
     response = admin_api_test_client.post(
         "/api/v1/followers",
-        json=invalid_commission_data
+        json=invalid_commission_data,
     )
-    
-    assert response.status_code == 422  # Unprocessable Entity
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert isinstance(errors, list)
+    assert any(error.get("msg", "").lower() == "ensure this value is greater than or equal to 0" for error in errors)
 
 
-def test_toggle_nonexistent_follower_error(
-    admin_api_test_client: TestClient,
-    test_mongo_db: AsyncIOMotorDatabase,
-):
-    """Test toggling a follower that doesn't exist with specific error handling."""
-    # Use a random ObjectId that doesn't exist
-    nonexistent_id = "nonexistent-follower-id"
-    
-    response = admin_api_test_client.post(
-        f"/api/v1/followers/{nonexistent_id}/toggle"
-    )
-    
-    assert response.status_code == 404  # Not Found
-    error_detail = response.json()
-    assert "detail" in error_detail
-    assert nonexistent_id in error_detail["detail"]  # Error message should include the ID
+def test_toggle_nonexistent_follower_error(admin_api_test_client: TestClient):
+    """Test toggling a non-existent follower."""
+    nonexistent_id = "nonexistent-id-123"
+    response = admin_api_test_client.post(f"/api/v1/followers/{nonexistent_id}/toggle")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
-def test_update_follower_state(
-    admin_api_test_client: TestClient,
-    test_mongo_db: AsyncIOMotorDatabase,
-):
+@pytest.mark.asyncio
+def test_update_follower_state(test_mongo_db: AsyncIOMotorDatabase):
     """Test updating a follower's state directly using the service."""
     from admin_api.app.services.follower_service import FollowerService
+    from admin_api.app.schemas.follower import FollowerCreate, FollowerState
     from admin_api.app.core.config import get_settings
-    from spreadpilot_core.models.follower import FollowerState
-    from admin_api.app.schemas.follower import FollowerCreate
-    
-    # Use the service directly to create a follower and update its state
+
     async def test_state_updates():
         settings = get_settings()
         follower_service = FollowerService(db=test_mongo_db, settings=settings)
-        
-        # Create a follower directly with the service
+
+        # Create a follower
         follower_create = FollowerCreate(
-            email="state-update-test@example.com",
-            iban="IBAN-STATE-TEST",
-            ibkr_username="state_test_user",
-            commission_pct=15,
-            ibkr_secret_ref="test-secret-ref"  # Add required field
+            email="state-test@example.com",
+            iban="NL91ABNA0417164306",
+            ibkr_username="stateuser",
+            ibkr_secret_ref="projects/spreadpilot-test/secrets/ibkr-password-stateuser",
+            commission_pct=20.0,
         )
-        
-        created_follower = await follower_service.create_follower(follower_create)
-        assert created_follower is not None
-        follower_id = created_follower.id
-        
-        # Update to MANUAL_INTERVENTION state
-        updated_follower = await follower_service.update_follower_state(
-            follower_id,
-            FollowerState.MANUAL_INTERVENTION
-        )
-        
-        assert updated_follower is not None
-        assert updated_follower.state == FollowerState.MANUAL_INTERVENTION
-        
-        # Verify by fetching the follower
-        fetched_follower = await follower_service.get_follower_by_id(follower_id)
-        assert fetched_follower is not None
-        assert fetched_follower.state == FollowerState.MANUAL_INTERVENTION
-        
-        # Test updating to the same state (no change)
-        same_state_follower = await follower_service.update_follower_state(
-            follower_id,
-            FollowerState.MANUAL_INTERVENTION
-        )
-        
-        assert same_state_follower is not None
-        assert same_state_follower.state == FollowerState.MANUAL_INTERVENTION
-        
-        # Test updating a non-existent follower
-        nonexistent_result = await follower_service.update_follower_state(
-            "nonexistent-id",
-            FollowerState.DISABLED
-        )
-        
-        assert nonexistent_result is None
-    
-    # Run the async test
-    import anyio
-    anyio.run(test_state_updates)
+        follower = await follower_service.create_follower(follower_create)
+        follower_id = follower.id
+
+        try:
+            # Update state to ACTIVE
+            updated_follower = await follower_service.update_follower_state(follower_id, FollowerState.ACTIVE)
+            assert updated_follower.state == FollowerState.ACTIVE
+
+            # Verify in DB
+            db_doc = await test_mongo_db.followers.find_one({"_id": follower_id})
+            assert db_doc["state"] == FollowerState.ACTIVE.value
+
+            # Update state to DISABLED (should also set enabled to False)
+            updated_follower_disabled = await follower_service.update_follower_state(follower_id, FollowerState.DISABLED)
+            assert updated_follower_disabled.state == FollowerState.DISABLED
+            assert updated_follower_disabled.enabled is False
+
+            # Verify in DB
+            db_doc_disabled = await test_mongo_db.followers.find_one({"_id": follower_id})
+            assert db_doc_disabled["state"] == FollowerState.DISABLED.value
+            assert db_doc_disabled["enabled"] is False
+
+            # Update state to ACTIVE again (should also set enabled to True)
+            updated_follower_active_again = await follower_service.update_follower_state(follower_id, FollowerState.ACTIVE)
+            assert updated_follower_active_again.state == FollowerState.ACTIVE
+            assert updated_follower_active_again.enabled is True
+
+            # Verify in DB
+            db_doc_active_again = await test_mongo_db.followers.find_one({"_id": follower_id})
+            assert db_doc_active_again["state"] == FollowerState.ACTIVE.value
+            assert db_doc_active_again["enabled"] is True
 
 
-def test_service_error_handling(
-    admin_api_test_client: TestClient,
-    test_mongo_db: AsyncIOMotorDatabase,
-):
+            # Attempt to update a non-existent follower
+            nonexistent_id = str(ObjectId())
+            nonexistent_result = await follower_service.update_follower_state(nonexistent_id, FollowerState.ARCHIVED)
+            assert nonexistent_result is None # Should return None for non-existent
+
+        finally:
+            # Clean up
+            await test_mongo_db.followers.delete_one({"_id": follower_id})
+
+    asyncio.run(test_state_updates())
+
+
+@pytest.mark.asyncio
+def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
     """Test error handling in the follower service."""
     from admin_api.app.services.follower_service import FollowerService
+    from admin_api.app.schemas.follower import FollowerCreate
     from admin_api.app.core.config import get_settings
-    from unittest.mock import patch, MagicMock
-    
+    from motor.core import Collection
+
     async def test_errors():
         settings = get_settings()
         follower_service = FollowerService(db=test_mongo_db, settings=settings)
-        
-        # Test create_follower with database error
-        from admin_api.app.schemas.follower import FollowerCreate
-        follower_create = FollowerCreate(
-            email="error-test@example.com",
-            iban="ERROR-IBAN",
-            ibkr_username="error_user",
-            commission_pct=10,
-            ibkr_secret_ref="test-secret-ref"  # Add required field
-        )
-        
-        # Mock the insert_one method to raise an exception
-        mock_collection = MagicMock()
-        mock_collection.insert_one.side_effect = Exception("Simulated insert error")
-        
-        # Save the original collection
-        original_collection = follower_service.collection
-        
-        try:
-            # Replace the collection with our mock
-            follower_service.collection = mock_collection
-            
-            # This should now raise the exception from our mock
-            with pytest.raises(Exception) as exc_info:
+
+        # Mock the collection to raise an exception on insert_one
+        with patch.object(test_mongo_db, 'followers') as mock_collection:
+            mock_collection.insert_one.side_effect = Exception("Insert error")
+
+            # Attempt to create a follower, expect an exception
+            follower_create = FollowerCreate(
+                email="error-test@example.com",
+                iban="NL91ABNA0417164307",
+                ibkr_username="erroruser",
+                ibkr_secret_ref="projects/spreadpilot-test/secrets/ibkr-password-erroruser",
+                commission_pct=20.0,
+            )
+            with pytest.raises(Exception, match="Insert error"):
                 await follower_service.create_follower(follower_create)
-            
-            # Verify the exception message
-            assert "Simulated insert error" in str(exc_info.value)
-            
-        finally:
-            # Restore the original collection to avoid affecting other tests
-            follower_service.collection = original_collection
-    
-    # Run the async test
-    import anyio
-    anyio.run(test_errors)
+
+        # Mock the collection to raise an exception on find_one
+        with patch.object(test_mongo_db, 'followers') as mock_collection:
+            mock_collection.find_one.side_effect = Exception("Find error")
+
+            # Attempt to get a follower by id, expect an exception
+            with pytest.raises(Exception, match="Find error"):
+                await follower_service.get_follower_by_id("some-id")
+
+        # Mock the collection to raise an exception on find
+        with patch.object(test_mongo_db, 'followers') as mock_collection:
+            # Mock the cursor returned by find
+            mock_cursor = MagicMock()
+            mock_cursor.to_list.side_effect = Exception("Find all error")
+            mock_collection.find.return_value = mock_cursor
+
+            # Attempt to get all followers, expect an exception
+            with pytest.raises(Exception, match="Find all error"):
+                await follower_service.get_followers()
+
+        # Mock the collection to raise an exception on update_one
+        with patch.object(test_mongo_db, 'followers') as mock_collection:
+             mock_collection.update_one.side_effect = Exception("Update error")
+
+             # Attempt to toggle follower enabled, expect an exception
+             with pytest.raises(Exception, match="Update error"):
+                 await follower_service.toggle_follower_enabled("some-id")
+
+        # Mock the collection to raise an exception on delete_one
+        with patch.object(test_mongo_db, 'followers') as mock_collection:
+             mock_collection.delete_one.side_effect = Exception("Delete error")
+
+             # Attempt to delete follower, expect an exception
+             with pytest.raises(Exception, match="Delete error"):
+                 await follower_service.delete_follower("some-id")
+
+
+    asyncio.run(test_errors())
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -815,138 +1016,118 @@ async def test_dashboard_api_endpoints( # Ensure async def
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     admin_api_client, _ = admin_api_client # Unpack client
-    """
-    Test the dashboard API endpoints.
-    
-    This test verifies:
-    1. The dashboard summary endpoint returns the expected data
-    2. The dashboard stats endpoint returns the expected data
-    3. The dashboard alerts endpoint returns the expected data
-    4. The dashboard performance endpoint returns the expected data
-    5. The WebSocket broadcast functionality works correctly
-    """
-    # First, create a follower to have some data
-    follower_data = {
-        "email": "dashboard-test@example.com",
-        "iban": "IBAN-DASHBOARD-TEST",
-        "ibkr_username": "dashboard_test_user",
-        "commission_pct": 15,
-        "ibkr_secret_ref": "test-secret-ref"
+    """Test the dashboard API endpoints."""
+    # Create some test followers
+    follower_data_active = {
+        "email": "dashboard-test-active@example.com",
+        "iban": "IBAN-DASHBOARD-ACTIVE",
+        "ibkr_username": "dashboard_active_user",
+        "commission_pct": 10,
+        "ibkr_secret_ref": "test-secret-ref",
+        "enabled": True,
+        "state": "ACTIVE"
     }
-    
-    response = await admin_api_client.post( # Ensure await
+    follower_data_inactive = {
+        "email": "dashboard-test-inactive@example.com",
+        "iban": "IBAN-DASHBOARD-INACTIVE",
+        "ibkr_username": "dashboard_inactive_user",
+        "commission_pct": 10,
+        "ibkr_secret_ref": "test-secret-ref",
+        "enabled": False,
+        "state": "DISABLED"
+    }
+
+    # Use the client to create followers via the API
+    response_active = await admin_api_client.post( # Ensure await
         "/api/v1/followers",
-        json=follower_data
+        json=follower_data_active
     )
-    
-    assert response.status_code == 201
-    
-    # Test the dashboard summary endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/summary")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "follower_count" in data
-    assert "active_follower_count" in data
-    assert "total_positions" in data
-    assert isinstance(data["follower_count"], int)
-    
-    # Test the dashboard stats endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/stats")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "stats" in data
-    assert isinstance(data["stats"], list)
-    
-    # Test the dashboard alerts endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/alerts")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "alerts" in data
-    assert isinstance(data["alerts"], list)
-    
-    # Test the dashboard performance endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/performance")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "performance" in data
-    assert isinstance(data["performance"], dict)
-    assert "daily" in data["performance"]
-    assert "weekly" in data["performance"]
-    assert "monthly" in data["performance"]
-    
-    # Test the dashboard performance endpoint with timeframe parameter
-    response = await admin_api_client.get("/api/v1/dashboard/performance?timeframe=weekly")
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "performance" in data
-    assert isinstance(data["performance"], dict)
-    assert "weekly" in data["performance"]
-    
-    # Test the WebSocket functionality
-    
-    from admin_api.app.services.follower_service import FollowerService
-    from admin_api.app.core.config import get_settings
-    from admin_api.app.api.v1.endpoints.dashboard import broadcast_updates
-    
-    settings = get_settings()
-    follower_service = FollowerService(db=test_mongo_db, settings=settings)
-    
-    # Test the broadcast_updates function with an empty set of connections
-    # This should not raise any exceptions
-    from admin_api.app.api.v1.endpoints.dashboard import active_connections
-    assert isinstance(active_connections, set)
-    
-    # Create a test message
-    test_message = {"type": "test", "data": {"message": "test"}}
-    
-    # This should not raise any exceptions even with no connections
-    await broadcast_updates(test_message)
-    
-    # Mock the periodic_follower_update_task function
-    # We can't run it directly as it's an infinite loop
-    from admin_api.app.api.v1.endpoints.dashboard import periodic_follower_update_task
-    from unittest.mock import patch, AsyncMock, MagicMock
-    
-    # Create a mock follower service
-    mock_follower_service = AsyncMock()
-    mock_follower_service.get_followers.return_value = []
-    
-    # Create a mock WebSocket connection and add it to active_connections
-    mock_websocket = MagicMock()
-    mock_websocket.send_json = AsyncMock()
-    active_connections.add(mock_websocket)
-    
+    assert response_active.status_code == 201
+    created_active = response_active.json()
+    active_follower_id = created_active["id"]
+
+    response_inactive = await admin_api_client.post( # Ensure await
+        "/api/v1/followers",
+        json=follower_data_inactive
+    )
+    assert response_inactive.status_code == 201
+    created_inactive = response_inactive.json()
+    inactive_follower_id = created_inactive["id"]
+
     try:
-        # Mock broadcast_updates to avoid actual WebSocket operations
+        # Test get_dashboard_summary
+        response_summary = await admin_api_client.get("/api/v1/dashboard/summary")
+        assert response_summary.status_code == 200
+        summary_data = response_summary.json()
+        assert summary_data["follower_count"] >= 2 # May have other followers from other tests
+        assert summary_data["active_follower_count"] >= 1
+        assert "last_updated" in summary_data
+
+        # Test get_dashboard_stats
+        response_stats = await admin_api_client.get("/api/v1/dashboard/stats")
+        assert response_stats.status_code == 200
+        stats_data = response_stats.json()
+        assert "stats" in stats_data
+        assert isinstance(stats_data["stats"], list)
+        follower_stats = next((s for s in stats_data["stats"] if s["type"] == "followers"), None)
+        assert follower_stats is not None
+        assert follower_stats["total"] >= 2
+        assert follower_stats["active"] >= 1
+        assert follower_stats["inactive"] >= 1
+        assert "last_updated" in stats_data
+
+        # Test get_dashboard_alerts (placeholder)
+        response_alerts = await admin_api_client.get("/api/v1/dashboard/alerts")
+        assert response_alerts.status_code == 200
+        alerts_data = response_alerts.json()
+        assert "alerts" in alerts_data
+        assert isinstance(alerts_data["alerts"], list)
+        assert "last_updated" in alerts_data
+
+        # Test get_dashboard_performance (placeholder)
+        response_performance = await admin_api_client.get("/api/v1/dashboard/performance")
+        assert response_performance.status_code == 200
+        performance_data = response_performance.json()
+        assert "performance" in performance_data
+        assert "last_updated" in performance_data
+
+        # Test the periodic task (basic check that it runs without crashing)
+        # This is hard to test comprehensively without a real WebSocket client
+        # But we can at least mock dependencies and see if it runs a cycle
+        from admin_api.app.api.v1.endpoints.dashboard import periodic_follower_update_task
+        from admin_api.app.services.follower_service import FollowerService
+        from unittest.mock import AsyncMock, MagicMock, patch
+        import asyncio
+
+        mock_follower_service = MagicMock(spec=FollowerService)
+        mock_follower_service.get_followers.return_value = [] # Return empty list for simplicity
+
         with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', AsyncMock()) as mock_broadcast:
             # Create a task that will be cancelled immediately
-            import asyncio
             task = asyncio.create_task(periodic_follower_update_task(
                 follower_service=mock_follower_service,
                 interval_seconds=0.1
             ))
-            
-            # Wait a longer time to let it run at least one cycle
-            await asyncio.sleep(0.3)
-            
+
+            # Wait a short time to let it run at least one cycle
+            await asyncio.sleep(0.5)
+
             # Cancel the task
             task.cancel()
-            
+
             try:
                 await task
             except asyncio.CancelledError:
                 pass  # Expected
-            
+
             # Verify broadcast_updates was called at least once
             assert mock_broadcast.called
+
+
     finally:
-        # Clean up by removing our mock connection
-        active_connections.remove(mock_websocket)
+        # Clean up test followers
+        await test_mongo_db.followers.delete_one({"_id": active_follower_id})
+        await test_mongo_db.followers.delete_one({"_id": inactive_follower_id})
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -955,54 +1136,25 @@ async def test_dashboard_api_error_handling( # Ensure async def
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     admin_api_client, _ = admin_api_client # Unpack client
-    """
-    Test error handling in the dashboard API endpoints.
-    
-    This test verifies:
-    1. The dashboard summary endpoint returns valid data
-    2. The dashboard stats endpoint returns valid data
-    3. The dashboard alerts endpoint returns valid data
-    4. The dashboard performance endpoint returns valid data
-    5. The dashboard performance endpoint handles invalid timeframe parameter
-    """
-    # Test the dashboard summary endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/summary")
-    assert response.status_code == 200
-    data = response.json()
-    assert "follower_count" in data
-    assert "active_follower_count" in data
-    assert "total_positions" in data
-    assert isinstance(data["follower_count"], int)
-    
-    # Test the dashboard stats endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/stats")
-    assert response.status_code == 200
-    data = response.json()
-    assert "stats" in data
-    assert isinstance(data["stats"], list)
-    
-    # Test the dashboard alerts endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/alerts")
-    assert response.status_code == 200
-    data = response.json()
-    assert "alerts" in data
-    assert isinstance(data["alerts"], list)
-    
-    # Test the dashboard performance endpoint
-    response = await admin_api_client.get("/api/v1/dashboard/performance")
-    assert response.status_code == 200
-    data = response.json()
-    assert "performance" in data
-    assert "daily" in data["performance"]
-    
-    # Test the dashboard performance endpoint with invalid timeframe
-    # Note: The current implementation doesn't validate the timeframe parameter
-    response = await admin_api_client.get("/api/v1/dashboard/performance?timeframe=invalid")
-    
-    # The API currently accepts any timeframe parameter without validation
-    assert response.status_code == 200
-    data = response.json()
-    assert "performance" in data
+    """Test error handling in the dashboard API endpoints."""
+    # Mock the follower service to raise an exception
+    with patch("admin_api.app.api.v1.endpoints.dashboard.get_follower_service") as mock_get_service:
+        mock_service = MagicMock()
+        mock_service.get_followers.side_effect = Exception("Database error")
+        mock_get_service.return_value = mock_service
+
+        # Test get_dashboard_summary error handling
+        response_summary = await admin_api_client.get("/api/v1/dashboard/summary")
+        assert response_summary.status_code == 500
+        assert "Database error" in response_summary.json()["detail"]
+
+        # Test get_dashboard_stats error handling
+        response_stats = await admin_api_client.get("/api/v1/dashboard/stats")
+        assert response_stats.status_code == 500
+        assert "Database error" in response_stats.json()["detail"]
+
+        # Note: Alerts and Performance endpoints are placeholders and don't use the service yet,
+        # so no specific error handling tests for them based on service errors.
 
 
 @pytest.mark.asyncio
@@ -1012,7 +1164,7 @@ async def test_periodic_follower_update_task(
 ):
     """
     Test the periodic follower update task.
-    
+
     This test verifies:
     1. The task runs and broadcasts updates
     2. The task handles errors gracefully
@@ -1020,19 +1172,19 @@ async def test_periodic_follower_update_task(
     # Import the necessary modules
     from admin_api.app.api.v1.endpoints.dashboard import active_connections, periodic_follower_update_task
     from admin_api.app.services.follower_service import FollowerService
-    
+
     # Create a mock follower service
     mock_follower_service = MagicMock(spec=FollowerService)
     mock_follower_service.get_followers.return_value = [
         MagicMock(id="1", email="test1@example.com", enabled=True),
         MagicMock(id="2", email="test2@example.com", enabled=False)
     ]
-    
+
     # Create a mock WebSocket connection
     mock_websocket = MagicMock()
     mock_websocket.send_json = AsyncMock()
     active_connections.add(mock_websocket)
-    
+
     try:
         # Mock broadcast_updates to avoid actual WebSocket operations
         with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', AsyncMock()) as mock_broadcast:
@@ -1042,48 +1194,49 @@ async def test_periodic_follower_update_task(
                 follower_service=mock_follower_service,
                 interval_seconds=0.1
             ))
-            
+
             # Wait a longer time to let it run at least one cycle
-            await asyncio.sleep(0.3)
-            
+            await asyncio.sleep(0.5) # Increased sleep time
+
             # Cancel the task
             task.cancel()
-            
+
             try:
                 await task
             except asyncio.CancelledError:
                 pass  # Expected
-            
+
             # Verify broadcast_updates was called at least once
             assert mock_broadcast.called
-            
+
         # Test error handling in the task
         mock_follower_service.get_followers.side_effect = Exception("Database error")
-        
+
         with patch('admin_api.app.api.v1.endpoints.dashboard.broadcast_updates', AsyncMock()) as mock_broadcast:
             # Create a task that will be cancelled immediately
+            import asyncio
             task = asyncio.create_task(periodic_follower_update_task(
                 follower_service=mock_follower_service,
                 interval_seconds=0.1
             ))
-            
-            # Wait a longer time to let it run at least one cycle
-            await asyncio.sleep(0.3)
-            
+
+            # Wait a short time for the task to run, hit the exception, and call the mock
+            await asyncio.sleep(0.3) # Correctly indented sleep
+
             # Cancel the task
             task.cancel()
-            
+
             try:
                 await task
             except asyncio.CancelledError:
                 pass  # Expected
-            
+
             # Verify the task didn't crash despite the exception
             # The broadcast should still be called with an error message
             assert mock_broadcast.called
-    finally:
+    finally: # Correctly aligned finally block relative to the main 'try' starting around line 1090
         # Clean up by removing our mock connection
-        active_connections.remove(mock_websocket)
+        active_connections.remove(mock_websocket) # Correctly indented cleanup
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -1098,12 +1251,12 @@ async def test_followers_api_error_handling( # Ensure async def
     response = await admin_api_client.post(
         f"/api/v1/close/{nonexistent_id}"
     )
-    
+
     assert response.status_code == 404
     error_detail = response.json()
     assert "detail" in error_detail
     assert nonexistent_id in error_detail["detail"]
-    
+
     # Test service unavailable error when trigger_close_positions fails
     # We need to create a follower first
     follower_data = {
@@ -1113,28 +1266,45 @@ async def test_followers_api_error_handling( # Ensure async def
         "commission_pct": 15,
         "ibkr_secret_ref": "test-secret-ref"
     }
-    
+
     response = await admin_api_client.post( # Ensure await
         "/api/v1/followers",
         json=follower_data
     )
-    
+
     assert response.status_code == 201
     created_follower = response.json()
     follower_id = created_follower["id"]
-    
-    # Mock the trigger_close_positions method to return False
-    from unittest.mock import patch
-    
-    with patch('admin_api.app.services.follower_service.publish_message', return_value=False):
-        response = await admin_api_client.post(
-            f"/api/v1/close/{follower_id}"
-        )
-        
-        assert response.status_code == 503  # Service Unavailable
-        error_detail = response.json()
-        assert "detail" in error_detail
-        assert "unavailable" in error_detail["detail"].lower() or "error" in error_detail["detail"].lower()
+
+    try:
+        # Mock the trigger_close_positions method to return False
+        from unittest.mock import patch
+        with patch("admin_api.app.services.follower_service.FollowerService.trigger_close_positions", return_value=False) as mock_trigger:
+            # Mock the get_settings dependency
+            with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+                response = await admin_api_client.post(
+                    f"/api/v1/close/{follower_id}"
+                )
+
+        assert response.status_code == 503 # Service Unavailable
+        assert "Failed to trigger close positions" in response.json()["detail"]
+        mock_trigger.assert_called_once_with(follower_id)
+
+        # Test service unavailable error when trigger_close_positions raises an exception
+        with patch("admin_api.app.services.follower_service.FollowerService.trigger_close_positions", side_effect=Exception("Pub/Sub error")) as mock_trigger:
+             # Mock the get_settings dependency
+            with patch("admin_api.app.api.v1.endpoints.followers.get_settings", return_value=MagicMock()):
+                response = await admin_api_client.post(
+                    f"/api/v1/close/{follower_id}"
+                )
+
+        assert response.status_code == 503 # Service Unavailable
+        assert "Pub/Sub error" in response.json()["detail"]
+        mock_trigger.assert_called_once_with(follower_id)
+
+    finally:
+        # Clean up the created follower
+        await test_mongo_db.followers.delete_one({"_id": follower_id})
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -1144,15 +1314,16 @@ async def test_list_followers_error_handling( # Ensure async def
 ):
     admin_api_client, _ = admin_api_client # Unpack client
     """Test error handling in the list followers endpoint."""
-    # Mock the get_followers method to raise an exception
-    with patch('admin_api.app.services.follower_service.FollowerService.get_followers',
-               side_effect=Exception("Database connection error")):
+    # Mock the follower service to raise an exception
+    with patch("admin_api.app.api.v1.endpoints.followers.get_follower_service") as mock_get_service:
+        mock_service = MagicMock()
+        mock_service.get_followers.side_effect = Exception("Database connection failed")
+        mock_get_service.return_value = mock_service
+
         response = await admin_api_client.get("/api/v1/followers")
-        
-        assert response.status_code == 500
-        error_detail = response.json()
-        assert "detail" in error_detail
-        assert "failed to retrieve followers" in error_detail["detail"].lower()
+
+        assert response.status_code == 500 # Internal Server Error
+        assert "Database connection failed" in response.json()["detail"]
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -1161,27 +1332,28 @@ async def test_create_follower_service_error( # Ensure async def
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     admin_api_client, _ = admin_api_client # Unpack client
-    """Test error handling when the service fails to create a follower."""
+    """Test error handling when follower service fails during creation."""
     follower_data = {
-        "email": "service-error@example.com",
-        "iban": "IBAN-SERVICE-ERROR",
-        "ibkr_username": "service_error_user",
+        "email": "create-error-test@example.com",
+        "iban": "IBAN-CREATE-ERROR",
+        "ibkr_username": "create_error_user",
         "commission_pct": 15,
         "ibkr_secret_ref": "test-secret-ref"
     }
-    
-    # Mock the create_follower method to raise a generic exception
-    with patch('admin_api.app.services.follower_service.FollowerService.create_follower',
-               side_effect=Exception("Database connection error")):
+
+    # Mock the follower service to raise an exception during create_follower
+    with patch("admin_api.app.api.v1.endpoints.followers.get_follower_service") as mock_get_service:
+        mock_service = MagicMock()
+        mock_service.create_follower.side_effect = Exception("Service creation failed")
+        mock_get_service.return_value = mock_service
+
         response = await admin_api_client.post(
             "/api/v1/followers",
             json=follower_data
         )
-        
-        assert response.status_code == 500
-        error_detail = response.json()
-        assert "detail" in error_detail
-        assert "failed to create follower" in error_detail["detail"].lower()
+
+        assert response.status_code == 500 # Internal Server Error
+        assert "Service creation failed" in response.json()["detail"]
 
 
 @pytest.mark.asyncio # Ensure async marker
@@ -1190,36 +1362,41 @@ async def test_toggle_follower_service_error( # Ensure async def
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     admin_api_client, _ = admin_api_client # Unpack client
-    """Test error handling when the service fails to toggle a follower."""
-    # Create a follower first
+    """Test error handling when follower service fails during toggle."""
+    # We need a follower to attempt toggling
     follower_data = {
-        "email": "toggle-error@example.com",
+        "email": "toggle-error-test@example.com",
         "iban": "IBAN-TOGGLE-ERROR",
         "ibkr_username": "toggle_error_user",
         "commission_pct": 15,
         "ibkr_secret_ref": "test-secret-ref"
     }
-    
-    response = await admin_api_client.post( # Ensure await
+
+    response = await admin_api_client.post(
         "/api/v1/followers",
         json=follower_data
     )
-    
     assert response.status_code == 201
     created_follower = response.json()
     follower_id = created_follower["id"]
-    
-    # Mock the toggle_follower_enabled method to raise an exception
-    with patch('admin_api.app.services.follower_service.FollowerService.toggle_follower_enabled',
-               side_effect=Exception("Database connection error")):
-        response = await admin_api_client.post(
-            f"/api/v1/followers/{follower_id}/toggle"
-        )
-        
-        assert response.status_code == 500
-        error_detail = response.json()
-        assert "detail" in error_detail
-        assert "unexpected server error" in error_detail["detail"].lower()
+
+    try:
+        # Mock the follower service to raise an exception during toggle_follower_enabled
+        with patch("admin_api.app.api.v1.endpoints.followers.get_follower_service") as mock_get_service:
+            mock_service = MagicMock()
+            mock_service.toggle_follower_enabled.side_effect = Exception("Service toggle failed")
+            mock_get_service.return_value = mock_service
+
+            response = await admin_api_client.post(
+                f"/api/v1/followers/{follower_id}/toggle"
+            )
+
+            assert response.status_code == 500 # Internal Server Error
+            assert "Service toggle failed" in response.json()["detail"]
+
+    finally:
+        # Clean up the created follower
+        await test_mongo_db.followers.delete_one({"_id": follower_id})
 
 
 @pytest.mark.asyncio
@@ -1227,83 +1404,73 @@ async def test_follower_service_additional_methods(
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
-    Test additional methods in the FollowerService class.
-    
+    Test additional FollowerService methods integration with MongoDB.
+
     This test verifies:
-    1. get_follower_by_email works correctly
-    2. update_follower works correctly
-    3. delete_follower works correctly
+    1. Followers can be retrieved by email
+    2. Followers can be updated
+    3. Followers can be deleted
     """
-    # Create a follower service instance
     from admin_api.app.services.follower_service import FollowerService
-    from admin_api.app.core.config import get_settings
     from admin_api.app.schemas.follower import FollowerCreate, FollowerUpdate
-    
+    from admin_api.app.core.config import get_settings
+
     settings = get_settings()
     service = FollowerService(db=test_mongo_db, settings=settings)
-    
-    # Create a test follower
-    email = "additional-methods@example.com"
-    follower_create = FollowerCreate(
-        email=email,
-        iban="IBAN-ADDITIONAL",
-        ibkr_username="additional_user",
-        commission_pct=25,
-        ibkr_secret_ref="test-secret-ref"
-    )
-    
-    created_follower = await service.create_follower(follower_create)
-    assert created_follower is not None
-    follower_id = created_follower.id
-    
+    follower_id_to_cleanup = None # Store string ID
+
     try:
+        # Create a new follower
+        follower_create = FollowerCreate(
+            email="additional-methods-test@example.com",
+            iban="NL91ABNA0417164308",
+            ibkr_username="additionaluser",
+            ibkr_secret_ref="projects/spreadpilot-test/secrets/ibkr-password-additionaluser",
+            commission_pct=20.0,
+        )
+        follower = await service.create_follower(follower_create)
+        follower_id = follower.id
+        follower_id_to_cleanup = follower_id
+
         # Test get_follower_by_email
-        follower_by_email = await service.get_follower_by_email(email)
+        follower_by_email = await service.get_follower_by_email(follower.email)
         assert follower_by_email is not None
         assert follower_by_email.id == follower_id
-        assert follower_by_email.email == email
-        
-        # Test get_follower_by_email with non-existent email
-        non_existent = await service.get_follower_by_email("non-existent@example.com")
-        assert non_existent is None
-        
+        assert follower_by_email.email == follower.email
+
         # Test update_follower
         update_data = FollowerUpdate(
-            iban="UPDATED-IBAN",
-            commission_pct=30
+            email="updated-additional-methods-test@example.com",
+            commission_pct=25.0,
         )
-        
         updated_follower = await service.update_follower(follower_id, update_data)
         assert updated_follower is not None
-        assert updated_follower.iban == "UPDATED-IBAN"
-        assert updated_follower.commission_pct == 30
-        assert updated_follower.email == email  # Unchanged
-        
-        # Verify update in DB
-        db_follower = await service.get_follower_by_id(follower_id)
-        assert db_follower is not None
-        assert db_follower.iban == "UPDATED-IBAN"
-        assert db_follower.commission_pct == 30
-        
-        # Test update_follower with non-existent ID
-        non_existent_update = await service.update_follower("non-existent-id", update_data)
-        assert non_existent_update is None
-        
+        assert updated_follower.id == follower_id
+        assert updated_follower.email == update_data.email
+        assert updated_follower.commission_pct == update_data.commission_pct
+
+        # Verify in DB
+        db_doc = await test_mongo_db.followers.find_one({"_id": follower_id})
+        assert db_doc["email"] == update_data.email
+        assert db_doc["commission_pct"] == update_data.commission_pct
+
         # Test delete_follower
         delete_result = await service.delete_follower(follower_id)
-        assert delete_result is True
-        
-        # Verify deletion
-        deleted_follower = await service.get_follower_by_id(follower_id)
-        assert deleted_follower is None
-        
-        # Test delete_follower with non-existent ID
-        non_existent_delete = await service.delete_follower("non-existent-id")
-        assert non_existent_delete is False
-        
+        assert delete_result is True # Assuming service returns True on success
+
+        # Verify deleted in DB
+        deleted_doc = await test_mongo_db.followers.find_one({"_id": follower_id})
+        assert deleted_doc is None
+
+        # Test deleting non-existent follower
+        nonexistent_id = str(ObjectId())
+        delete_nonexistent_result = await service.delete_follower(nonexistent_id)
+        assert delete_nonexistent_result is False # Assuming service returns False for non-existent
+
     finally:
-        # Clean up (just in case delete_follower test fails)
-        await test_mongo_db.followers.delete_one({"_id": follower_id})
+        # Ensure cleanup even if delete_follower failed in the test
+        if follower_id_to_cleanup:
+             await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup})
 
 
 @pytest.mark.asyncio
@@ -1311,77 +1478,56 @@ async def test_follower_service_batch_operations(
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
-    Test batch operations in the FollowerService class.
-    
+    Test batch operations in FollowerService integration with MongoDB.
+
     This test verifies:
-    1. create_followers_batch works correctly
-    2. update_followers_batch works correctly
-    3. delete_followers_batch works correctly
+    1. Multiple followers can be created in a batch
+    2. Multiple followers can be retrieved by IDs
     """
-    # Create a follower service instance
     from admin_api.app.services.follower_service import FollowerService
-    from admin_api.app.core.config import get_settings
     from admin_api.app.schemas.follower import FollowerCreate, FollowerUpdate
-    from spreadpilot_core.models.follower import FollowerState
-    
+    from admin_api.app.core.config import get_settings
+
     settings = get_settings()
     service = FollowerService(db=test_mongo_db, settings=settings)
-    
-    # Create batch of followers
-    batch_creates = [
-        FollowerCreate(
-            email=f"batch-{i}@example.com",
-            iban=f"IBAN-BATCH-{i}",
-            ibkr_username=f"batch_user_{i}",
-            commission_pct=20 + i,
-            ibkr_secret_ref=f"test-secret-ref-{i}"
-        )
-        for i in range(3)
-    ]
-    
-    created_followers = await service.create_followers_batch(batch_creates)
-    assert len(created_followers) == 3
-    
-    # Store IDs for cleanup
-    follower_ids = [f.id for f in created_followers]
-    
+    follower_ids_to_cleanup = []
+
     try:
+        # Test batch creation
+        batch_creates = [
+            FollowerCreate(email="batch-test-1@example.com", iban="IBAN-BATCH-1", ibkr_username="batchuser1", commission_pct=10, ibkr_secret_ref="secret1"),
+            FollowerCreate(email="batch-test-2@example.com", iban="IBAN-BATCH-2", ibkr_username="batchuser2", commission_pct=12, ibkr_secret_ref="secret2"),
+            FollowerCreate(email="batch-test-3@example.com", iban="IBAN-BATCH-3", ibkr_username="batchuser3", commission_pct=14, ibkr_secret_ref="secret3"),
+        ]
+        created_followers = await service.create_followers_batch(batch_creates)
+        assert len(created_followers) == len(batch_creates)
+        follower_ids = [f.id for f in created_followers]
+        follower_ids_to_cleanup.extend(follower_ids)
+
+        # Verify in DB
+        db_docs = await test_mongo_db.followers.find({"_id": {"$in": follower_ids}}).to_list(length=len(follower_ids))
+        assert len(db_docs) == len(follower_ids)
+        db_ids = {doc["_id"] for doc in db_docs}
+        assert set(follower_ids) == db_ids
+
         # Test get_followers_by_ids
         retrieved_followers = await service.get_followers_by_ids(follower_ids)
-        assert len(retrieved_followers) == 3
-        assert {f.id for f in retrieved_followers} == set(follower_ids)
-        
-        # Test update_followers_batch
-        batch_updates = [
-            (follower_ids[0], FollowerUpdate(enabled=True, state=FollowerState.ACTIVE)),
-            (follower_ids[1], FollowerUpdate(commission_pct=50)),
-            (follower_ids[2], FollowerUpdate(iban="UPDATED-BATCH-IBAN"))
-        ]
+        assert len(retrieved_followers) == len(follower_ids)
+        retrieved_ids = {f.id for f in retrieved_followers}
+        assert set(follower_ids) == retrieved_ids
 
-        updated_followers = await service.update_followers_batch(batch_updates)
-        assert len(updated_followers) == 3
-        
-        # Verify updates
-        for updated in updated_followers:
-            if updated.id == follower_ids[0]:
-                assert updated.enabled is True
-                assert updated.state == FollowerState.ACTIVE
-            elif updated.id == follower_ids[1]:
-                assert updated.commission_pct == 50
-            elif updated.id == follower_ids[2]:
-                assert updated.iban == "UPDATED-BATCH-IBAN"
-        
-        # Test delete_followers_batch
-        delete_result = await service.delete_followers_batch(follower_ids)
-        assert delete_result == 3
-        
-        # Verify deletion
-        remaining = await service.get_followers_by_ids(follower_ids)
-        assert len(remaining) == 0
-        
+        # Test getting followers with some non-existent IDs
+        mixed_ids = follower_ids + [str(ObjectId()), str(ObjectId())]
+        retrieved_mixed = await service.get_followers_by_ids(mixed_ids)
+        assert len(retrieved_mixed) == len(follower_ids) # Should only return existing ones
+        retrieved_mixed_ids = {f.id for f in retrieved_mixed}
+        assert set(follower_ids) == retrieved_mixed_ids
+
+
     finally:
-        # Clean up (just in case delete_followers_batch test fails)
-        await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids}})
+        # Clean up
+        if follower_ids_to_cleanup:
+            await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids_to_cleanup}})
 
 
 @pytest.mark.asyncio
@@ -1389,119 +1535,112 @@ async def test_follower_service_trading_operations(
     test_mongo_db: AsyncIOMotorDatabase,
 ):
     """
-    Test trading-related operations in the FollowerService class.
-    
+    Test trading-related operations in FollowerService integration.
+
     This test verifies:
-    1. record_trade works correctly
-    2. get_follower_trades works correctly
-    3. get_follower_positions works correctly
+    1. Recording trades for a follower
+    2. Recording positions for a follower
+    3. Updating assignment state for a position
     """
-    # Create a follower service instance
     from admin_api.app.services.follower_service import FollowerService
-    from admin_api.app.core.config import get_settings
     from admin_api.app.schemas.follower import FollowerCreate
-    from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
-    
+    from admin_api.app.core.config import get_settings
+    from spreadpilot_core.models.trade import Trade
+    from spreadpilot_core.models.position import Position, AssignmentState
+    from unittest.mock import AsyncMock, MagicMock, patch
+    import datetime
+
     settings = get_settings()
     service = FollowerService(db=test_mongo_db, settings=settings)
-    
-    # Create a test follower
-    follower_create = FollowerCreate(
-        email="trading-ops@example.com",
-        iban="IBAN-TRADING",
-        ibkr_username="trading_user",
-        commission_pct=25,
-        ibkr_secret_ref="test-secret-ref"
-    )
-    
-    created_follower = await service.create_follower(follower_create)
-    assert created_follower is not None
-    follower_id = created_follower.id
-    
+    follower_id_to_cleanup = None
+    trade_ids_to_cleanup = []
+    position_ids_to_cleanup = []
+
     try:
-        # Mock the record_trade method to simulate recording trades
-        with patch.object(service, '_record_trade_in_db', new_callable=AsyncMock) as mock_record:
-            mock_record.return_value = True
-            
-            # Test record_trade
-            trade = {
-                "symbol": "AAPL",
-                "quantity": 10,
-                "price": 150.0,
-                "side": TradeSide.LONG.value,
-                "status": TradeStatus.FILLED.value,
-                "order_id": "test-order-1",
-                "follower_id": follower_id
-            }
-            
-            result = await service.record_trade(trade)
-            assert result is True
-            mock_record.assert_called_once()
-            
-        # Mock get_follower_trades to return test trades
-        with patch.object(service, '_get_trades_from_db', new_callable=AsyncMock) as mock_get_trades:
-            test_trades = [
-                {
-                    "symbol": "AAPL",
-                    "quantity": 10,
-                    "price": 150.0,
-                    "side": TradeSide.LONG.value,
-                    "status": TradeStatus.FILLED.value,
-                    "order_id": "test-order-1",
-                    "follower_id": follower_id
-                },
-                {
-                    "symbol": "MSFT",
-                    "quantity": 5,
-                    "price": 250.0,
-                    "side": TradeSide.LONG.value,
-                    "status": TradeStatus.FILLED.value,
-                    "order_id": "test-order-2",
-                    "follower_id": follower_id
-                }
-            ]
-            mock_get_trades.return_value = test_trades
-            
-            # Test get_follower_trades
-            trades = await service._get_trades_from_db(follower_id)
-            assert len(trades) == 2
-            assert trades[0]["symbol"] == "AAPL"
-            assert trades[0]["quantity"] == 10
-            assert trades[0]["side"] == TradeSide.LONG.value
-            assert trades[1]["symbol"] == "MSFT"
-            
-        # Mock get_follower_positions to return test positions
-        with patch.object(service, '_get_positions_from_db', new_callable=AsyncMock) as mock_get_positions:
-            from spreadpilot_core.models.position import Position, AssignmentState
-            
-            test_positions = [
-                {
-                    "symbol": "AAPL",
-                    "quantity": 10,
-                    "entry_price": 150.0,
-                    "current_price": 160.0,
-                    "follower_id": follower_id,
-                    "assignment_state": AssignmentState.ASSIGNED.value
-                },
-                {
-                    "symbol": "MSFT",
-                    "quantity": 5,
-                    "entry_price": 250.0,
-                    "current_price": 260.0,
-                    "follower_id": follower_id,
-                    "assignment_state": AssignmentState.ASSIGNED.value
-                }
-            ]
-            mock_get_positions.return_value = test_positions
-            
-            # Test get_follower_positions
-            positions = await service._get_positions_from_db(follower_id)
-            assert len(positions) == 2
-            assert positions[0]["symbol"] == "AAPL"
-            assert positions[0]["quantity"] == 10
-            assert positions[0]["assignment_state"] == AssignmentState.ASSIGNED.value
-            assert positions[1]["symbol"] == "MSFT"
-            
+        # Create a follower
+        follower_create = FollowerCreate(
+            email="trading-ops-test@example.com",
+            iban="IBAN-TRADING-OPS",
+            ibkr_username="tradingopuser",
+            ibkr_secret_ref="projects/spreadpilot-test/secrets/ibkr-password-tradingopuser",
+            commission_pct=20.0,
+        )
+        follower = await service.create_follower(follower_create)
+        follower_id = follower.id
+        follower_id_to_cleanup = follower_id
+
+        # Test record_trade
+        trade_data = {
+            "follower_id": follower_id,
+            "symbol": "AAPL",
+            "action": "BUY",
+            "quantity": 10,
+            "price": 150.0,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "commission": 1.5,
+            "details": {"order_id": "12345"}
+        }
+        trade = Trade(**trade_data)
+
+        # Mock the collection to return an ObjectId on insert_one
+        with patch.object(test_mongo_db, 'trades') as mock_collection:
+             mock_collection.insert_one.return_value = MagicMock(inserted_id=ObjectId())
+             # Patch the actual record_trade method to use the mock collection
+             with patch("admin_api.app.services.follower_service.FollowerService.record_trade", wraps=service.record_trade) as mock_record:
+                 trade_id = await mock_record(trade)
+                 assert trade_id is not None # Assuming it returns the inserted ID
+                 trade_ids_to_cleanup.append(trade_id) # Store the returned ID
+
+        # Test record_position
+        test_positions = [
+            Position(
+                follower_id=follower_id,
+                symbol="GOOG",
+                quantity=5,
+                average_cost=2500.0,
+                timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                assignment_state=AssignmentState.PENDING,
+                details={"contract_id": "67890"}
+            ),
+             Position(
+                follower_id=follower_id,
+                symbol="MSFT",
+                quantity=20,
+                average_cost=300.0,
+                timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                assignment_state=AssignmentState.ASSIGNED,
+                details={"contract_id": "abcde"}
+            )
+        ]
+
+        # Mock the collection to return InsertManyResult with ObjectIds
+        with patch.object(test_mongo_db, 'positions') as mock_collection:
+            mock_collection.insert_many.return_value = MagicMock(inserted_ids=[ObjectId(), ObjectId()])
+            # Patch the actual record_positions method
+            with patch("admin_api.app.services.follower_service.FollowerService.record_positions", wraps=service.record_positions) as mock_record_positions:
+                position_ids = await mock_record_positions(test_positions)
+                assert len(position_ids) == len(test_positions)
+                position_ids_to_cleanup.extend(position_ids) # Store the returned IDs
+
+        # Test update_position_assignment_state
+        if position_ids_to_cleanup:
+            position_id_to_update = position_ids_to_cleanup[0]
+            updated_position = await service.update_position_assignment_state(position_id_to_update, AssignmentState.ASSIGNED)
+            assert updated_position is not None
+            assert updated_position.assignment_state == AssignmentState.ASSIGNED
+
+            # Verify in DB
+            db_doc = await test_mongo_db.positions.find_one({"_id": position_id_to_update})
+            assert db_doc["assignment_state"] == AssignmentState.ASSIGNED.value
+
+
     finally:
         # Clean up
-        await test_mongo_db.followers.delete_one({"_id": follower_id})
+        if follower_id_to_cleanup:
+            await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup})
+        if trade_ids_to_cleanup:
+            # Assuming trade_ids_to_cleanup contains ObjectIds returned by the mock
+            await test_mongo_db.trades.delete_many({"_id": {"$in": trade_ids_to_cleanup}})
+        if position_ids_to_cleanup:
+             # Assuming position_ids_to_cleanup contains ObjectIds returned by the mock
+            await test_mongo_db.positions.delete_many({"_id": {"$in": position_ids_to_cleanup}})

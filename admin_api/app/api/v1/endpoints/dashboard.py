@@ -114,59 +114,6 @@ async def periodic_follower_update_task(
             
         # Wait for the next update
         await asyncio.sleep(interval_seconds)
-        
-# WebSocket endpoint for dashboard updates
-@router.websocket("/ws/dashboard")
-async def websocket_endpoint(websocket: WebSocket):
-    """
-    WebSocket endpoint for dashboard updates.
-    
-    This endpoint:
-    1. Accepts WebSocket connections
-    2. Adds the connection to the active_connections set
-    3. Listens for messages from the client
-    4. Removes the connection when the client disconnects
-    """
-    await websocket.accept()
-    active_connections.add(websocket)
-    logger.info(f"New WebSocket connection established. Total connections: {len(active_connections)}")
-    
-    try:
-        # Send initial data
-        follower_service = FollowerService(
-            db=await get_mongo_db(),
-            settings=get_settings()
-        )
-        
-        followers = await follower_service.get_followers()
-        initial_message = {
-            "type": "initial_data",
-            "data": {
-                "followers": [follower.model_dump() for follower in followers],
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
-            }
-        }
-        await websocket.send_json(initial_message)
-        
-        # Listen for messages from the client
-        while True:
-            data = await websocket.receive_text()
-            logger.info(f"Received message from WebSocket client: {data}")
-            
-            # Process client messages if needed
-            # For now, just echo back
-            await websocket.send_json({
-                "type": "echo",
-                "data": data
-            })
-            
-    except WebSocketDisconnect:
-        active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Remaining connections: {len(active_connections)}")
-    except Exception as e:
-        logger.error(f"Error in WebSocket connection: {e}", exc_info=True)
-        if websocket in active_connections:
-            active_connections.remove(websocket)
 
 # Dashboard API endpoints
 @router.get("/dashboard/summary", response_model=dict)
@@ -295,46 +242,8 @@ async def get_dashboard_performance():
             detail=f"Failed to get dashboard performance: {str(e)}"
         )
 
-# Keep the original periodic_follower_update_task function
-async def periodic_follower_update_task(
-    follower_service: FollowerService,
-    interval_seconds: float = 5.0
-):
-    """Periodically fetches follower data and broadcasts updates."""
-    logger.info("Starting periodic follower update task for WebSocket.")
-    
-    # Create follower_service if not provided (e.g., when run standalone, though usually started via lifespan)
-    if follower_service is None:
-        # Use the already imported modules for MongoDB
-        # Note: This relies on the global client being initialized elsewhere,
-        # which might be fragile if this task runs truly independently.
-        # Ideally, the service instance is always passed from the lifespan manager.
-        try:
-            db = await get_mongo_db() # Get the MongoDB instance
-            settings = get_settings()
-            follower_service = FollowerService(db=db, settings=settings)
-            logger.info("Created follower service for periodic task using MongoDB")
-        except Exception as e:
-            logger.error(f"Failed to create FollowerService in periodic task: {e}", exc_info=True)
-            # Exit the task if service cannot be created
-            return
-
-    while True:
-        try:
-            followers: List[FollowerRead] = await follower_service.get_followers()
-            # Convert Pydantic models to dicts for JSON serialization
-            followers_data = [f.model_dump(mode='json') for f in followers]
-            update_message = {"type": "followers_update", "data": followers_data}
-            if active_connections: # Only broadcast if there are active connections
-                logger.debug(f"Broadcasting follower updates to {len(active_connections)} clients.")
-                await broadcast_updates(update_message)
-            else:
-                logger.debug("No active WebSocket connections, skipping broadcast.")
-        except Exception as e:
-            logger.error(f"Error in periodic follower update task: {e}", exc_info=True)
-        
-        # Wait for the next interval
-        await asyncio.sleep(interval_seconds)
+# Removed duplicate periodic_follower_update_task function definition.
+# The correct definition is above (lines 72-116).
 
 
 @router.websocket("/ws/dashboard")
