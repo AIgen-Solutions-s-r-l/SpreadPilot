@@ -4,8 +4,8 @@ services:
   # Core services
   trading-bot:
     build:
-      context: .
-      dockerfile: trading-bot/Dockerfile
+      context: ./trading-bot
+      dockerfile: Dockerfile
     container_name: spreadpilot-trading-bot
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -31,8 +31,8 @@ services:
 
   watchdog:
     build:
-      context: .
-      dockerfile: watchdog/Dockerfile
+      context: ./watchdog # Note: Watchdog Dockerfile might be missing
+      dockerfile: Dockerfile
     container_name: spreadpilot-watchdog
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -59,8 +59,8 @@ services:
 
   admin-api:
     build:
-      context: .
-      dockerfile: admin-api/Dockerfile
+      context: ./admin_api
+      dockerfile: Dockerfile
     container_name: spreadpilot-admin-api
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -87,8 +87,8 @@ services:
 
   report-worker:
     build:
-      context: .
-      dockerfile: report-worker/Dockerfile
+      context: ./report_worker
+      dockerfile: Dockerfile
     container_name: spreadpilot-report-worker
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -108,8 +108,8 @@ services:
 
   alert-router:
     build:
-      context: .
-      dockerfile: alert-router/Dockerfile
+      context: ./alert_router
+      dockerfile: Dockerfile
     container_name: spreadpilot-alert-router
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -144,7 +144,7 @@ services:
   # Removed Firestore service definition
 
   ib-gateway:
-    image: ghcr.io/spreadpilot/ib-gateway:latest
+    image: ghcr.io/gnzsnz/ib-gateway:latest
     container_name: spreadpilot-ib-gateway
     environment:
       - TWS_USERID=${IB_USERNAME}

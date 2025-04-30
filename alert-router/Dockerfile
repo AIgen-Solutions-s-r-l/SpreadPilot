@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --upgrade pip pip-tools
 
 # --- Install spreadpilot-core ---
 # Copy the core library source into the image
-# Assumes the Docker build context is the project root (../)
+# Assumes the Docker build context is the project root (../) -> Corrected for ./alert_router context
 COPY ../spreadpilot-core /app/spreadpilot-core
 # Install the core library in editable mode
 # This makes its modules available to the alert-router app
