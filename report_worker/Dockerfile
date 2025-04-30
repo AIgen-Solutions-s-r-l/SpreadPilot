@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Add other dependencies if needed, e.g., libjpeg-dev zlib1g-dev for Pillow/ReportLab
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy the requirements file into the container (Path relative to project root context '.')
 COPY report_worker/requirements.in ./
 
 # Install project dependencies
@@ -32,16 +32,14 @@ RUN pip-compile requirements.in --output-file requirements.txt --allow-unsafe
 # Install the compiled dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the spreadpilot-core library source code into the container
-# This assumes spreadpilot-core is one level up from the report-worker directory
-# Adjust the source path if the structure is different
+# Copy the spreadpilot-core library source code into the container (Path relative to project root context '.')
 COPY spreadpilot-core ./spreadpilot-core
 
 # Install spreadpilot-core in editable mode (or regular install if preferred)
 # This makes the `-e ../spreadpilot-core` in requirements.txt work
 RUN pip install --no-cache-dir -e ./spreadpilot-core
 
-# Copy the application code into the container
+# Copy the application code into the container (Path relative to project root context '.')
 COPY report_worker/app ./app
 
 # Specify the command to run on container startup

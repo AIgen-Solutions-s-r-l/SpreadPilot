@@ -15,23 +15,22 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip pip-tools
 
 # --- Install spreadpilot-core ---
-# Copy the core library source into the image
-# Assumes the Docker build context is the project root (../) -> Corrected for ./alert_router context
-COPY ../spreadpilot-core /app/spreadpilot-core
+# Copy the core library source into the image (Path relative to project root context '.')
+COPY ./spreadpilot-core /app/spreadpilot-core
 # Install the core library in editable mode
 # This makes its modules available to the alert-router app
 RUN pip install --no-cache-dir -e /app/spreadpilot-core
 
 # --- Install alert-router dependencies ---
-# Copy the requirements file
-COPY requirements.in /app/requirements.in
+# Copy the requirements file (Path relative to project root context '.')
+COPY ./alert-router/requirements.in /app/requirements.in
 # Compile requirements.in to requirements.txt and install
 # This ensures deterministic builds using pinned versions
 RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container
-COPY app /app/app
+# Copy the application code into the container (Path relative to project root context '.')
+COPY ./alert-router/app /app/app
 
 # Expose the port the app runs on
 EXPOSE 8080
