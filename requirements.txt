@@ -16,8 +16,6 @@ anyio==4.9.0
     # via httpx
 attrs==25.3.0
     # via aiohttp
-cachetools==5.5.2
-    # via google-auth
 certifi==2025.4.26
     # via
     #   httpcore
@@ -33,6 +31,8 @@ deprecated==1.2.18
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-semantic-conventions
+dnspython==2.7.0
+    # via pymongo
 et-xmlfile==2.0.0
     # via openpyxl
 eventkit==1.0.3
@@ -41,50 +41,12 @@ frozenlist==1.6.0
     # via
     #   aiohttp
     #   aiosignal
-google-api-core[grpc]==2.24.2
+googleapis-common-protos==1.70.0
     # via
-    #   google-cloud-appengine-logging
-    #   google-cloud-core
-    #   google-cloud-firestore
-    #   google-cloud-logging
-google-auth==2.39.0
-    # via
-    #   google-api-core
-    #   google-cloud-appengine-logging
-    #   google-cloud-core
-    #   google-cloud-firestore
-    #   google-cloud-logging
-google-cloud-appengine-logging==1.6.1
-    # via google-cloud-logging
-google-cloud-audit-log==0.3.2
-    # via google-cloud-logging
-google-cloud-core==2.4.3
-    # via
-    #   google-cloud-firestore
-    #   google-cloud-logging
-google-cloud-firestore==2.20.2
-    # via spreadpilot-core (spreadpilot-core\setup.py)
-google-cloud-logging==3.12.1
-    # via spreadpilot-core (spreadpilot-core\setup.py)
-googleapis-common-protos[grpc]==1.70.0
-    # via
-    #   google-api-core
-    #   google-cloud-audit-log
-    #   grpc-google-iam-v1
-    #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
-grpc-google-iam-v1==0.14.2
-    # via google-cloud-logging
 grpcio==1.72.0rc1
-    # via
-    #   google-api-core
-    #   googleapis-common-protos
-    #   grpc-google-iam-v1
-    #   grpcio-status
-    #   opentelemetry-exporter-otlp-proto-grpc
-grpcio-status==1.71.0
-    # via google-api-core
+    # via opentelemetry-exporter-otlp-proto-grpc
 h11==0.16.0
     # via httpcore
 httpcore==1.0.9
@@ -101,6 +63,8 @@ idna==3.10
     #   yarl
 importlib-metadata==8.6.1
     # via opentelemetry-api
+motor==3.7.0
+    # via spreadpilot-core (spreadpilot-core\setup.py)
 multidict==6.4.3
     # via
     #   aiohttp
@@ -115,7 +79,6 @@ openpyxl==3.1.5
     # via spreadpilot-core (spreadpilot-core\setup.py)
 opentelemetry-api==1.32.1
     # via
-    #   google-cloud-logging
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
@@ -151,34 +114,16 @@ propcache==0.3.1
     # via
     #   aiohttp
     #   yarl
-proto-plus==1.26.1
-    # via
-    #   google-api-core
-    #   google-cloud-appengine-logging
-    #   google-cloud-firestore
-    #   google-cloud-logging
 protobuf==5.29.4
     # via
-    #   google-api-core
-    #   google-cloud-appengine-logging
-    #   google-cloud-audit-log
-    #   google-cloud-firestore
-    #   google-cloud-logging
     #   googleapis-common-protos
-    #   grpc-google-iam-v1
-    #   grpcio-status
     #   opentelemetry-proto
-    #   proto-plus
-pyasn1==0.6.1
-    # via
-    #   pyasn1-modules
-    #   rsa
-pyasn1-modules==0.4.2
-    # via google-auth
 pydantic==2.11.4
     # via spreadpilot-core (spreadpilot-core\setup.py)
 pydantic-core==2.33.2
     # via pydantic
+pymongo==4.12.1
+    # via motor
 python-dateutil==2.9.0.post0
     # via pandas
 python-http-client==3.3.7
@@ -192,11 +137,7 @@ pytz==2025.2
 reportlab==4.4.0
     # via spreadpilot-core (spreadpilot-core\setup.py)
 requests==2.32.3
-    # via
-    #   google-api-core
-    #   opentelemetry-exporter-otlp-proto-http
-rsa==4.9.1
-    # via google-auth
+    # via opentelemetry-exporter-otlp-proto-http
 sendgrid==6.11.0
     # via spreadpilot-core (spreadpilot-core\setup.py)
 six==1.17.0

@@ -9,7 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient # Import motor
 
 from flask import Flask, request, Response
 # Import logger and secret getter from core library
-from spreadpilot_core.logging.logger import get_logger, setup_cloud_logging
+from spreadpilot_core.logging.logger import get_logger, setup_logging # Corrected import, setup_logging is the setup function now
 from spreadpilot_core.utils.secrets import get_secret_from_mongo
 
 

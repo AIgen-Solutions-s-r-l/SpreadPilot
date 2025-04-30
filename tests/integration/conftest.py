@@ -18,7 +18,7 @@ from testcontainers.mongodb import MongoDbContainer # Added for Testcontainers
 
 import pytest
 import pytest_asyncio
-# from google.cloud import firestore # Removed Firestore import
+# Removed Firestore import line
 from fastapi.testclient import TestClient # Add TestClient import
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -61,21 +61,18 @@ get_mongo_db = admin_api_mongodb_db.get_mongo_db # Get the function to override
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
-    """Set up the test environment variables and mock external services."""
-    # Set environment variables for testing
-    # os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8084" # Removed Firestore env var
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if other services might need it, but admin-api doesn't directly use it now
-    os.environ["TESTING"] = "true"
-    # MongoDB URI is handled by Testcontainers and dependency injection override
+   """Set up the test environment variables and mock external services."""
+   # Set environment variables for testing
+   # Removed Firestore env var line
+   os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test" # Keep if other services might need it
+   os.environ["TESTING"] = "true"
+   # MongoDB URI is handled by Testcontainers and dependency injection override
 
-    # Remove global Firestore mock - no longer needed
-    # with patch("google.cloud.firestore.Client", MagicMock()) as mock_firestore:
-    #     yield mock_firestore
-    yield # Yield control to run tests
+   # Removed global Firestore mock block
+   yield # Yield control to run tests
 
-    # Clean up (if needed)
-    # Remove potentially conflicting env vars if set elsewhere, though testcontainers is preferred
-    os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
+   # Clean up (if needed)
+   # Removed Firestore env var cleanup
 
 
 # ---- Mock IBKR Client ----
@@ -316,35 +313,7 @@ async def override_get_mongo_db(test_db: AsyncIOMotorDatabase = Depends(test_mon
 
 # ---- Service Fixtures ----
 
-# Note: signal_processor fixture still uses firestore_client.
-# This will need to be updated if signal_processor also moves to MongoDB.
-# For now, we focus on admin_api_client.
-@pytest_asyncio.fixture
-async def signal_processor(patched_ibkr_client): # Removed firestore_client dependency
-    """Fixture for SignalProcessor with mocked dependencies.
-       WARNING: This fixture is likely outdated as SignalProcessor probably uses Firestore.
-       It's kept here for structure but might need removal or update in a separate task
-       focused on refactoring the trading-bot tests.
-    """
-    # Create a mock trading service
-    mock_service = MagicMock()
-    mock_service.active_followers = {"test-follower-id": True}
-    mock_service.ibkr_manager.place_vertical_spread = patched_ibkr_client.place_vertical_spread
-    mock_service.ibkr_manager.check_margin_for_trade = patched_ibkr_client.check_margin_for_trade
-    # mock_service.db = firestore_client # Ensure no lingering Firestore reference
-
-    # Create alert manager mock
-    mock_service.alert_manager.create_alert = AsyncMock()
-
-    # Create position manager mock
-    mock_service.position_manager.update_position = AsyncMock()
-
-    # Create settings mock
-    mock_service.settings = MagicMock()
-    mock_service.settings.min_price = 0.70
-
-    processor = SignalProcessor(mock_service)
-    yield processor
+# Removed outdated signal_processor fixture (lines 322-347)
 
 
 # Re-add httpx import

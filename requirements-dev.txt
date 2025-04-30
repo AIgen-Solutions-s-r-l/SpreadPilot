@@ -115,10 +115,8 @@ google-api-core[grpc]==2.24.2
     # via
     #   firebase-admin
     #   google-api-python-client
-    #   google-cloud-appengine-logging
     #   google-cloud-core
     #   google-cloud-firestore
-    #   google-cloud-logging
     #   google-cloud-storage
 google-api-python-client==2.168.0
     # via firebase-admin
@@ -127,28 +125,17 @@ google-auth==2.39.0
     #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
-    #   google-cloud-appengine-logging
     #   google-cloud-core
     #   google-cloud-firestore
-    #   google-cloud-logging
     #   google-cloud-storage
 google-auth-httplib2==0.2.0
     # via google-api-python-client
-google-cloud-appengine-logging==1.6.1
-    # via google-cloud-logging
-google-cloud-audit-log==0.3.2
-    # via google-cloud-logging
 google-cloud-core==2.4.3
     # via
     #   google-cloud-firestore
-    #   google-cloud-logging
     #   google-cloud-storage
 google-cloud-firestore==2.20.2
-    # via
-    #   firebase-admin
-    #   spreadpilot-core
-google-cloud-logging==3.12.1
-    # via spreadpilot-core
+    # via firebase-admin
 google-cloud-storage==3.1.0
     # via firebase-admin
 google-crc32c==1.7.1
@@ -157,21 +144,15 @@ google-crc32c==1.7.1
     #   google-resumable-media
 google-resumable-media==2.7.2
     # via google-cloud-storage
-googleapis-common-protos[grpc]==1.70.0
+googleapis-common-protos==1.70.0
     # via
     #   google-api-core
-    #   google-cloud-audit-log
-    #   grpc-google-iam-v1
     #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
-grpc-google-iam-v1==0.14.2
-    # via google-cloud-logging
 grpcio==1.71.0
     # via
     #   google-api-core
-    #   googleapis-common-protos
-    #   grpc-google-iam-v1
     #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
 grpcio-status==1.71.0
@@ -256,6 +237,7 @@ motor==3.7.0
     # via
     #   -r C:\Users\rocch\Projects\SpreadPilot\admin_api\requirements.in
     #   -r requirements-dev.in
+    #   spreadpilot-core
 msgpack==1.1.0
     # via cachecontrol
 multidict==6.4.3
@@ -280,7 +262,6 @@ openpyxl==3.1.5
     # via spreadpilot-core
 opentelemetry-api==1.32.1
     # via
-    #   google-cloud-logging
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
@@ -339,18 +320,12 @@ propcache==0.3.1
 proto-plus==1.26.1
     # via
     #   google-api-core
-    #   google-cloud-appengine-logging
     #   google-cloud-firestore
-    #   google-cloud-logging
 protobuf==5.29.4
     # via
     #   google-api-core
-    #   google-cloud-appengine-logging
-    #   google-cloud-audit-log
     #   google-cloud-firestore
-    #   google-cloud-logging
     #   googleapis-common-protos
-    #   grpc-google-iam-v1
     #   grpcio-status
     #   opentelemetry-proto
     #   proto-plus
