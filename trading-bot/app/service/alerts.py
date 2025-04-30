@@ -2,6 +2,8 @@
 
 import uuid
 from typing import Optional
+from datetime import datetime # Added datetime
+from bson import ObjectId # Added ObjectId
 
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Alert, AlertSeverity, AlertType
@@ -54,9 +56,25 @@ class AlertManager:
                 message=message,
             )
             
-            # Save alert to Firestore
-            self.service.db.collection("alerts").document(alert_id).set(alert.to_dict())
-            
+            # Save alert to MongoDB
+            if not self.service.mongo_db:
+                logger.error("MongoDB not initialized, cannot save alert.")
+                raise RuntimeError("MongoDB client not available in AlertManager")
+
+            alerts_collection = self.service.mongo_db["alerts"]
+            # Use model_dump(by_alias=True) to get MongoDB-compatible dict (_id)
+            alert_dict = alert.model_dump(by_alias=True, exclude_none=True)
+            # Ensure the ID is an ObjectId if it exists, though insert_one handles it if not present
+            if '_id' in alert_dict:
+                alert_dict['_id'] = ObjectId(alert_dict['_id'])
+            else:
+                # If ID wasn't pre-generated and passed to model, let Mongo generate it
+                # Or ensure the model always has an ID before this point
+                pass # Assuming alert.id was set with uuid4() as before
+
+            await alerts_collection.insert_one(alert_dict)
+            logger.debug(f"Saved alert {alert.id} to MongoDB.")
+
             logger.info(
                 "Created alert",
                 alert_id=alert_id,
@@ -158,30 +176,55 @@ class AlertManager:
             True if successful, False otherwise
         """
         try:
-            # Get alert document
-            alert_ref = self.service.db.collection("alerts").document(alert_id)
-            alert_doc = alert_ref.get()
-            
+            if not self.service.mongo_db:
+                logger.error("MongoDB not initialized, cannot acknowledge alert.")
+                raise RuntimeError("MongoDB client not available in AlertManager")
+
+            alerts_collection = self.service.mongo_db["alerts"]
+
+            # Convert string ID to ObjectId for querying
+            try:
+                alert_object_id = ObjectId(alert_id)
+            except Exception:
+                logger.error(f"Invalid alert ID format: {alert_id}")
+                return False
+
+            # Find the alert document
+            alert_doc = await alerts_collection.find_one({"_id": alert_object_id})
+
             # Check if alert exists
-            if not alert_doc.exists:
+            if not alert_doc:
                 logger.error(f"Alert not found: {alert_id}")
                 return False
-            
-            # Get alert data
-            alert_data = alert_doc.to_dict()
-            
+
             # Check if already acknowledged
-            if alert_data.get("acknowledged", False):
+            if alert_doc.get("acknowledged", False):
                 logger.warning(f"Alert already acknowledged: {alert_id}")
                 return True
-            
-            # Update alert
-            alert_ref.update({
-                "acknowledged": True,
-                "acknowledgedAt": datetime.datetime.now(),
-                "acknowledgedBy": user,
-            })
-            
+
+            # Update alert in MongoDB
+            update_result = await alerts_collection.update_one(
+                {"_id": alert_object_id},
+                {
+                    "$set": {
+                        "acknowledged": True,
+                        "acknowledged_at": datetime.now(datetime.timezone.utc), # Use timezone-aware UTC now
+                        "acknowledged_by": user,
+                    }
+                }
+            )
+
+            if update_result.modified_count == 0:
+                 # This might happen in a race condition if acknowledged between find_one and update_one
+                 logger.warning(f"Alert {alert_id} was potentially acknowledged by another process concurrently, or update failed.")
+                 # Check again to be sure
+                 refreshed_doc = await alerts_collection.find_one({"_id": alert_object_id})
+                 if refreshed_doc and refreshed_doc.get("acknowledged"):
+                     return True # It is acknowledged now
+                 else:
+                     logger.error(f"Failed to acknowledge alert {alert_id} despite finding it initially.")
+                     return False # Update failed
+
             logger.info(
                 "Acknowledged alert",
                 alert_id=alert_id,

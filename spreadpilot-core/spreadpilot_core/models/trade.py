@@ -2,9 +2,22 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, Annotated # Added Any, Annotated
+from bson import ObjectId # Added ObjectId
+from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
 
 from pydantic import BaseModel, Field
+
+
+# Validator function to convert ObjectId to str
+def validate_objectid_to_str(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    # If it's already a string (e.g., during creation), keep it
+    if isinstance(v, str):
+        return v
+    # Raise error for other unexpected types
+    raise TypeError('ObjectId or str required')
 
 
 class TradeSide(str, Enum):
@@ -26,11 +39,12 @@ class TradeStatus(str, Enum):
 class Trade(BaseModel):
     """Trade model.
     
-    Maps to Firestore collection: trades/{tradeId}
+    Maps to MongoDB collection: trades
     """
 
-    id: str = Field(..., description="Trade ID")
-    follower_id: str = Field(..., description="Follower ID")
+    # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique Trade ID", alias='_id')
+    follower_id: str = Field(..., description="Follower ID (Index this field)")
     side: TradeSide = Field(..., description="Trade side")
     qty: int = Field(..., description="Quantity")
     strike: float = Field(..., description="Strike price")
@@ -42,36 +56,11 @@ class Trade(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    def to_dict(self):
-        """Convert to dict for Firestore."""
-        return {
-            "followerId": self.follower_id,
-            "side": self.side.value,
-            "qty": self.qty,
-            "strike": self.strike,
-            "limitPriceRequested": self.limit_price_requested,
-            "status": self.status.value,
-            "timestamps": self.timestamps,
-            "errorCode": self.error_code,
-            "errorMsg": self.error_msg,
-            "createdAt": self.created_at,
-            "updatedAt": self.updated_at,
-        }
+    # Removed custom to_dict and from_dict methods.
+    # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization
+    # and model_validate for deserialization.
 
-    @classmethod
-    def from_dict(cls, id: str, data: dict):
-        """Create from Firestore dict."""
-        return cls(
-            id=id,
-            follower_id=data.get("followerId"),
-            side=TradeSide(data.get("side")),
-            qty=data.get("qty"),
-            strike=data.get("strike"),
-            limit_price_requested=data.get("limitPriceRequested"),
-            status=TradeStatus(data.get("status")),
-            timestamps=data.get("timestamps", {}),
-            error_code=data.get("errorCode"),
-            error_msg=data.get("errorMsg"),
-            created_at=data.get("createdAt", datetime.utcnow()),
-            updated_at=data.get("updatedAt", datetime.utcnow()),
-        )
+    class Config:
+        # Allow population by field name OR alias
+        # Needed for model_validate to correctly map _id from Mongo to id
+        populate_by_name = True

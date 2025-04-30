@@ -2,9 +2,22 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Annotated # Added Annotated
+from bson import ObjectId # Added ObjectId
+from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
 
 from pydantic import BaseModel, Field
+
+
+# Validator function to convert ObjectId to str
+def validate_objectid_to_str(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    # If it's already a string (e.g., during creation), keep it
+    if isinstance(v, str):
+        return v
+    # Raise error for other unexpected types
+    raise TypeError('ObjectId or str required')
 
 
 class AlertSeverity(str, Enum):
@@ -33,10 +46,11 @@ class AlertType(str, Enum):
 class Alert(BaseModel):
     """Alert model.
     
-    Maps to Firestore collection: alerts/{alertId}
+    Maps to MongoDB collection: alerts
     """
 
-    id: str = Field(..., description="Alert ID")
+    # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique Alert ID", alias='_id')
     follower_id: Optional[str] = Field(None, description="Follower ID (optional)")
     severity: AlertSeverity = Field(..., description="Alert severity")
     type: AlertType = Field(..., description="Alert type")
@@ -46,33 +60,14 @@ class Alert(BaseModel):
     acknowledged_at: Optional[datetime] = Field(None, description="Acknowledgement timestamp")
     acknowledged_by: Optional[str] = Field(None, description="User who acknowledged the alert")
 
-    def to_dict(self):
-        """Convert to dict for Firestore."""
-        return {
-            "followerId": self.follower_id,
-            "severity": self.severity.value,
-            "type": self.type.value,
-            "message": self.message,
-            "createdAt": self.created_at,
-            "acknowledged": self.acknowledged,
-            "acknowledgedAt": self.acknowledged_at,
-            "acknowledgedBy": self.acknowledged_by,
-        }
+    # Removed custom to_dict and from_dict methods.
+    # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization
+    # and model_validate for deserialization.
 
-    @classmethod
-    def from_dict(cls, id: str, data: dict):
-        """Create from Firestore dict."""
-        return cls(
-            id=id,
-            follower_id=data.get("followerId"),
-            severity=AlertSeverity(data.get("severity")),
-            type=AlertType(data.get("type")),
-            message=data.get("message"),
-            created_at=data.get("createdAt", datetime.utcnow()),
-            acknowledged=data.get("acknowledged", False),
-            acknowledged_at=data.get("acknowledgedAt"),
-            acknowledged_by=data.get("acknowledgedBy"),
-        )
+    class Config:
+        # Allow population by field name OR alias
+        # Needed for model_validate to correctly map _id from Mongo to id
+        populate_by_name = True
 
 
 class AlertEvent(BaseModel):

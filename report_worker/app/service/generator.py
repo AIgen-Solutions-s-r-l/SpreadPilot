@@ -3,6 +3,10 @@ import datetime
 from decimal import Decimal
 from typing import Dict, Any
 
+import asyncio # Added asyncio
+from motor.motor_asyncio import AsyncIOMotorDatabase # Added Motor import
+from datetime import timezone # Added timezone
+
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 from spreadpilot_core.utils import pdf as pdf_utils
@@ -120,62 +124,65 @@ def generate_excel_report(
 
 
 async def generate_monthly_report(
-    year: int,
-    month: int,
-    follower: Follower,
-    db=None
+   year: int,
+   month: int,
+   follower: Follower,
+   db: AsyncIOMotorDatabase # Expecting Motor DB handle now
 ) -> Dict[str, Any]:
-    """
-    Generates a monthly report for a follower.
-    
-    Args:
-        year: The year for the report.
-        month: The month for the report.
-        follower: The Follower object.
-        db: Optional Firestore client.
-        
-    Returns:
-        A dictionary containing the report data.
-    """
-    from .pnl import calculate_monthly_pnl, calculate_commission
-    
-    logger.info(f"Generating monthly report for follower {follower.id} for {year}-{month}...")
-    
-    # Calculate monthly P&L
-    total_pnl = calculate_monthly_pnl(year, month)
-    
-    # Calculate commission
-    commission_amount = calculate_commission(total_pnl, follower)
-    
-    # Generate report ID
-    report_id = f"report-{year}-{month:02d}-{follower.id}"
-    
-    # Create report data
-    report = {
-        "report_id": report_id,
-        "follower_id": follower.id,
-        "year": year,
-        "month": month,
-        "total_pnl": str(total_pnl),
-        "commission_amount": str(commission_amount),
-        "net_pnl": str(total_pnl - commission_amount),
-        "generated_at": datetime.datetime.now().isoformat(),
-    }
-    
-    # Store report in Firestore if DB client provided
-    if db:
-        try:
-            db.collection("monthly_reports").document(report_id).set({
-                "followerId": follower.id,
-                "year": year,
-                "month": month,
-                "totalPnl": str(total_pnl),
-                "commissionAmount": str(commission_amount),
-                "netPnl": str(total_pnl - commission_amount),
-                "generatedAt": datetime.datetime.now(),
-            })
-            logger.info(f"Stored monthly report {report_id} in Firestore.")
-        except Exception as e:
-            logger.exception(f"Failed to store monthly report in Firestore", exc_info=e)
-    
-    return report
+   """
+   Generates a monthly report for a follower and stores it in MongoDB. # Updated docstring
+
+   Args:
+       year: The year for the report.
+       month: The month for the report.
+       follower: The Follower object.
+       db: AsyncIOMotorDatabase client. # Updated docstring
+
+   Returns:
+       A dictionary containing the report data.
+   """
+   # Import moved inside to avoid circular dependency if pnl imports generator
+   from .pnl import calculate_monthly_pnl, calculate_commission
+
+   logger.info(f"Generating monthly report for follower {follower.id} for {year}-{month}...")
+
+   # Calculate monthly P&L
+   total_pnl = await calculate_monthly_pnl(year, month) # Now async
+
+   # Calculate commission
+   commission_amount = calculate_commission(total_pnl, follower)
+
+   # Generate report ID
+   report_id = f"report-{year}-{month:02d}-{follower.id}"
+
+   # Create report data
+   report = {
+       "report_id": report_id, # Use this as the query key for upsert
+       "follower_id": follower.id,
+       "year": year,
+       "month": month,
+       "total_pnl": str(total_pnl),
+       "commission_amount": str(commission_amount),
+       "net_pnl": str(total_pnl - commission_amount), # Keep as string
+       "generated_at": datetime.datetime.now(timezone.utc), # Use timezone-aware UTC
+   }
+
+   # Store report in MongoDB
+   if db: # Check if db handle was passed correctly
+       try:
+           reports_collection = db["monthly_reports"]
+           # Prepare data, potentially aligning field names if needed
+           # Using the 'report' dict directly assumes field names match
+           # or Pydantic models handle aliasing if used for this collection.
+           await reports_collection.update_one(
+               {"report_id": report_id}, # Use report_id as the unique key
+               {"$set": report},
+               upsert=True
+           )
+           # logger.info(f"Stored monthly report {report_id} in Firestore.") # Removed Firestore log
+           logger.info(f"Stored monthly report {report_id} in MongoDB.")
+       except Exception as e:
+           # logger.exception(f"Failed to store monthly report in Firestore", exc_info=e) # Removed Firestore log
+           logger.exception(f"Failed to store monthly report {report_id} in MongoDB", exc_info=e)
+
+   return report

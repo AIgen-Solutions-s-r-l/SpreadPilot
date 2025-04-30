@@ -1,7 +1,10 @@
 import datetime
+import asyncio # Added asyncio
 from typing import List, Tuple
 
-from google.cloud import firestore
+# Removed Firestore import
+from motor.motor_asyncio import AsyncIOMotorDatabase # Added Motor import
+from spreadpilot_core.db.mongodb import get_mongo_db # Added MongoDB import
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 
@@ -12,40 +15,43 @@ from . import notifier
 
 logger = get_logger(__name__)
 
-# Re-use Firestore client initialized in pnl.py
-# If db initialization moves, update this reference.
-db = pnl.db
+# Removed reliance on pnl.db
 
 class ReportService:
     """
     Orchestrates the monthly report generation and notification process.
     """
 
-    def _get_active_followers(self) -> List[Follower]:
-        """Fetches all active followers from Firestore."""
-        if not db:
-            logger.error("Firestore client not available. Cannot fetch followers.")
+    async def _get_active_followers(self) -> List[Follower]:
+        """Fetches all active followers from MongoDB."""
+        try:
+            db: AsyncIOMotorDatabase = await get_mongo_db() # Get DB handle
+        except RuntimeError:
+            logger.error("MongoDB client not initialized. Cannot fetch followers.")
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get MongoDB database handle: {e}", exc_info=True)
             return []
 
         followers = []
         try:
-            followers_ref = db.collection(Follower.collection_name())
-            # Assuming 'is_active' is a boolean field indicating active status
-            query = followers_ref.where("is_active", "==", True)
-            active_followers_stream = query.stream()
+            # Assuming the Follower model in core now uses 'enabled' field based on previous refactors
+            # If the field name is different ('is_active'?), adjust the query.
+            followers_collection = db["followers"]
+            cursor = followers_collection.find({"enabled": True}) # Query MongoDB
 
-            for follower_snap in active_followers_stream:
+            async for doc in cursor: # Iterate async cursor
                 try:
-                    follower_data = follower_snap.to_dict()
-                    follower_data['id'] = follower_snap.id # Add document ID
-                    followers.append(Follower(**follower_data))
+                    # Validate using Pydantic model (handles _id alias)
+                    followers.append(Follower.model_validate(doc))
                 except Exception as e:
-                    logger.warning(f"Failed to parse follower data for {follower_snap.id}: {e}", exc_info=True)
+                    doc_id = doc.get("_id", "UNKNOWN_ID")
+                    logger.warning(f"Failed to parse follower data for {doc_id} from MongoDB: {e}", exc_info=True)
 
-            logger.info(f"Fetched {len(followers)} active followers.")
+            logger.info(f"Fetched {len(followers)} active followers from MongoDB.")
             return followers
         except Exception as e:
-            logger.exception("Error fetching active followers from Firestore", exc_info=e)
+            logger.exception("Error fetching active followers from MongoDB", exc_info=e)
             return []
 
     def _get_previous_month(self, current_date: datetime.date) -> Tuple[int, int]:
@@ -54,7 +60,7 @@ class ReportService:
         last_day_of_previous_month = first_day_of_current_month - datetime.timedelta(days=1)
         return last_day_of_previous_month.year, last_day_of_previous_month.month
 
-    def process_monthly_reports(self, trigger_date: datetime.date):
+    async def process_monthly_reports(self, trigger_date: datetime.date):
         """
         Generates and sends monthly reports for all active followers for the *previous* month.
 
@@ -75,8 +81,8 @@ class ReportService:
         total_monthly_pnl = pnl.calculate_monthly_pnl(year, month)
         logger.info(f"Total calculated P&L for {report_period}: {total_monthly_pnl}")
 
-        # --- Step 2: Fetch active followers ---
-        active_followers = self._get_active_followers()
+        # --- Step 2: Fetch active followers (now async) ---
+        active_followers = await self._get_active_followers()
         if not active_followers:
             logger.warning("No active followers found. Exiting report process.")
             return

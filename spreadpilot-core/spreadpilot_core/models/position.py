@@ -2,9 +2,22 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any, Annotated # Added Any, Annotated
+from bson import ObjectId # Added ObjectId
+from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
 
 from pydantic import BaseModel, Field
+
+
+# Validator function to convert ObjectId to str
+def validate_objectid_to_str(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    # If it's already a string (e.g., during creation), keep it
+    if isinstance(v, str):
+        return v
+    # Raise error for other unexpected types
+    raise TypeError('ObjectId or str required')
 
 
 class AssignmentState(str, Enum):
@@ -18,11 +31,15 @@ class AssignmentState(str, Enum):
 class Position(BaseModel):
     """Position model.
     
-    Maps to Firestore collection: positions/{followerId}/daily/{YYYYMMDD}
+    Maps to MongoDB collection: positions
+    Note: Firestore structure was nested. In MongoDB, this is a flat collection.
+    Querying will rely on follower_id and date fields.
     """
 
-    follower_id: str = Field(..., description="Follower ID")
-    date: str = Field(..., description="Position date (YYYYMMDD)")
+    # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique Position ID", alias='_id')
+    follower_id: str = Field(..., description="Follower ID (Index this field)")
+    date: str = Field(..., description="Position date (YYYYMMDD) (Index this field)")
     short_qty: int = Field(default=0, description="Short quantity")
     long_qty: int = Field(default=0, description="Long quantity")
     pnl_realized: float = Field(default=0.0, description="Realized P&L")
@@ -32,32 +49,11 @@ class Position(BaseModel):
     )
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    def to_dict(self):
-        """Convert to dict for Firestore."""
-        return {
-            "shortQty": self.short_qty,
-            "longQty": self.long_qty,
-            "pnlRealized": self.pnl_realized,
-            "pnlMTM": self.pnl_mtm,
-            "assignmentState": self.assignment_state.value,
-            "updatedAt": self.updated_at,
-        }
+    # Removed custom to_dict, from_dict, and collection_name methods.
+    # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization
+    # and model_validate for deserialization.
 
-    @classmethod # Correct indentation
-    def collection_name(cls) -> str:
-        """Returns the Firestore collection name."""
-        return "positions"
-
-    @classmethod # Correct indentation
-    def from_dict(cls, follower_id: str, date: str, data: dict):
-        """Create from Firestore dict."""
-        return cls(
-            follower_id=follower_id,
-            date=date,
-            short_qty=data.get("shortQty", 0),
-            long_qty=data.get("longQty", 0),
-            pnl_realized=data.get("pnlRealized", 0.0),
-            pnl_mtm=data.get("pnlMTM", 0.0),
-            assignment_state=AssignmentState(data.get("assignmentState", AssignmentState.NONE.value)),
-            updated_at=data.get("updatedAt", datetime.utcnow()),
-        )
+    class Config:
+        # Allow population by field name OR alias
+        # Needed for model_validate to correctly map _id from Mongo to id
+        populate_by_name = True
