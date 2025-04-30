@@ -23,13 +23,13 @@ SpreadPilot is built as a set of microservices deployed on Google Cloud Platform
 - **alert-router**: Routes alerts to Telegram and email
 - **frontend**: React-based admin dashboard
 
-All services share a common library (`spreadpilot-core`) for logging, IBKR client, Firestore models, and utilities.
+All services share a common library (`spreadpilot-core`) for logging, IBKR client, database models (MongoDB), and utilities.
 
 ### Technology Stack
 
 - **Backend**: Python 3.11 with asyncio/aiohttp
 - **Frontend**: React 18 + Vite + Tailwind CSS
-- **Database**: Firestore (Native mode)
+- **Database**: MongoDB (via Docker Compose for local dev)
 - **Secrets**: GCP Secret Manager
 - **Logging**: GCP Cloud Logging
 - **Monitoring**: OpenTelemetry + Cloud Monitoring
@@ -150,7 +150,7 @@ spreadpilot/
 │   └── spreadpilot_core/
 │       ├── logging/          # Structured logging
 │       ├── ibkr/             # IBKR client wrapper
-│       ├── models/           # Firestore models
+│       ├── models/           # Database models (MongoDB)
 │       └── utils/            # Utilities
 ├── trading-bot/              # Trading bot service
 ├── watchdog/                 # Watchdog service

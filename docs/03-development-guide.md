@@ -22,7 +22,7 @@ spreadpilot/
 │   └── spreadpilot_core/
 │       ├── logging/          # Structured logging
 │       ├── ibkr/             # IBKR client wrapper
-│       ├── models/           # Firestore models
+│       ├── models/           # Database models (MongoDB)
 │       └── utils/            # Utilities
 ├── trading-bot/              # Trading bot service
 ├── watchdog/                 # Watchdog service
@@ -305,7 +305,7 @@ The `spreadpilot-core` package provides shared functionality used by all service
 - **ibkr**: Interactive Brokers client wrapper
   - `client.py`: Async client for interacting with IB Gateway
 
-- **models**: Firestore data models
+- **models**: Database data models (MongoDB)
   - `alert.py`: Alert event model
   - `follower.py`: Follower account model
   - `position.py`: Trading position model
@@ -354,7 +354,7 @@ The `admin-api` service provides the backend for the admin dashboard:
     - **dashboard.py**: Dashboard endpoints
     - **followers.py**: Follower management endpoints
 - **app/db/**: Database modules
-  - **firestore.py**: Firestore client
+  - **mongodb.py**: MongoDB client (using Motor)
 - **app/schemas/**: Pydantic schemas
   - **follower.py**: Follower schemas
 - **app/services/**: Service modules
@@ -573,16 +573,33 @@ new_service_module = importlib.import_module('new-service.app.service.main')
 
 ## Troubleshooting
 
-### 1. Firestore Emulator Issues
+### 1. MongoDB Connection Issues (Local Docker)
 
-If you encounter issues with the Firestore emulator, try the following:
+If you encounter issues connecting to the MongoDB container defined in `docker-compose.yml`, try the following:
 
 ```bash
 # Stop all services
 make down
 
-# Clear Firestore emulator data
-rm -rf ~/.config/gcloud/emulators/firestore/
+# Check Docker container status
+docker-compose ps
+
+# Check MongoDB container logs
+docker-compose logs mongo
+
+# Ensure MongoDB container is running
+docker-compose up -d mongo
+
+# Verify connection details (host: mongo, port: 27017, credentials) in service environment variables
+# (Check .env files and docker-compose.yml)
+
+# If data corruption is suspected (rarely needed for local dev):
+# Stop the container
+docker-compose stop mongo
+# Remove the volume (WARNING: DELETES ALL LOCAL MONGO DATA)
+docker volume rm spreadpilot_mongo_data
+# Restart the container
+docker-compose up -d mongo
 
 # Restart services
 make up

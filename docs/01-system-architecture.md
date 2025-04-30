@@ -28,7 +28,7 @@ The Watchdog service monitors the health of critical components and ensures syst
 
 - Continuously checks the health of the Trading Bot and IB Gateway
 - Attempts to restart failed components
-- Updates component status in Firestore
+- Updates component status in the database (MongoDB)
 - Triggers alerts for critical failures
 
 **Technology:** Python with asyncio/aiohttp
@@ -81,7 +81,7 @@ The Frontend provides an administrative dashboard for monitoring and managing th
 The SpreadPilot Core library provides shared functionality used by all services:
 
 - IBKR client wrapper
-- Firestore models (Position, Trade, Follower, Alert)
+- Database models (Position, Trade, Follower, Alert) - currently using MongoDB
 - Structured logging
 - Utilities (email, Telegram, PDF, Excel, time)
 
@@ -99,15 +99,15 @@ The IB Gateway provides connectivity to Interactive Brokers:
 
 **Technology:** IB Gateway container
 
-#### Firestore
+#### MongoDB
 
-Firestore serves as the primary database for the system:
+MongoDB serves as the primary database for the system:
 
 - Stores follower information
 - Tracks positions and trades
 - Maintains system status and configuration
 
-**Technology:** Google Cloud Firestore (Native mode)
+**Technology:** MongoDB (Self-hosted via Docker or potentially Atlas)
 
 ### Observability Services
 
@@ -159,11 +159,11 @@ Grafana provides visualization and dashboards:
    - Google Sheets algorithm generates trading signals
    - Trading Bot polls Google Sheets for signals
    - Trading Bot executes orders via IB Gateway
-   - Trading Bot stores position and trade data in Firestore
+   - Trading Bot stores position and trade data in MongoDB
 
 2. **Reporting Flow**:
    - Cloud Scheduler triggers Report Worker via Pub/Sub
-   - Report Worker retrieves position data from Firestore
+   - Report Worker retrieves position data from MongoDB
    - Report Worker calculates P&L and generates reports
    - Report Worker emails reports to followers
 
@@ -190,7 +190,7 @@ Grafana provides visualization and dashboards:
 
 - **Horizontal Scaling**: Services deployed as containers on Cloud Run
 - **Statelessness**: Services designed to be stateless for easy scaling
-- **Database Scaling**: Firestore automatically scales with demand
+- **Database Scaling**: MongoDB can be scaled horizontally (sharding) or vertically as needed.
 
 ## Resilience
 

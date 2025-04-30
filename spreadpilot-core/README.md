@@ -8,7 +8,7 @@ The `spreadpilot-core` library provides shared functionality used by all SpreadP
 
 - Structured logging with OpenTelemetry integration
 - IBKR API client wrapper
-- Firestore data models
+- Database data models (using Pydantic, currently targeting MongoDB)
 - Utility functions for report generation (PDF, Excel)
 - Alert routing (Telegram, Email)
 
@@ -16,7 +16,7 @@ The `spreadpilot-core` library provides shared functionality used by all SpreadP
 
 - `logging`: Structured logging with GCP Cloud Logging integration
 - `ibkr`: Interactive Brokers API client wrapper
-- `models`: Pydantic models for Firestore data
+- `models`: Pydantic models for database data (currently targeting MongoDB)
 - `utils`: Utility functions for report generation, alerts, etc.
 
 ## Installation

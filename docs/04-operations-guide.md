@@ -145,20 +145,32 @@ Alerts can be sent to the following channels:
 
 ### Backup and Restore
 
-#### Firestore Backup
+#### MongoDB Backup
 
-To create a backup of Firestore data:
+Backup strategies for MongoDB depend on the deployment:
 
-```bash
-# Export Firestore data to Cloud Storage
-gcloud firestore export gs://your-backup-bucket/backups/$(date +%Y-%m-%d)
-```
+*   **Local Docker (`docker-compose.yml`):** Data is stored in a Docker volume (e.g., `spreadpilot_mongo_data`). Backups can be performed by:
+    *   Stopping the container (`docker-compose stop mongo`).
+    *   Copying the volume data (`docker cp mongo:/data/db ./backup_folder`) or using volume backup tools.
+    *   Using `mongodump` from within the container or another container linked to the same network:
+        ```bash
+        # Example: Run mongodump inside the container
+        docker-compose exec mongo mongodump --out /backup/$(date +%Y-%m-%d)
+        # Then copy the backup out of the container
+        docker cp mongo:/backup ./host_backup_location
+        ```
+*   **Managed Service (e.g., MongoDB Atlas):** Use the backup features provided by the service (e.g., scheduled snapshots, point-in-time recovery). Refer to the Atlas documentation.
+*   **Self-Hosted Production:** Implement regular `mongodump` backups stored securely (e.g., to cloud storage).
 
 To restore from a backup:
 
 ```bash
-# Import Firestore data from Cloud Storage
-gcloud firestore import gs://your-backup-bucket/backups/YYYY-MM-DD
+# Restore MongoDB data from backup
+# For mongodump backups:
+mongorestore --drop /path/to/backup/YYYY-MM-DD
+
+# For Docker volume copies, restore the volume data.
+# For managed services, use their restore procedures.
 ```
 
 ### Service Updates
@@ -250,7 +262,7 @@ After rotating a secret, you may need to restart the affected services to pick u
 3. PDF generation errors
 
 **Resolution Steps:**
-1. Check Firestore for position data integrity
+1. Check MongoDB for position data integrity (using `mongosh` or a GUI tool)
 2. Verify SendGrid API key and quota
 3. Check report-worker logs for specific errors
 4. Manually trigger report generation for testing
@@ -294,12 +306,12 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 
 #### Database Inspection
 
-To inspect Firestore data:
+To inspect MongoDB data:
 
 1. Go to the Google Cloud Console: https://console.cloud.google.com
 2. Select your project
-3. Navigate to **Firestore** > **Data**
-4. Browse collections and documents
+3. Connect using `mongosh` or a GUI tool (like MongoDB Compass) using the appropriate connection string.
+4. Use commands like `use <database_name>`, `db.<collection_name>.find()` to browse data.
 
 #### Manual Testing
 
@@ -343,7 +355,7 @@ gcloud run deploy ib-gateway \
 
 #### Database Recovery
 
-If Firestore data is corrupted or lost:
+If MongoDB data is corrupted or lost:
 
 ```bash
 # Restore from the most recent backup
@@ -444,7 +456,10 @@ To configure audit logging:
 
 #### Automated Backups
 
-Set up automated Firestore backups using Cloud Scheduler:
+Set up automated MongoDB backups:
+*   **Managed Service:** Configure backup schedules in the service console (e.g., Atlas).
+*   **Self-Hosted:** Use `cron` or a similar scheduler to run `mongodump` regularly and upload backups to secure storage.
+*   **Local Docker:** Less critical, but can be scripted if needed.
 
 ```bash
 # Create a Cloud Scheduler job for daily backups
@@ -465,8 +480,8 @@ In case of a catastrophic failure:
 
 1. Create a new GCP project if necessary
 2. Enable required APIs
-3. Set up Firestore
-4. Restore Firestore data from backup
+3. Set up MongoDB (ensure instance/cluster is running and accessible)
+4. Restore MongoDB data from backup
 5. Deploy all services from the latest stable images
 6. Configure secrets and environment variables
 7. Update DNS records if necessary
@@ -478,7 +493,7 @@ In case of a catastrophic failure:
 
 #### Data Retention
 
-Configure Firestore TTL (Time to Live) for data that needs to be automatically deleted after a certain period:
+Configure MongoDB TTL (Time to Live) Indexes for data that needs to be automatically deleted after a certain period:
 
 ```bash
 # Set TTL for a collection
@@ -494,7 +509,7 @@ gcloud firestore fields ttls create \
 Ensure comprehensive audit logging is enabled for all services:
 
 1. Go to **IAM & Admin** > **Audit Logs**
-2. Enable Data Access logs for Firestore and other critical services
+2. Enable database auditing features if required (e.g., MongoDB Enterprise auditing, Atlas audit logs) and configure appropriate logging for other critical services. GCP Audit Logs might capture API calls if using a GCP-managed MongoDB, but not internal database operations directly unless configured.
 
 ### Security Auditing
 
@@ -577,11 +592,11 @@ gcloud secrets versions access latest --secret=my-secret
 
 | Service | Dependencies |
 |---------|---------------|
-| trading-bot | IB Gateway, Firestore, Google Sheets |
-| watchdog | trading-bot, IB Gateway, Firestore |
-| admin-api | trading-bot, Firestore |
-| report-worker | Firestore, SendGrid |
-| alert-router | Firestore, SendGrid, Telegram |
+| trading-bot | IB Gateway, MongoDB, Google Sheets |
+| watchdog | trading-bot, IB Gateway, MongoDB |
+| admin-api | trading-bot, MongoDB |
+| report-worker | MongoDB, SendGrid |
+| alert-router | MongoDB, SendGrid, Telegram |
 | frontend | admin-api |
 
 ### Environment Variables

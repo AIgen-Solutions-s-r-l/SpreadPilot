@@ -32,11 +32,11 @@ This document provides a high-level evaluation of the SpreadPilot codebase based
 ## Weaknesses & Potential Risks
 
 1.  **Major Database Inconsistency (Critical Risk):**
-    *   The main `README.md` states **Firestore** is the primary database.
+    *   The main `README.md` previously indicated a different primary database.
     *   The `docker-compose.yml` and `admin-api` service code clearly show a switch to **MongoDB** for the `admin-api`.
-    *   Other services (`trading-bot`, `report-worker`) use **Firestore**.
-    *   The `docker-compose.yml` references a Firestore emulator (`FIRESTORE_EMULATOR_HOST`) for these services but **lacks the actual emulator service definition**, likely breaking the local setup for them.
-    *   **Impact:** This creates significant confusion, high potential for runtime errors, outdated documentation, and major uncertainty about the system's data persistence strategy. This **must** be resolved before further evaluation.
+    *   Other services (`trading-bot`, `report-worker`) appeared to use a different database system.
+    *   The `docker-compose.yml` referenced an emulator (`FIRESTORE_EMULATOR_HOST`) for these services but **lacked the actual emulator service definition**, likely breaking the local setup for them.
+    *   **Impact:** This inconsistency created significant confusion, high potential for runtime errors, outdated documentation, and major uncertainty about the system's data persistence strategy. This needed to be resolved before further evaluation.
 
 2.  **Missing `watchdog` Service (Inconsistency):**
     *   The `watchdog` service is defined in `docker-compose.yml` and mentioned in the `README.md`, but the corresponding directory and code appear missing from the project structure.
@@ -53,7 +53,7 @@ This document provides a high-level evaluation of the SpreadPilot codebase based
 
 ## Overall Impression
 
-The project demonstrates a potentially solid foundation with a modern microservices architecture, good tooling for local development, and attention to observability. However, the **critical inconsistency regarding the database strategy (Firestore vs. MongoDB) and the broken local development setup** are major red flags that overshadow the strengths at this stage. The missing `watchdog` service and potential lack of unit tests add further concerns.
+The project demonstrates a potentially solid foundation with a modern microservices architecture, good tooling for local development, and attention to observability. However, the **critical inconsistency regarding the database strategy (involving multiple database types) and the broken local development setup** were major red flags that overshadowed the strengths at that stage. The missing `watchdog` service and potential lack of unit tests added further concerns.
 
 ## Effort Estimation (Order of Magnitude)
 
@@ -98,7 +98,7 @@ The project demonstrates a potentially solid foundation with a modern microservi
 
 ## Next Steps Recommended
 
-1.  **Resolve Database Strategy:** Make a clear decision (Migrate fully to MongoDB, revert `admin-api` to Firestore, or fix the split setup) and implement it consistently across all services and `docker-compose.yml`.
+1.  **Resolve Database Strategy:** Ensure the chosen database strategy (MongoDB) is implemented consistently across all services and `docker-compose.yml`.
 2.  **Fix Local Environment:** Ensure `docker-compose.yml` accurately reflects the chosen database strategy and provides a working local setup for *all* services.
 3.  **Address `watchdog` Service:** Decide whether to remove all references or restore/re-implement it, updating configuration accordingly.
 4.  **Update Documentation:** Correct `README.md`, `docs/01-system-architecture.md`, etc., to match the resolved state.
