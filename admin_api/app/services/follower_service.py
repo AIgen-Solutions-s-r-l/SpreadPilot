@@ -78,6 +78,14 @@ class FollowerService:
         """Creates a new follower in MongoDB."""
         logger.info(f"Creating new follower with email: {follower_create.email}")
         try:
+            # Check if follower with this email already exists
+            existing_follower = await self.get_follower_by_email(follower_create.email)
+            if existing_follower:
+                logger.warning(f"Attempted to create follower with duplicate email: {follower_create.email}")
+                # Raise a specific exception or return an indicator? For API, raise HTTPExc.
+                # For now, let's raise a ValueError that the endpoint can catch.
+                raise ValueError(f"Follower with email {follower_create.email} already exists.")
+
             # Generate a unique ID for the new follower (use as _id)
             follower_id = str(uuid.uuid4())
 
@@ -108,7 +116,10 @@ class FollowerService:
                 logger.error(f"Failed to insert follower {follower_id} into MongoDB, inserted_id mismatch.")
                 raise RuntimeError(f"Failed to create follower {follower_id} in MongoDB.")
 
-        except Exception as e: # Catch potential DuplicateKeyError etc.
+        except ValueError as ve: # Catch specific duplicate error
+             logger.error(f"Error creating follower: {ve}")
+             raise # Re-raise for the endpoint to handle (e.g., return 400)
+        except Exception as e: # Catch other potential errors
             logger.error(f"Error creating follower in MongoDB: {e}", exc_info=True)
             raise
 

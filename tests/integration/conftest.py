@@ -1,3 +1,4 @@
+import httpx_ws # Explicitly import to ensure patching might occur earlier
 import sys # Keep sys import if needed elsewhere, otherwise remove if only used for path
 import os
 
@@ -11,6 +12,7 @@ import uuid
 from typing import Dict, List, Optional, Any, Generator, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 import motor.motor_asyncio # Added for MongoDB
+import testcontainers.core.config # Added for timeout adjustment
 from testcontainers.mongodb import MongoDbContainer # Added for Testcontainers
 
 import pytest
@@ -271,10 +273,17 @@ async def patched_sheets_client(mock_sheets_client):
 def mongodb_container() -> Generator[MongoDbContainer, None, None]:
     """Starts and stops a MongoDB Testcontainer for the test session."""
     # Using a specific image version known to work well
-    with MongoDbContainer("mongo:6.0") as mongo:
-        # Add a small delay to allow Docker networking to stabilize, especially on Windows/WSL
-        time.sleep(5) # Give Docker a moment to sort out port mapping
-        yield mongo
+    # Increase the default timeout for testcontainers
+    original_timeout = testcontainers.core.config.TIMEOUT
+    testcontainers.core.config.TIMEOUT = 300 # Increase to 300 seconds
+    try:
+        with MongoDbContainer("mongo:6.0") as mongo:
+            # Add a small delay to allow Docker networking to stabilize, especially on Windows/WSL
+            # time.sleep(5) # Keep the sleep, maybe it helps in conjunction with timeout
+            yield mongo
+    finally:
+        # Restore original timeout
+        testcontainers.core.config.TIMEOUT = original_timeout
 
 # ---- MongoDB Test Database Fixture ----
 
@@ -283,11 +292,13 @@ async def test_mongo_db(mongodb_container: MongoDbContainer) -> AsyncGenerator[A
     """Provides a connection to a unique test database within the MongoDB container."""
     mongo_uri = mongodb_container.get_connection_url()
     test_db_name = f"test_db_{uuid.uuid4().hex}"
-    # Get the current event loop provided by pytest-asyncio
-    # Motor should pick up the correct loop automatically when run via pytest-asyncio/anyio
+    # Get the current running event loop from asyncio (optional, motor might detect)
+    # loop = asyncio.get_running_loop()
+    # Initialize motor client WITHOUT explicitly passing the loop
+    # Let motor detect the running loop provided by anyio/pytest-asyncio
     client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
     db = client[test_db_name]
-    print(f"Using test MongoDB: {mongo_uri}/{test_db_name}") # For debugging
+    # print(f"Using test MongoDB: {mongo_uri}/{test_db_name} on loop {id(asyncio.get_running_loop())}") # Debugging if needed
 
     yield db # Provide the database object to the test
 
@@ -360,71 +371,51 @@ class UvicornServer(uvicorn.Server):
              self.thread.join(timeout=1) # Wait briefly for thread to exit
 
 @pytest_asyncio.fixture(scope="function")
-async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[tuple[httpx.AsyncClient, Any, str], None]: # Returns tuple with base_url
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[httpx.AsyncClient, None]:
     """
-    Async fixture that runs the admin_api app on a free port using Uvicorn
-    and provides an httpx.AsyncClient connected to it.
-    Also overrides the database dependency.
-    Yields both the client and the app instance.
+    Async fixture providing an httpx.AsyncClient against the admin_api app instance
+    with the database dependency overridden. Uses httpx's ASGI support directly.
+    Yields the client.
     """
-    # Override get_mongo_db dependency
-    async def override_get_db_for_live_server():
+    # Override the main DB dependency getter for the app
+    async def override_get_db_for_httpx_app():
         return test_mongo_db
-    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_live_server
 
-    # Find a free port for the server
-    host = "127.0.0.1"
-    port = find_free_port()
-    base_url = f"http://{host}:{port}"
+    admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_httpx_app
 
-    # Configure and start Uvicorn server in a thread
-    config = uvicorn.Config(admin_app, host=host, port=port, log_level="warning")
-    server = UvicornServer(config=config)
-    server.run_in_thread()
+    # Define a dummy base URL (required by httpx when using app=)
+    base_url = "http://testserver"
 
-    # Wait a bit longer to ensure server is fully up, especially for WS connections
-    await asyncio.sleep(2.0)
-
-    # Create the httpx client targeting the live server
-    async with httpx.AsyncClient(base_url=base_url) as client:
-        try:
-            yield client, admin_app, base_url # Yield client, app, and base_url
-        finally:
-            # Stop the server and clean up overrides
-            server.stop()
-            admin_app.dependency_overrides.clear()
+    try:
+        # Create client directly against the ASGI app
+        async with httpx.AsyncClient(app=admin_app, base_url=base_url, timeout=10) as client:
+             yield client # Yield only the client
+    finally:
+        # Clean up overrides after the test function finishes
+        admin_app.dependency_overrides.clear()
 
 
-# Keep the synchronous TestClient fixture for tests that might need it,
-# but rename it to avoid conflict.
-@pytest.fixture(scope="function")
-def admin_api_test_client_sync(test_mongo_db: AsyncIOMotorDatabase) -> Generator[TestClient, None, None]:
-    """Synchronous fixture providing a FastAPI TestClient against the admin_api app with MongoDB override."""
-
-    # Define an async override function
+# Fixture providing the TestClient, also with overridden DB
+@pytest_asyncio.fixture(scope="function")
+async def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[TestClient, None]: # Keep this fixture
+    """
+    Async fixture providing a FastAPI TestClient against the admin_api app
+    with the MongoDB dependency correctly overridden. Suitable for async tests needing TestClient.
+    """
+    # Override the get_mongo_db dependency for TestClient usage
     async def override_get_db_for_test_client():
         return test_mongo_db
 
-    # Override the get_mongo_db dependency using the async function
     admin_app.dependency_overrides[get_mongo_db] = override_get_db_for_test_client
 
-    # Keep defensive patches for now
-    # Patch the direct async call within the dashboard's background task fallback logic
-    # This might still be needed if the background task runs during TestClient usage,
-    # though TestClient typically doesn't run the full lifespan. Patching defensively.
-    async def mock_get_mongo_db_for_task():
-        return test_mongo_db
+    # TestClient itself is synchronous but uses anyio internally
+    client = TestClient(admin_app)
+    try:
+        yield client # Yield the TestClient
+    finally:
+        # Clean up the overrides after the test
+        admin_app.dependency_overrides.clear()
 
-    dashboard_endpoint_path = "admin_api.app.api.v1.endpoints.dashboard"
-    followers_endpoint_path = "admin_api.app.api.v1.endpoints.followers"
-
-    with patch(f"{dashboard_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task), \
-         patch(f"{followers_endpoint_path}.get_mongo_db", new=mock_get_mongo_db_for_task):
-        with TestClient(admin_app) as client:
-            yield client
-
-    # Clean up the override after the fixture scope ends
-    admin_app.dependency_overrides.clear()
 
 # ---- Test Data Fixtures ---- is the next logical line after removing this fixture
 

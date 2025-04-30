@@ -79,12 +79,21 @@ async def create_follower(
         
         new_follower = await follower_service.create_follower(follower_in)
         return new_follower
-    except ValueError as ve: # Catch validation errors from Pydantic/Core model
-        logger.warning(f"Follower creation validation error: {ve}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(ve),
-        )
+    except ValueError as ve: # Catch validation errors from Pydantic/Core model or duplicate email
+        error_message = str(ve)
+        if "already exists" in error_message.lower():
+            logger.warning(f"Duplicate follower creation attempt: {error_message}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
+        else:
+            # Handle other potential ValueErrors (e.g., Pydantic validation) as 422
+            logger.warning(f"Follower creation validation error: {error_message}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=error_message,
+            )
     except Exception as e:
         logger.error(f"Error creating follower: {e}", exc_info=True)
         raise HTTPException(
