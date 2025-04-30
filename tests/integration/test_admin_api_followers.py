@@ -19,7 +19,7 @@ from spreadpilot_core.models.follower import Follower, FollowerState
 from admin_api.app.schemas.follower import FollowerCreate, FollowerUpdate # Added missing import
 
 # Explicitly import the fixtures we intend to use
-from tests.integration.conftest import admin_api_client, admin_api_test_client_sync, test_mongo_db # Import fixtures
+from tests.integration.conftest import admin_api_client, admin_api_test_client, test_mongo_db # Import fixtures
 
 
 @pytest.mark.asyncio # Add back async marker

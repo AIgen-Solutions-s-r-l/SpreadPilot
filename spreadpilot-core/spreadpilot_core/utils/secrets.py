@@ -24,7 +24,7 @@ async def get_secret_from_mongo(
     Returns:
         The secret value as a string if found, otherwise None.
     """
-    if not db:
+    if db is None:
         logger.error("MongoDB database instance is not provided.")
         return None
 

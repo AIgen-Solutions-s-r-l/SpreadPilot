@@ -1,4 +1,4 @@
-# import os # No longer needed for direct env var access here
+import os # Need os for getenv
 import asyncio
 import importlib # Use importlib for consistency
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -22,17 +22,21 @@ _mongo_client: AsyncIOMotorClient | None = None
 async def connect_to_mongo():
     """Initializes the MongoDB client connection."""
     global _mongo_client
-    if _mongo_client is None:
+    # Prevent initialization if TESTING env var is set, rely on dependency injection
+    is_testing = os.getenv("TESTING", "false").lower() == "true"
+    if _mongo_client is None and not is_testing:
         logger.info(f"Connecting to MongoDB at {MONGO_URI}...")
         try:
             _mongo_client = AsyncIOMotorClient(MONGO_URI)
-            # Optional: Verify connection by listing database names (requires admin privileges)
-            # await _mongo_client.list_database_names()
+            # Optional: Verify connection
+            # await _mongo_client.admin.command('ping')
             logger.info("MongoDB client initialized successfully.")
         except Exception as e:
             logger.error(f"Failed to initialize MongoDB client: {e}", exc_info=True)
             _mongo_client = None # Reset on failure
             raise
+    elif is_testing:
+        logger.debug("TESTING environment detected, skipping default MongoDB client initialization.")
 
 async def close_mongo_connection():
     """Closes the MongoDB client connection."""
@@ -47,9 +51,8 @@ def get_mongo_client() -> AsyncIOMotorClient:
     """Returns the initialized MongoDB client instance."""
     if _mongo_client is None:
         # This should ideally not happen if connect_to_mongo is called at startup
-        logger.warning("MongoDB client accessed before initialization!")
-        # Attempt synchronous connection as a fallback (not recommended for async apps)
-        # Or raise an error
+        # or if dependency injection provides one during testing.
+        logger.error("MongoDB client accessed before initialization!")
         raise RuntimeError("MongoDB client not initialized. Call connect_to_mongo first.")
     return _mongo_client
 
@@ -57,12 +60,11 @@ async def get_mongo_db() -> AsyncIOMotorDatabase:
     """
     Dependency function to get the MongoDB database instance.
     To be used with FastAPI's Depends().
-    Ensures the client is initialized.
+    Relies on the client being initialized either by connect_to_mongo (non-testing)
+    or by dependency override (testing).
     """
-    if _mongo_client is None:
-        await connect_to_mongo() # Ensure connection is established if not already
-    
-    client = get_mongo_client()
+    # Dependency injection or lifespan should handle client availability.
+    client = get_mongo_client() # Get the client (global or overridden)
     return client[MONGO_DB_NAME]
 
 # Example usage (optional, for testing connection)
@@ -77,6 +79,8 @@ async def _test_connection():
         logger.error(f"MongoDB connection test failed: {e}", exc_info=True)
     finally:
         await close_mongo_connection()
+        # No _test_clients list to clear in this state
+
 
 if __name__ == "__main__":
     # Basic test to check if client initializes and connects

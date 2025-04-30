@@ -372,67 +372,53 @@ class UvicornServer(uvicorn.Server):
              self.thread.join(timeout=1) # Wait briefly for thread to exit
 
 @pytest_asyncio.fixture(scope="function")
-async def admin_api_client(mongodb_container: MongoDbContainer) -> AsyncGenerator[tuple[httpx.AsyncClient, Any, str], None]:
+async def admin_api_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[tuple[httpx.AsyncClient, Any, str], None]:
     """
-    Async fixture providing an httpx.AsyncClient against a running admin_api app instance
-    with the FollowerService dependency overridden to use the correct MongoDB connection
-    within the Uvicorn thread. Runs the app using Uvicorn in a thread.
+    Async fixture providing an httpx.AsyncClient against a running admin_api app instance.
+    Overrides the application's Settings dependency to use the test database connection.
+    Runs the app using Uvicorn in a thread.
     Yields the client, the app instance, and the actual base_url.
     """
-    # Get connection details from the container fixture
-    mongo_uri = mongodb_container.get_connection_url()
-    # Use a consistent test DB name structure if needed, or let service use default
-    # test_db_name = f"test_db_{uuid.uuid4().hex}" # Or use settings default
+    # Get the connection URI from the test_mongo_db fixture's client
+    mongo_uri = f"mongodb://{test_mongo_db.client.HOST}:{test_mongo_db.client.PORT}"
+    db_name = test_mongo_db.name # Get the unique test DB name
 
-    # Import necessary modules here to avoid potential import cycles
-    dashboard_module = importlib.import_module('admin_api.app.api.v1.endpoints.dashboard')
-    followers_module = importlib.import_module('admin_api.app.api.v1.endpoints.followers')
-    follower_service_module = importlib.import_module('admin_api.app.services.follower_service')
+    # Import necessary modules
     config_module = importlib.import_module('admin_api.app.core.config')
-    FollowerService = follower_service_module.FollowerService
-    get_settings_func = config_module.get_settings
-    settings = get_settings_func() # Get settings once
+    admin_api_main_module = importlib.import_module('admin_api.app.main')
+    Settings = config_module.Settings
+    original_get_settings = config_module.get_settings
+    admin_app_instance = admin_api_main_module.app
 
-    # Define the override function for get_follower_service
-    # This will be executed within the Uvicorn thread's event loop
-    async def override_get_follower_service_for_thread():
-        # Import logger inside the function to ensure it's available in the thread
-        from spreadpilot_core.logging.logger import get_logger
-        logger = get_logger(__name__ + ".override_get_follower_service_for_thread")
+    # Define the override function for get_settings
+    def get_test_settings():
+        # Create a settings instance specifically for the test, overriding DB details
+        return Settings(mongo_uri=mongo_uri, mongo_db_name=db_name)
 
-        # Create a NEW motor client and DB connection INSIDE the override
-        # This ensures it uses the loop of the thread calling the dependency
-        logger.debug(f"Override: Creating new Motor client for {mongo_uri}")
-        thread_local_client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
-        thread_local_db = thread_local_client[settings.mongo_db_name] # Use db name from settings
-        logger.debug(f"Override: Instantiating FollowerService with thread-local DB")
-        service_instance = FollowerService(db=thread_local_db, settings=settings)
-        # Note: We might need to manage the closing of thread_local_client if many tests run
-        return service_instance
-
-    # Apply the override for the service dependency
-    admin_app.dependency_overrides[dashboard_module.get_follower_service] = override_get_follower_service_for_thread
-    admin_app.dependency_overrides[followers_module.get_follower_service] = override_get_follower_service_for_thread
+    # Apply the override for the settings dependency
+    admin_app_instance.dependency_overrides[original_get_settings] = get_test_settings
 
     # --- Run App with Uvicorn ---
     host = "127.0.0.1"
     port = find_free_port()
     base_url = f"http://{host}:{port}"
 
-    config = uvicorn.Config(admin_app, host=host, port=port, log_level="warning")
+    config = uvicorn.Config(admin_app_instance, host=host, port=port, log_level="warning")
     server = UvicornServer(config=config)
     server.run_in_thread()
     # --- End Run App ---
 
     try:
         # Create client pointing to the running server
-        async with httpx.AsyncClient(base_url=base_url, timeout=20) as client: # Increase timeout slightly more
-             await asyncio.sleep(1.0) # Increase sleep slightly for server startup
-             yield client, admin_app, base_url # Yield client, app, and REAL base_url
+        async with httpx.AsyncClient(base_url=base_url, timeout=20) as client:
+             await asyncio.sleep(1.0) # Allow server startup
+             yield client, admin_app_instance, base_url
     finally:
-        # Stop the server and clean up overrides
+        # Stop the server
         server.stop()
-        admin_app.dependency_overrides.clear()
+        # Clean up overrides
+        admin_app_instance.dependency_overrides.clear()
+        # No clients_to_close list in this version
 
 
 # Fixture providing the TestClient, overriding the core get_mongo_db dependency
@@ -440,25 +426,34 @@ async def admin_api_client(mongodb_container: MongoDbContainer) -> AsyncGenerato
 async def admin_api_test_client(test_mongo_db: AsyncIOMotorDatabase) -> AsyncGenerator[TestClient, None]:
     """
     Async fixture providing a FastAPI TestClient against the admin_api app
-    with the core get_mongo_db dependency overridden to use the test_mongo_db fixture.
+    with the application's Settings dependency overridden to use the test_mongo_db fixture.
     """
-    # Override the core get_mongo_db dependency directly
-    async def override_get_db_for_test_client():
-        # test_mongo_db is already resolved by pytest-asyncio
-        return test_mongo_db
+    # Get the connection URI from the test_mongo_db fixture's client
+    mongo_uri = f"mongodb://{test_mongo_db.client.HOST}:{test_mongo_db.client.PORT}"
+    db_name = test_mongo_db.name # Get the unique test DB name
 
-    # Ensure we are overriding the correct get_mongo_db function imported by the app
-    db_module = importlib.import_module('admin_api.app.db.mongodb')
-    original_get_mongo_db = db_module.get_mongo_db
-    admin_app.dependency_overrides[original_get_mongo_db] = override_get_db_for_test_client
+    # Import necessary modules
+    config_module = importlib.import_module('admin_api.app.core.config')
+    admin_api_main_module = importlib.import_module('admin_api.app.main')
+    Settings = config_module.Settings
+    original_get_settings = config_module.get_settings
+    admin_app_instance = admin_api_main_module.app
+
+    # Define the override function for get_settings
+    def get_test_settings():
+        # Create a settings instance specifically for the test, overriding DB details
+        return Settings(mongo_uri=mongo_uri, mongo_db_name=db_name)
+
+    # Apply the override for the settings dependency
+    admin_app_instance.dependency_overrides[original_get_settings] = get_test_settings
 
     # TestClient itself is synchronous but uses anyio internally
-    client = TestClient(admin_app)
+    client = TestClient(admin_app_instance)
     try:
         yield client # Yield the TestClient
     finally:
         # Clean up the overrides after the test
-        admin_app.dependency_overrides.clear()
+        admin_app_instance.dependency_overrides.clear()
 
 
 # ---- Test Data Fixtures ---- is the next logical line after removing this fixture

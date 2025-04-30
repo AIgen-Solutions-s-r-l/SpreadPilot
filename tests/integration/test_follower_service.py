@@ -433,7 +433,7 @@ async def test_follower_service_trading_operations(
         trade_ids_to_cleanup.append(trade_id)
 
         # Verify trade in DB
-        db_trade = await test_mongo_db.trades.find_one({"_id": trade_id}) # Use the input ID
+        db_trade = await test_mongo_db.follower_trades.find_one({"_id": trade_id}) # Use the correct collection name
         assert db_trade is not None
         assert db_trade["follower_id"] == follower_id_to_cleanup
         assert db_trade["symbol"] == "SPY"
