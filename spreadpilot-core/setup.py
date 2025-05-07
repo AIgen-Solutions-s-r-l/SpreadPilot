@@ -10,9 +10,9 @@ setup(
         "google-cloud-secret-manager>=2.16.0",
         "ib-insync>=0.9.85",  # IBKR API wrapper
         "pydantic>=2.0.0",    # Data validation
-        "opentelemetry-api>=1.18.0",
-        "opentelemetry-sdk>=1.18.0",
-        "opentelemetry-exporter-otlp>=1.18.0",
+        "opentelemetry-api>=1.18.0,<2.0.0",
+        "opentelemetry-sdk>=1.18.0,<2.0.0",
+        "opentelemetry-exporter-otlp>=1.18.0,<2.0.0",
         "pandas>=2.0.0",      # Data manipulation
         "openpyxl>=3.1.2",    # Excel generation
         "reportlab>=4.0.4",   # PDF generation

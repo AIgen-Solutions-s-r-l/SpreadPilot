@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container
-COPY requirements.in ./
+COPY ./report-worker/requirements.in ./
 
 # Install project dependencies
 # First, install pip-tools
@@ -27,22 +27,23 @@ RUN pip install --no-cache-dir pip-tools
 # This ensures consistent dependencies based on the .in file
 # We copy spreadpilot-core later, so we use --allow-unsafe here if needed,
 # or handle core installation separately. Let's assume core is handled via the -e flag.
+# Copy the spreadpilot-core library source code into the container
+# This assumes spreadpilot-core is one level up from the project root (build context)
+# The destination is /app/spreadpilot-core inside the container
+COPY ./spreadpilot-core /app/spreadpilot-core
+
 RUN pip-compile requirements.in --output-file requirements.txt --allow-unsafe
 
 # Install the compiled dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the spreadpilot-core library source code into the container
-# This assumes spreadpilot-core is one level up from the report-worker directory
-# Adjust the source path if the structure is different
-COPY ../spreadpilot-core ./spreadpilot-core
 
 # Install spreadpilot-core in editable mode (or regular install if preferred)
 # This makes the `-e ../spreadpilot-core` in requirements.txt work
 RUN pip install --no-cache-dir -e ./spreadpilot-core
 
 # Copy the application code into the container
-COPY ./app ./app
+COPY ./report-worker/app ./app
 
 # Specify the command to run on container startup
 # Use gunicorn for a production-ready WSGI server

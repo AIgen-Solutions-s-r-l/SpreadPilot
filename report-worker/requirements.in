@@ -8,7 +8,7 @@ google-cloud-logging
 # Core library (assuming it's installed locally during build or from a private repo)
 # If spreadpilot-core is published, add its package name here.
 # For local development/build:
--e ../spreadpilot-core
+-e ./spreadpilot-core
 
 # Reporting specific
 # pandas might be needed for P&L aggregation if not handled by core utils

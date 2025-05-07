@@ -68,3 +68,7 @@ logs/
 .dockerignore
 
 OLD_CODE
+
+.roo/
+.roomodes
+.ruru/
