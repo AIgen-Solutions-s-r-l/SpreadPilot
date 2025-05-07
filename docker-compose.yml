@@ -57,8 +57,8 @@ services:
 
   admin-api:
     build:
-      context: ./admin-api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: admin-api/Dockerfile
     container_name: spreadpilot-admin-api
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
