@@ -66,9 +66,3 @@ logs/
 
 # Docker
 .dockerignore
-
-OLD_CODE
-
-.roo/
-.roomodes
-.ruru/

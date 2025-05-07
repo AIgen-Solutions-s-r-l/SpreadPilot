@@ -6,7 +6,6 @@ import os
 import sys
 from typing import Any, Dict, Optional
 
-from google.cloud import logging as gcp_logging
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -23,7 +22,7 @@ _LOGGING_SETUP_DONE = False
 def setup_logging(
     service_name: str,
     log_level: int = logging.INFO,
-    enable_gcp: bool = True,
+    # enable_gcp: bool = True, # Removed GCP flag
     enable_otlp: bool = True,
     otlp_endpoint: Optional[str] = None,
 ) -> None:
@@ -32,7 +31,7 @@ def setup_logging(
     Args:
         service_name: Name of the service (e.g., "trading-bot")
         log_level: Logging level (default: INFO)
-        enable_gcp: Whether to enable GCP Cloud Logging
+        # enable_gcp: Whether to enable GCP Cloud Logging (Removed)
         enable_otlp: Whether to enable OpenTelemetry tracing
         otlp_endpoint: OpenTelemetry collector endpoint
     """
@@ -47,14 +46,7 @@ def setup_logging(
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    # Set up GCP Cloud Logging if enabled
-    if enable_gcp and os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        try:
-            client = gcp_logging.Client()
-            client.setup_logging(log_level=log_level)
-            logging.info("GCP Cloud Logging enabled")
-        except Exception as e:
-            logging.warning(f"Failed to set up GCP Cloud Logging: {e}")
+    # GCP Cloud Logging setup removed
 
     # Set up OpenTelemetry tracing if enabled
     if enable_otlp:
@@ -76,104 +68,26 @@ def setup_logging(
     logging.info(f"Logging setup complete for service: {service_name}")
 
 
-class StructuredLogger:
-    """Logger that outputs structured logs compatible with GCP Cloud Logging."""
-
-    def __init__(self, name: str):
-        """Initialize the logger.
-
-        Args:
-            name: Logger name (typically __name__)
-        """
-        self.logger = logging.getLogger(name)
-        self.tracer = trace.get_tracer(name)
-
-    def _log(self, level: int, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log a message with structured data.
-
-        Args:
-            level: Logging level
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        # Combine extra and kwargs
-        log_data = {}
-        if extra:
-            log_data.update(extra)
-        if kwargs:
-            log_data.update(kwargs)
-
-        # Get current span context for trace correlation
-        span_context = trace.get_current_span().get_span_context()
-        if span_context.is_valid:
-            log_data["trace_id"] = format(span_context.trace_id, "032x")
-            log_data["span_id"] = format(span_context.span_id, "016x")
-
-        # Log the message with structured data
-        if log_data:
-            self.logger.log(level, f"{msg} {json.dumps(log_data)}")
-        else:
-            self.logger.log(level, msg)
-
-    def debug(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log a debug message.
-
-        Args:
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        self._log(logging.DEBUG, msg, extra, **kwargs)
-
-    def info(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log an info message.
-
-        Args:
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        self._log(logging.INFO, msg, extra, **kwargs)
-
-    def warning(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log a warning message.
-
-        Args:
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        self._log(logging.WARNING, msg, extra, **kwargs)
-
-    def error(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log an error message.
-
-        Args:
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        self._log(logging.ERROR, msg, extra, **kwargs)
-
-    def critical(self, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
-        """Log a critical message.
-
-        Args:
-            msg: Log message
-            extra: Extra data to include in the log
-            **kwargs: Additional key-value pairs to include in the log
-        """
-        self._log(logging.CRITICAL, msg, extra, **kwargs)
+# StructuredLogger class removed as it was primarily for GCP JSON formatting.
+# Standard logging configured via basicConfig is sufficient.
 
 
-def get_logger(name: str) -> StructuredLogger:
-    """Get a structured logger.
+def get_logger(name: str) -> logging.Logger:
+    """Get a standard Python logger.
 
     Args:
         name: Logger name (typically __name__)
 
     Returns:
-        StructuredLogger instance
+        Standard logging.Logger instance
     """
-    return StructuredLogger(name)
+    # Ensure setup is called at least once (idempotent)
+    # This might be better placed in application entry points,
+    # but keeping it here for minimal changes for now.
+    # Consider moving setup_logging calls to main.py of each service.
+    if not _LOGGING_SETUP_DONE:
+        # Attempt basic setup if not done, assuming default service name if needed
+        # This is a fallback, explicit setup in app entry points is preferred.
+        setup_logging(service_name=name.split('.')[0] or 'unknown_service')
+
+    return logging.getLogger(name)

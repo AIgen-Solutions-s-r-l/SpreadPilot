@@ -6,10 +6,11 @@ import time
 from enum import Enum
 from typing import Dict, Optional
 
-import firebase_admin
-from firebase_admin import credentials, firestore
-from google.cloud import secretmanager
+# Removed firebase_admin imports
+from google.cloud import secretmanager # Keep for now, separate concern
+from motor.motor_asyncio import AsyncIOMotorDatabase # Added Motor import
 
+from spreadpilot_core.db.mongodb import connect_to_mongo, close_mongo_connection, get_mongo_db # Added MongoDB imports
 from spreadpilot_core.ibkr import IBKRClient
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Follower, Position
@@ -62,14 +63,13 @@ class TradingService:
         self.sheets_client = sheets_client
         self.status = ServiceStatus.STARTING
         self.active_followers: Dict[str, Follower] = {}
-        self.db = None
+        self.mongo_db: AsyncIOMotorDatabase | None = None # Changed db to mongo_db
         self.secret_client = None
         self.health_check_time = time.time()
-        
-        # Initialize Firebase
-        self._init_firebase()
-        
-        # Initialize Secret Manager
+
+        # MongoDB client/db will be initialized in _init_mongo called by run()
+
+        # Initialize Secret Manager (Keep for now)
         self._init_secret_manager()
         
         # Initialize managers
@@ -81,28 +81,20 @@ class TradingService:
         
         logger.info("Initialized trading service")
 
-    def _init_firebase(self):
-        """Initialize Firebase."""
-        try:
-            # Check if already initialized
-            if firebase_admin._apps:
-                self.db = firestore.client()
-                logger.info("Firebase already initialized")
-                return
-            
-            # Initialize Firebase
-            cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred, {
-                "projectId": self.settings.project_id,
-            })
-            
-            # Get Firestore client
-            self.db = firestore.client()
-            
-            logger.info("Initialized Firebase")
-        except Exception as e:
-            logger.error(f"Error initializing Firebase: {e}")
-            self.status = ServiceStatus.ERROR
+    # Removed _init_firebase method
+
+    async def _init_mongo(self):
+        """Initialize MongoDB connection using the core module."""
+        if self.mongo_db is None:
+            try:
+                await connect_to_mongo() # Ensure client is connected
+                self.mongo_db = await get_mongo_db() # Get the database handle
+                logger.info("MongoDB connection established and database handle acquired.")
+            except Exception as e:
+                logger.error(f"Error initializing MongoDB: {e}", exc_info=True)
+                self.status = ServiceStatus.ERROR
+                # Propagate the error to stop the service startup if connection fails
+                raise
 
     def _init_secret_manager(self):
         """Initialize Secret Manager."""
@@ -124,22 +116,23 @@ class TradingService:
         try:
             logger.info("Starting trading service")
             
+            # Initialize MongoDB connection
+            await self._init_mongo()
+            if self.status == ServiceStatus.ERROR: # Check if mongo init failed
+                return
+
             # Connect to Google Sheets
             if not await self.sheets_client.connect():
                 logger.error("Failed to connect to Google Sheets")
                 self.status = ServiceStatus.ERROR
                 return
-            
+
             # Load active followers
             await self.load_active_followers()
-            
-            # Initialize and start Original Strategy Handler (if enabled)
-            await self.original_strategy_handler.initialize()
-            original_strategy_task = asyncio.create_task(
-                self.original_strategy_handler.run(shutdown_event)
-            )
-            
-            # Start other background tasks
+            if self.status == ServiceStatus.ERROR: # Check if follower loading failed
+                return
+
+            # Start background tasks
             position_check_task = asyncio.create_task(
                 self.position_manager.check_positions_periodically(shutdown_event)
             )
@@ -249,49 +242,55 @@ class TradingService:
     async def shutdown(self):
         """Shut down the trading service."""
         logger.info("Shutting down trading service")
-        
-        # Disconnect from IBKR (main manager)
+        # Disconnect from IBKR
         await self.ibkr_manager.disconnect_all()
-        
-        # Shutdown Original Strategy Handler
-        await self.original_strategy_handler.shutdown()
-        
+
+        # Close MongoDB connection
+        await close_mongo_connection()
+
         self.status = ServiceStatus.SHUTDOWN
         logger.info("Trading service shutdown complete")
 
     async def load_active_followers(self):
-        """Load active followers from Firestore."""
+        """Load active followers from MongoDB."""
+        if not self.mongo_db:
+            logger.error("MongoDB is not initialized. Cannot load followers.")
+            self.status = ServiceStatus.ERROR
+            return
+
+        logger.info("Loading active followers from MongoDB...")
+        self.active_followers = {} # Clear existing followers
         try:
-            # Query followers collection
-            followers_ref = self.db.collection("followers")
-            query = followers_ref.where("enabled", "==", True)
-            
-            # Get followers
-            followers_snapshot = query.get()
-            
+            # Query followers collection in MongoDB
+            followers_collection = self.mongo_db["followers"]
+            cursor = followers_collection.find({"enabled": True})
+
             # Process followers
-            for doc in followers_snapshot:
-                follower_id = doc.id
-                follower_data = doc.to_dict()
-                
-                # Create follower model
-                follower = Follower.from_dict(follower_id, follower_data)
-                
-                # Add to active followers
-                self.active_followers[follower_id] = follower
-                
-                logger.info(
-                    "Loaded active follower",
-                    follower_id=follower_id,
-                    email=follower.email,
-                )
-            
+            async for doc in cursor:
+                try:
+                    # Create follower model using Pydantic's validation
+                    # This automatically handles the _id alias and type conversions
+                    follower = Follower.model_validate(doc)
+
+                    # Add to active followers
+                    self.active_followers[follower.id] = follower
+
+                    logger.debug( # Changed to debug to reduce noise
+                        "Loaded active follower",
+                        follower_id=follower.id,
+                        email=follower.email,
+                    )
+                except Exception as validation_error:
+                    # Log error for specific document but continue loading others
+                    doc_id = doc.get("_id", "UNKNOWN_ID")
+                    logger.error(f"Error validating follower data for doc {doc_id}: {validation_error}", exc_info=True)
+
             logger.info(
-                "Loaded active followers",
+                "Finished loading active followers",
                 count=len(self.active_followers),
             )
         except Exception as e:
-            logger.error(f"Error loading active followers: {e}")
+            logger.error(f"Error loading active followers from MongoDB: {e}", exc_info=True)
             self.status = ServiceStatus.ERROR
 
     async def get_secret(self, secret_ref: str) -> Optional[str]:

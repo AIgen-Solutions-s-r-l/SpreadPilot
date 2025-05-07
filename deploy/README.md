@@ -31,7 +31,7 @@ This directory contains the configuration and scripts for automating the deploym
     *   `Storage Admin`: To push images to GCR (or `Storage Object Admin` on the GCR bucket).
     *   `Secret Manager Secret Accessor`: To access secrets during deployment.
     *   `Service Account User`: To act as the Cloud Run runtime service account (if different from default).
-    *   Any roles needed to run integration tests (e.g., Firestore access).
+    *   Any secrets or network access needed to run integration tests against the database (e.g., MongoDB connection string, firewall rules).
 *   **Dockerfiles:** Ensure each microservice (including `frontend`) has a valid `Dockerfile`. The `cloudbuild.yaml` assumes standard locations (`<service-name>/Dockerfile`).
 
 ### 2. Configure Secret Manager

@@ -4,8 +4,8 @@ services:
   # Core services
   trading-bot:
     build:
-      context: .
-      dockerfile: trading-bot/Dockerfile
+      context: ./trading-bot
+      dockerfile: Dockerfile
     container_name: spreadpilot-trading-bot
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -21,7 +21,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - ib-gateway
       - otel-collector
     ports:
@@ -30,8 +31,8 @@ services:
 
   watchdog:
     build:
-      context: .
-      dockerfile: watchdog/Dockerfile
+      context: ./watchdog # Note: Watchdog Dockerfile might be missing
+      dockerfile: Dockerfile
     container_name: spreadpilot-watchdog
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -47,7 +48,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - trading-bot
       - ib-gateway
       - otel-collector
@@ -57,23 +59,26 @@ services:
 
   admin-api:
     build:
-      context: .
-      dockerfile: admin-api/Dockerfile
+      context: ./admin_api
+      dockerfile: Dockerfile
     container_name: spreadpilot-admin-api
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      # - FIRESTORE_EMULATOR_HOST=firestore:8080 # Removed Firestore
+      - MONGO_URI=mongodb://mongodb:27017 # Added MongoDB URI
+      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
       - TRADING_BOT_HOST=trading-bot
       - TRADING_BOT_PORT=8080
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-testsecret} # Added default for testing
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - trading-bot
       - otel-collector
     ports:
@@ -82,8 +87,8 @@ services:
 
   report-worker:
     build:
-      context: .
-      dockerfile: report-worker/Dockerfile
+      context: ./report_worker
+      dockerfile: Dockerfile
     container_name: spreadpilot-report-worker
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -96,14 +101,15 @@ services:
       - ./credentials:/app/credentials
       - ./reports:/app/reports
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - otel-collector
     restart: unless-stopped
 
   alert-router:
     build:
-      context: .
-      dockerfile: alert-router/Dockerfile
+      context: ./alert_router
+      dockerfile: Dockerfile
     container_name: spreadpilot-alert-router
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -118,7 +124,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      - firestore
+      # - firestore # Removed Firestore dependency
+      - mongodb # Added MongoDB dependency
       - otel-collector
     restart: unless-stopped
 
@@ -134,16 +141,10 @@ services:
     restart: unless-stopped
 
   # Infrastructure services
-  firestore:
-    image: google/cloud-sdk:latest
-    container_name: spreadpilot-firestore
-    entrypoint: gcloud beta emulators firestore start --host-port=0.0.0.0:8080
-    ports:
-      - "8084:8080"
-    restart: unless-stopped
+  # Removed Firestore service definition
 
   ib-gateway:
-    image: ghcr.io/gnzsnz/ib-gateway:10.30.1v
+    image: ghcr.io/gnzsnz/ib-gateway:latest
     container_name: spreadpilot-ib-gateway
     environment:
       - TWS_USERID=${IB_USERNAME}
@@ -152,6 +153,24 @@ services:
     ports:
       - "4002:4002"
     restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    container_name: spreadpilot-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017" # Expose to host for potential direct access during dev
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # Observability services
   otel-collector:
@@ -198,3 +217,4 @@ services:
 volumes:
   prometheus-data:
   grafana-data:
+  mongo_data:

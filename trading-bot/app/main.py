@@ -12,7 +12,9 @@ import asyncio
 import os
 import signal
 import sys
+import logging # Import logging for preload logger
 from typing import Dict, Optional
+from motor.motor_asyncio import AsyncIOMotorClient # Import motor
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,12 +23,69 @@ from pydantic import BaseModel
 
 from spreadpilot_core.logging import get_logger, setup_logging
 from spreadpilot_core.models import Follower, Position, Trade, Alert, AlertType, AlertSeverity
+from spreadpilot_core.utils.secrets import get_secret_from_mongo # Import secret getter
 
 from .config import Settings, get_settings
 from .service import TradingService
 from .sheets import GoogleSheetsClient
 
-# Initialize logger
+
+# --- Secret Pre-loading ---
+
+# Initialize logger early for pre-loading
+preload_logger = logging.getLogger(__name__ + ".preload")
+
+# Define secrets needed by this specific service
+SECRETS_TO_FETCH = [
+    "GOOGLE_SHEETS_API_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "SENDGRID_API_KEY",
+    "ADMIN_EMAIL",
+    # Add IBKR credentials if they were ever planned to be stored here
+]
+
+async def load_secrets_into_env():
+    """Fetches secrets from MongoDB and sets them as environment variables."""
+    preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
+    mongo_uri = os.environ.get("MONGO_URI")
+    mongo_db_name = os.environ.get("MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets"))
+
+    if not mongo_uri:
+        preload_logger.warning("MONGO_URI environment variable not set. Skipping MongoDB secret loading.")
+        return
+
+    client: AsyncIOMotorClient | None = None
+    try:
+        preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
+        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        await client.admin.command('ping')
+        db = client[mongo_db_name]
+        preload_logger.info(f"Connected to MongoDB database '{mongo_db_name}'.")
+
+        app_env = os.environ.get("APP_ENV", "development")
+
+        for secret_name in SECRETS_TO_FETCH:
+            preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
+            secret_value = await get_secret_from_mongo(db, secret_name, environment=app_env)
+            if secret_value is not None:
+                os.environ[secret_name] = secret_value
+                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
+            else:
+                preload_logger.info(f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set.")
+
+        preload_logger.info("Finished loading secrets into environment.")
+
+    except Exception as e:
+        preload_logger.error(f"Failed to load secrets from MongoDB into environment: {e}", exc_info=True)
+    finally:
+        if client:
+            client.close()
+            preload_logger.info("MongoDB connection for secret loading closed.")
+
+
+# --- Regular Application Setup ---
+
+# Initialize logger (will be properly configured in startup_event)
 logger = get_logger(__name__)
 
 # Initialize FastAPI app
@@ -66,17 +125,32 @@ class TradeSignal(BaseModel):
 async def startup_event():
     """Initialize the application on startup."""
     global settings, trading_service, sheets_client, shutdown_event
-    
-    # Set up logging
+
+    # --- Load Secrets FIRST ---
+    # Skips if TESTING env var is set
+    if not os.getenv("TESTING"):
+        try:
+            await load_secrets_into_env()
+        except Exception as e:
+            # Log error but allow startup to continue if possible
+            preload_logger.error(f"Error during async secret loading in startup: {e}", exc_info=True)
+    else:
+        preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading in startup.")
+
+    # --- Proceed with regular startup ---
+
+    # Set up logging (Now uses the final logger instance)
     setup_logging(
         service_name="trading-bot",
-        enable_gcp=True,
-        enable_otlp=True,
+        enable_gcp=True, # Consider if GCP logging still needed
+        enable_otlp=True, # Consider if OTLP logging still needed
     )
-    
-    # Load settings
+    # Re-get logger instance after setup_logging might have reconfigured handlers
+    logger = get_logger(__name__)
+
+    # Load settings (AFTER environment variables are potentially populated)
     settings = get_settings()
-    
+
     # Create shutdown event
     shutdown_event = asyncio.Event()
     

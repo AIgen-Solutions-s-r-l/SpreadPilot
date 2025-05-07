@@ -184,9 +184,19 @@ class SignalProcessor:
                 },
             )
             
-            # Save trade to Firestore
-            self.service.db.collection("trades").document(trade_id).set(trade.to_dict())
+            # Save trade to MongoDB
+            if not self.service.mongo_db:
+                logger.error("MongoDB not initialized, cannot save trade.")
+                # Decide how to handle this - maybe raise an error or return failure?
+                # For now, log and potentially skip saving.
+                raise RuntimeError("MongoDB client not available in SignalProcessor") # Make it explicit
             
+            trades_collection = self.service.mongo_db["trades"]
+            # Use model_dump(by_alias=True) to get MongoDB-compatible dict (_id)
+            trade_dict = trade.model_dump(by_alias=True, exclude_none=True) # Exclude None values if desired
+            await trades_collection.insert_one(trade_dict)
+            logger.debug(f"Saved trade {trade.id} to MongoDB.")
+
             # Update position
             await self.service.position_manager.update_position(
                 follower_id=follower_id,

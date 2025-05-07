@@ -15,8 +15,8 @@ init-dev:
 	$(PYTHON) -m venv venv
 	. venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -e ./spreadpilot-core && \
-	pip install -r requirements-dev.txt
+	pip install -r requirements-dev.txt && \
+	pip install -e ./spreadpilot-core
 	@echo "Development environment initialized. Activate with: source venv/bin/activate"
 
 # Install core library

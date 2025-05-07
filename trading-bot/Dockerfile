@@ -10,7 +10,7 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements (Paths relative to project root context '.')
 COPY spreadpilot-core/setup.py spreadpilot-core/
 COPY spreadpilot-core/pyproject.toml spreadpilot-core/
 COPY spreadpilot-core/README.md spreadpilot-core/
@@ -19,7 +19,7 @@ COPY spreadpilot-core/spreadpilot_core spreadpilot-core/spreadpilot_core
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e ./spreadpilot-core && \
-    pip install --no-cache-dir fastapi uvicorn google-cloud-firestore google-cloud-secret-manager
+    pip install --no-cache-dir fastapi uvicorn google-cloud-firestore # Removed google-cloud-secret-manager
 
 # Final stage
 FROM python:3.11-slim
@@ -31,7 +31,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
+# Copy application code (Path relative to project root context '.')
 COPY trading-bot/app /app/app
 
 # Set environment variables

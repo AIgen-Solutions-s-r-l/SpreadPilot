@@ -99,10 +99,13 @@ gcloud projects add-iam-policy-binding spreadpilot-prod \
     --member="serviceAccount:spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 
-# Grant Firestore access
-gcloud projects add-iam-policy-binding spreadpilot-prod \
-    --member="serviceAccount:spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com" \
-    --role="roles/datastore.user"
+# Grant MongoDB Access (Managed via Connection String)
+# Access to MongoDB is typically controlled via connection strings containing usernames/passwords
+# and network access rules (e.g., firewall settings, VPC peering, Atlas IP Access List).
+# Ensure the service accounts or runtime environments for your services have the necessary
+# credentials (usually via environment variables or secrets management) and network access
+# to connect to the MongoDB instance.
+# No specific IAM role binding like the one for Firestore is directly applicable here.
 
 # Grant Pub/Sub access
 gcloud projects add-iam-policy-binding spreadpilot-prod \

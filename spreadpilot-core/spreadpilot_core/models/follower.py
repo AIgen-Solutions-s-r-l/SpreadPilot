@@ -3,6 +3,9 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+from typing import Any, Annotated # Added Annotated
+from bson import ObjectId # Added ObjectId
+from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
 
 from pydantic import BaseModel, EmailStr, Field, validator
 
@@ -15,13 +18,24 @@ class FollowerState(str, Enum):
     MANUAL_INTERVENTION = "MANUAL_INTERVENTION"
 
 
+# Validator function to convert ObjectId to str
+def validate_objectid_to_str(v: Any) -> str:
+    if isinstance(v, ObjectId):
+        return str(v)
+    # If it's already a string (e.g., during creation), keep it
+    if isinstance(v, str):
+        return v
+    # Raise error for other unexpected types
+    raise TypeError('ObjectId or str required')
+
 class Follower(BaseModel):
     """Follower model.
-    
-    Maps to Firestore collection: followers/{followerId}
+
+    Maps to MongoDB collection: followers
     """
 
-    id: str = Field(..., description="Unique follower ID")
+    # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique follower ID", alias='_id')
     email: EmailStr = Field(..., description="Follower email address")
     iban: str = Field(..., description="Follower IBAN for commission payments")
     ibkr_username: str = Field(..., description="IBKR username")
@@ -39,32 +53,14 @@ class Follower(BaseModel):
             raise ValueError("Commission percentage must be between 0 and 100")
         return v
 
-    def to_dict(self):
-        """Convert to dict for Firestore."""
-        return {
-            "email": self.email,
-            "iban": self.iban,
-            "ibkrUsername": self.ibkr_username,
-            "ibkrSecretRef": self.ibkr_secret_ref,
-            "commissionPct": self.commission_pct,
-            "enabled": self.enabled,
-            "state": self.state.value,
-            "createdAt": self.created_at,
-            "updatedAt": self.updated_at,
-        }
+    # Removed custom to_dict and from_dict methods.
+    # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization
+    # and model_validate for deserialization.
+    # Ensure MongoDB stores fields in snake_case matching the model attributes.
 
-    @classmethod
-    def from_dict(cls, id: str, data: dict):
-        """Create from Firestore dict."""
-        return cls(
-            id=id,
-            email=data.get("email"),
-            iban=data.get("iban"),
-            ibkr_username=data.get("ibkrUsername"),
-            ibkr_secret_ref=data.get("ibkrSecretRef"),
-            commission_pct=data.get("commissionPct"),
-            enabled=data.get("enabled", False),
-            state=FollowerState(data.get("state", FollowerState.DISABLED.value)),
-            created_at=data.get("createdAt", datetime.utcnow()),
-            updated_at=data.get("updatedAt", datetime.utcnow()),
-        )
+    class Config:
+        # Allow population by field name OR alias
+        # Needed for model_validate to correctly map _id from Mongo to id
+        populate_by_name = True
+        # Optional: If you want to ensure _id is always used in output dicts
+        # serialization_alias = {'id': '_id'} # Handled by model_dump(by_alias=True)

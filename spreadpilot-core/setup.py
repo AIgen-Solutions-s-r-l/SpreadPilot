@@ -5,9 +5,10 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "google-cloud-firestore>=2.11.0",
-        "google-cloud-logging>=3.5.0",
-        "google-cloud-secret-manager>=2.16.0",
+        # "google-cloud-firestore>=2.11.0", # Removed as part of Firestore -> MongoDB migration
+        # "google-cloud-logging>=3.5.0", # Removed as part of logging refactor
+        # "google-cloud-secret-manager>=2.16.0", # Removed as part of refactoring to MongoDB secrets
+        "motor>=3.3.0",       # Async MongoDB driver (added)
         "ib-insync>=0.9.85",  # IBKR API wrapper
         "pydantic>=2.0.0",    # Data validation
         "opentelemetry-api>=1.18.0,<2.0.0",
