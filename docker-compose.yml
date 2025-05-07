@@ -24,7 +24,6 @@ services:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
       - ib-gateway
-      - otel-collector
     ports:
       - "8081:8080"
     restart: unless-stopped
@@ -52,7 +51,6 @@ services:
       - mongodb # Added MongoDB dependency
       - trading-bot
       - ib-gateway
-      - otel-collector
     ports:
       - "8082:8080"
     restart: unless-stopped
@@ -80,7 +78,6 @@ services:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
       - trading-bot
-      - otel-collector
     ports:
       - "8083:8080"
     restart: unless-stopped
@@ -103,7 +100,6 @@ services:
     depends_on:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
-      - otel-collector
     restart: unless-stopped
 
   alert-router:
@@ -173,33 +169,6 @@ services:
       start_period: 40s
 
   # Observability services
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    container_name: spreadpilot-otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    ports:
-      - "4317:4317"  # OTLP gRPC
-      - "4318:4318"  # OTLP HTTP
-      - "8889:8889"  # Prometheus exporter
-    restart: unless-stopped
-
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: spreadpilot-grafana
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
 
 volumes:
   prometheus-data:

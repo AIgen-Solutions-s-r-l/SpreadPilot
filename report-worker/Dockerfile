@@ -1,4 +1,4 @@
-# Use an official Python runtime as a parent image
+# Use Python 3.11 slim as base image
 FROM python:3.11-slim
 
 # Set environment variables
@@ -14,27 +14,28 @@ WORKDIR /app
 # Install pip-tools for compiling requirements
 RUN pip install --no-cache-dir --upgrade pip pip-tools
 
-# --- Install spreadpilot-core ---
+# --- Install dependencies ---
 # Copy the core library source into the image (Path relative to project root context '.')
 COPY ./spreadpilot-core /app/spreadpilot-core
-# Install the core library in editable mode
-# This makes its modules available to the alert-router app
-RUN pip install --no-cache-dir -e /app/spreadpilot-core
-
-# --- Install alert-router dependencies ---
 # Copy the requirements file (Path relative to project root context '.')
-COPY ./alert-router/requirements.in /app/requirements.in
+COPY ./report-worker/requirements.in /app/requirements.in
 # Compile requirements.in to requirements.txt and install
-# This ensures deterministic builds using pinned versions
 RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
     && pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code into the container (Path relative to project root context '.')
-COPY ./alert-router/app /app/app
+COPY ./report-worker/app /app/app
 
-# Expose the port the app runs on
-EXPOSE 8080
+# Set environment variables
+ENV PYTHONPATH=/app
+# Assuming report-worker might need a port, though it's a worker.
+# If it's triggered by events, a port might not be needed.
+# For now, setting a default port similar to others.
+ENV PORT=8084
+
+# Expose port (if needed)
+EXPOSE 8084
 
 # Define the command to run the application
-# Use the PORT environment variable provided by Cloud Run, default to 8080
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Assuming main.py is the entry point
+CMD ["python", "app/main.py"]
