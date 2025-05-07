@@ -18,7 +18,7 @@ COPY spreadpilot-core/spreadpilot_core spreadpilot-core/spreadpilot_core
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e ./spreadpilot-core && \
+    pip install --no-cache-dir ./spreadpilot-core && \
     pip install --no-cache-dir fastapi uvicorn google-cloud-firestore # Removed google-cloud-secret-manager
 
 # Final stage

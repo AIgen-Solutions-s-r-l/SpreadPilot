@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Follower, BotStatus, IbGwStatus, AssignmentState } from '../types/follower';
+import { Follower } from '../types/follower';
 import * as followerService from '../services/followerService';
 import { useWebSocket } from '../contexts/WebSocketContext'; // Import WebSocket hook
 

@@ -1,12 +1,11 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom'; // Import NavLink
 
 // Define props to explicitly include children
 interface DashboardLayoutProps {
-  children?: ReactNode; // Make children optional if needed, but required by usage here
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => { // Destructure children if needed, though Outlet handles rendering
+const DashboardLayout: React.FC<DashboardLayoutProps> = () => { // Destructure children if needed, though Outlet handles rendering
   // Placeholder layout structure
   return (
     <div className="flex h-screen bg-gray-200">

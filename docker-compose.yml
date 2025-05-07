@@ -4,8 +4,8 @@ services:
   # Core services
   trading-bot:
     build:
-      context: ./trading-bot
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: trading-bot/Dockerfile
     container_name: spreadpilot-trading-bot
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -59,8 +59,8 @@ services:
 
   admin-api:
     build:
-      context: ./admin_api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: admin-api/Dockerfile
     container_name: spreadpilot-admin-api
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -185,17 +185,6 @@ services:
       - "8889:8889"  # Prometheus exporter
     restart: unless-stopped
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: spreadpilot-prometheus
-    volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    ports:
-      - "9090:9090"
-    depends_on:
-      - otel-collector
-    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -210,8 +199,6 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - "3000:3000"
-    depends_on:
-      - prometheus
     restart: unless-stopped
 
 volumes:
