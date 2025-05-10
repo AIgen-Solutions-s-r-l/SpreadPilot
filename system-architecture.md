@@ -1,31 +1,43 @@
-+++
-id = "DOC-ARCH-SYSTEM-ARCHITECTURE"
-title = "SpreadPilot System Architecture"
-context_type = "documentation"
-scope = "Overall system architecture"
-target_audience = ["product managers", "architects", "engineers"]
-granularity = "high-level to detailed"
-status = "published"
-last_updated = "2025-05-10"
-tags = ["architecture", "system-design", "components", "deployment", "data", "cross-cutting-concerns"]
-related_context = [
-    ".ruru/tasks/TASK-WRITER-20250510-101957-ARCH-DOC.md",
-    ".ruru/tasks/TASK-PYDEV-20250510-091336-TRADINGBOT.md",
-    ".ruru/tasks/TASK-PYDEV-20250510-092046-WATCHDOG.md",
-    ".ruru/tasks/TASK-PYDEV-20250510-092435-ADMINAPI.md",
-    ".ruru/tasks/TASK-PYDEV-20250510-093122-REPORTWORKER.md",
-    ".ruru/tasks/TASK-PYDEV-20250510-093633-ALERTROUTER.md",
-    ".ruru/tasks/TASK-REACT-20250510-094241-FRONTEND.md",
-    ".ruru/tasks/TASK-DIAGRAMER-20250510-094835-COMPONENT-INTERACTION.md",
-    ".ruru/tasks/TASK-DIAGRAMER-20250510-101707-DEPLOYMENT-ARCHITECTURE.md",
-    ".ruru/tasks/TASK-DIAGRAMER-20250510-101904-CROSS-CUTTING-CONCERNS.md",
-    ".ruru/tasks/TASK-DIAGRAMER-20250510-094928-DATA-ARCHITECTURE.md"
-]
-+++
-
 # SpreadPilot System Architecture
 
 This document provides a comprehensive overview of the SpreadPilot trading system's software architecture, detailing its components, their interactions, deployment model, data structure, and key cross-cutting concerns.
+## 🚀 System Overview for Stakeholders
+
+SpreadPilot is an automated trading platform that executes option spread strategies on behalf of subscribers (called "followers"). Here's how the system works in simple terms:
+
+### 🔄 Core Workflow
+
+1. 📊 **Signal Generation**: Trading signals are created in Google Sheets by strategy managers
+2. 🤖 **Automated Execution**: The Trading Bot reads these signals and automatically places trades for all followers
+3. 💼 **Position Management**: The system monitors all open positions and manages assignments/expirations
+4. 📱 **Notifications**: Critical alerts are sent via Telegram and email when important events occur
+5. 📈 **Reporting**: Monthly performance reports are generated and sent to followers
+
+### 🧩 Key Components
+
+- **Trading Bot** 🤖: The heart of the system that executes trades via Interactive Brokers
+- **Admin API** 🛠️: Provides administrative control over followers and system settings
+- **Frontend Dashboard** 📊: Web interface for administrators to monitor and control the system
+- **Report Worker** 📑: Generates performance reports and P&L calculations
+- **Alert Router** 🚨: Ensures critical notifications reach administrators and followers
+- **Watchdog** 👀: Monitors system health and detects issues with critical services
+
+### 💰 Business Value
+
+- **Automation** ⚙️: Eliminates manual trading, reducing human error and operational overhead
+- **Scalability** 📈: Handles multiple followers with different account sizes and risk profiles
+- **Transparency** 🔍: Provides detailed reporting on performance and commissions
+- **Reliability** 🛡️: Built-in monitoring, alerting, and failsafes to handle trading edge cases
+- **Security** 🔒: Secure storage of credentials and trading parameters
+
+### 🔄 Data Flow
+
+1. Trading signals flow from Google Sheets → Trading Bot → Interactive Brokers
+2. Trade confirmations flow from Interactive Brokers → Trading Bot → MongoDB → Admin Dashboard
+3. Alerts flow from Trading Bot → Alert Router → Administrators/Followers
+4. Reports flow from Report Worker → Email → Followers
+
+This architecture enables a reliable, scalable trading operation that can execute strategies across multiple follower accounts simultaneously while providing transparency and control.
 
 ## Component Documentation
 
@@ -370,79 +382,79 @@ flowchart TB
 ### Cross-cutting Concerns Diagram
 
 ```mermaid
-flowchart TD
-    %% Components
-    subgraph components["SpreadPilot Components"]
-        A[Trading Bot]
-        B[Watchdog]
-        C[Admin API]
-        D[Report Worker]
-        E[Alert Router]
-        F[Frontend]
+graph TD
+    %% Define nodes
+    A[Trading Bot]
+    B[Watchdog]
+    C[Admin API]
+    D[Report Worker]
+    E[Alert Router]
+    F[Frontend]
+    
+    G[Secrets Store MongoDB]
+    H[Otel Collector]
+    I[Logging/Monitoring System]
+    J[User]
+    K[Load Balancer]
+    L[Environment Variables]
+    
+    %% Group nodes
+    subgraph "SpreadPilot Components"
+        A
+        B
+        C
+        D
+        E
+        F
     end
-
-    %% Infrastructure
-    subgraph infra["Infrastructure / External"]
-        G[Secrets Store (MongoDB)]
-        H[Otel Collector]
-        I[Logging/Monitoring System]
-        J[User]
-        K[Load Balancer]
-        L[Environment Variables]
+    
+    subgraph "Infrastructure / External"
+        G
+        H
+        I
+        J
+        K
+        L
     end
-
-    %% Observability Connections
+    
+    %% Observability connections
     A -->|Observability| H
     B -->|Observability| H
     C -->|Observability| H
     D -->|Observability| H
     E -->|Observability| H
-    F -->|Observability (console.log)| I
+    F -->|Observability| I
     H -->|Observability| I
-    A -->|Observability (Stdout Logs)| I
-    B -->|Observability (Stdout Logs)| I
-    C -->|Observability (Stdout Logs)| I
-    D -->|Observability (Stdout Logs)| I
-    E -->|Observability (Stdout Logs)| I
-
-    %% Security Connections
-    G -->|Security (Secrets)| A
-    G -->|Security (Secrets)| B
-    G -->|Security (Secrets)| C
-    G -->|Security (Secrets)| D
-    G -->|Security (Secrets)| E
-    J -->|Security (Auth/Req)| K
-    K -->|Security (Auth/Req)| C
-    C -.->|Security (Auth Gap)| J
-
-    %% Configuration Connections
-    L -->|Configuration| A
-    L -->|Configuration| B
-    L -->|Configuration| C
-    L -->|Configuration| D
-    L -->|Configuration| E
-    L -->|Configuration| F
-    G -->|Configuration (Secrets)| A
-    G -->|Configuration (Secrets)| B
-    G -->|Configuration (Secrets)| C
-    G -->|Configuration (Secrets)| D
-    G -->|Configuration (Secrets)| E
-
-    %% Simple Styling
-    style components fill:#f8f8f8,stroke:#333
-    style infra fill:#f0f0f0,stroke:#333
-    style A fill:#ffddee,stroke:#333
-    style B fill:#ffddee,stroke:#333
-    style C fill:#ffddee,stroke:#333
-    style D fill:#ffddee,stroke:#333
-    style E fill:#ffddee,stroke:#333
-    style F fill:#ffddee,stroke:#333
-    style G fill:#ddddff,stroke:#333
-    style H fill:#ddddff,stroke:#333
-    style I fill:#ddddff,stroke:#333
-    style J fill:#ddddff,stroke:#333
-    style K fill:#ddddff,stroke:#333
-    style L fill:#ddddff,stroke:#333
+    A -->|Logs| I
+    B -->|Logs| I
+    C -->|Logs| I
+    D -->|Logs| I
+    E -->|Logs| I
+    
+    %% Security connections
+    G -->|Secrets| A
+    G -->|Secrets| B
+    G -->|Secrets| C
+    G -->|Secrets| D
+    G -->|Secrets| E
+    J -->|Auth| K
+    K -->|Auth| C
+    C -.->|Auth Gap| J
+    
+    %% Configuration connections
+    L -->|Config| A
+    L -->|Config| B
+    L -->|Config| C
+    L -->|Config| D
+    L -->|Config| E
+    L -->|Config| F
+    
+    %% Basic styling
+    classDef component fill:#f9f,stroke:#333;
+    classDef infra fill:#ccf,stroke:#333;
+    
+    class A,B,C,D,E,F component;
+    class G,H,I,J,K,L infra;
 ```
 
 ### Data Architecture Diagram
