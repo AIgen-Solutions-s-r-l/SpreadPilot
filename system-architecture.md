@@ -224,135 +224,155 @@ This section provides visual representations of the SpreadPilot system's archite
 ### Component Interaction Diagram
 
 ```mermaid
-C4Component
-    title SpreadPilot Component Interaction Diagram
+flowchart TB
+    %% Title
+    subgraph SpreadPilot["SpreadPilot System"]
+        frontend["Frontend<br><small>React Application<br>User Interface</small>"]
+        admin_api["Admin API<br><small>Python FastAPI<br>Provides administrative interface</small>"]
+        trading_bot["Trading Bot<br><small>Python Application<br>Executes trading strategy</small>"]
+        watchdog["Watchdog<br><small>Python Application<br>Monitors system health</small>"]
+        report_worker["Report Worker<br><small>Python Application<br>Generates and sends reports</small>"]
+        alert_router["Alert Router<br><small>Python Application<br>Routes alerts to users</small>"]
+    end
 
-    System_Boundary(spreadpilot, "SpreadPilot System")
-        Component(frontend, "Frontend", "React Application", "User Interface")
-        Component(admin_api, "Admin API", "Python FastAPI", "Provides administrative interface")
-        Component(trading_bot, "Trading Bot", "Python Application", "Executes trading strategy")
-        Component(watchdog, "Watchdog", "Python Application", "Monitors system health")
-        Component(report_worker, "Report Worker", "Python Application", "Generates and sends reports")
-        Component(alert_router, "Alert Router", "Python Application", "Routes alerts to users")
-    System_Boundary_End
+    %% External Systems
+    ib_gateway["IB Gateway<br><small>Interactive Brokers Trading Platform<br>External Trading System</small>"]
+    mongodb["MongoDB<br><small>Document Database<br>Stores application data</small>"]
+    google_sheets["Google Sheets<br><small>Spreadsheet Service<br>Configuration/Input source</small>"]
+    telegram_api["Telegram API<br><small>Messaging Service<br>Sends user notifications</small>"]
+    email_smtp["Email SMTP Service<br><small>Email Delivery Service<br>Sends user emails</small>"]
+    pubsub["Pub/Sub System<br><small>Messaging Queue<br>Decouples services</small>"]
+    otel_collector["OpenTelemetry Collector<br><small>Telemetry Collector<br>Collects tracing data</small>"]
+    firestore["Firestore<br><small>NoSQL Database<br>Placeholder for Watchdog checks</small>"]
 
-    System(ib_gateway, "IB Gateway", "Interactive Brokers Trading Platform", "External Trading System")
-    System(mongodb, "MongoDB", "Document Database", "Stores application data")
-    System(google_sheets, "Google Sheets", "Spreadsheet Service", "Configuration/Input source")
-    System(telegram_api, "Telegram API", "Messaging Service", "Sends user notifications")
-    System(email_smtp, "Email SMTP Service", "Email Delivery Service", "Sends user emails (e.g., SendGrid)")
-    System(pubsub, "Pub/Sub System", "Messaging Queue", "Decouples services")
-    System(otel_collector, "OpenTelemetry Collector", "Telemetry Collector", "Collects tracing data")
-    System(firestore, "Firestore", "NoSQL Database", "Placeholder for Watchdog checks")
+    %% Relationships
+    frontend -- "Uses<br>REST, WebSocket" --> admin_api
+    admin_api -- "Reads/Writes<br>Follower, Secrets" --> mongodb
+    admin_api -- "Publishes<br>Close Positions Command" --> pubsub
 
+    trading_bot -- "Uses<br>Proprietary API (ib_insync)" --> ib_gateway
+    trading_bot -- "Polls<br>HTTPS" --> google_sheets
+    trading_bot -- "Reads/Writes<br>Follower, Position, Trade, Alert, Secrets" --> mongodb
+    trading_bot -- "Sends messages via<br>SpreadPilot Core util" --> telegram_api
+    trading_bot -- "Publishes<br>AlertEvent" --> pubsub
 
-    Rel(frontend, admin_api, "Uses", "REST, WebSocket")
-    Rel(admin_api, mongodb, "Reads/Writes", "Follower, Secrets")
-    Rel(admin_api, pubsub, "Publishes", "Close Positions Command")
+    watchdog -- "Checks health of" --> trading_bot
+    watchdog -- "Checks health of" --> ib_gateway
+    watchdog -- "Checks health of" --> otel_collector
+    watchdog -- "Checks health of" --> firestore
 
-    Rel(trading_bot, ib_gateway, "Uses", "Proprietary API (ib_insync)")
-    Rel(trading_bot, google_sheets, "Polls", "HTTPS")
-    Rel(trading_bot, mongodb, "Reads/Writes", "Follower, Position, Trade, Alert, Secrets")
-    Rel(trading_bot, telegram_api, "Sends messages via", "SpreadPilot Core util")
-    Rel(trading_bot, pubsub, "Publishes", "AlertEvent")
+    pubsub -- "Triggers<br>HTTP push" --> report_worker
+    report_worker -- "Reads/Writes<br>Follower, Position/Trade, Reports, Secrets" --> mongodb
+    report_worker -- "Sends emails via<br>SpreadPilot Core util" --> email_smtp
 
-    Rel(watchdog, trading_bot, "Checks health of")
-    Rel(watchdog, ib_gateway, "Checks health of")
-    Rel(watchdog, otel_collector, "Checks health of")
-    Rel(watchdog, firestore, "Checks health of")
+    pubsub -- "Triggers<br>HTTP push" --> alert_router
+    alert_router -- "Reads<br>Secrets" --> mongodb
+    alert_router -- "Sends messages via<br>SpreadPilot Core util" --> telegram_api
+    alert_router -- "Sends emails via<br>SpreadPilot Core util" --> email_smtp
 
-    Rel(report_worker, pubsub, "Receives messages from", "HTTP push")
-    Rel(report_worker, mongodb, "Reads/Writes", "Follower, Position/Trade, Reports, Secrets")
-    Rel(report_worker, email_smtp, "Sends emails via", "SpreadPilot Core util")
+    frontend -- "Sends tracing data to" --> otel_collector
+    admin_api -- "Sends tracing data to" --> otel_collector
+    trading_bot -- "Sends tracing data to" --> otel_collector
+    watchdog -- "Sends tracing data to" --> otel_collector
+    report_worker -- "Sends tracing data to" --> otel_collector
+    alert_router -- "Sends tracing data to" --> otel_collector
 
-    Rel(alert_router, pubsub, "Receives messages from", "HTTP push")
-    Rel(alert_router, mongodb, "Reads", "Secrets")
-    Rel(alert_router, telegram_api, "Sends messages via", "SpreadPilot Core util")
-    Rel(alert_router, email_smtp, "Sends emails via", "SpreadPilot Core util")
-
-    Rel(frontend, otel_collector, "Sends tracing data to")
-    Rel(admin_api, otel_collector, "Sends tracing data to")
-    Rel(trading_bot, otel_collector, "Sends tracing data to")
-    Rel(watchdog, otel_collector, "Sends tracing data to")
-    Rel(report_worker, otel_collector, "Sends tracing data to")
-    Rel(alert_router, otel_collector, "Sends tracing data to")
-
-    UpdateLayoutConfig({"direction":"TB"})
+    %% Styling
+    classDef system fill:#f5f5f5,stroke:#333,stroke-width:1px;
+    classDef component fill:#d4f0f0,stroke:#333,stroke-width:1px;
+    classDef external fill:#f5e8d4,stroke:#333,stroke-width:1px;
+    
+    class frontend,admin_api,trading_bot,watchdog,report_worker,alert_router component;
+    class ib_gateway,mongodb,google_sheets,telegram_api,email_smtp,pubsub,otel_collector,firestore external;
 ```
 
 ### Deployment Architecture Diagram
 
 ```mermaid
-C4Deployment
-    title Deployment Architecture Diagram for SpreadPilot
-
-    Deployment_Node(cloud_env, "Cloud Environment", "Google Cloud Platform (GCP) or similar") {
-        Deployment_Node(container_runtime, "Container Runtime", "Managed Container Service (e.g., Cloud Run, GKE)") {
-            Container(frontend_container, "Frontend", "Docker Container", "React application served by Nginx")
-            Container(admin_api_container, "Admin API", "Docker Container", "FastAPI application")
-            Container(trading_bot_container, "Trading Bot", "Docker Container", "FastAPI application")
-            Container(watchdog_container, "Watchdog", "Docker Container", "Python application")
-            Container(report_worker_container, "Report Worker", "Docker Container", "Flask application")
-            Container(alert_router_container, "Alert Router", "Docker Container", "FastAPI application")
-            Container(otel_collector_container, "OpenTelemetry Collector", "Docker Container", "Receives tracing data")
-        }
-        Deployment_Node(database_node, "Database Node", "Managed Database Service") {
-             Container(mongodb, "MongoDB", "Database", "Central data store")
-        }
-    }
-
-    Deployment_Node(internet, "Internet", "External Network") {
-        System(user, "User", "End User")
-        System(load_balancer, "Load Balancer / Reverse Proxy", "Entrypoint to the system")
-        System(ib_gateway, "IB Gateway", "Interactive Brokers Trading Gateway")
-        System(google_sheets, "Google Sheets", "Spreadsheet service")
-        System(email_service, "Email Service", "e.g., SendGrid")
-        System(telegram_api, "Telegram API", "Messaging service")
-        System(pubsub_system, "Pub/Sub System", "Managed Messaging Service (e.g., GCP Pub/Sub)")
-    }
-
-    Rel(user, load_balancer, "Accesses", "HTTPS")
-    Rel(load_balancer, frontend_container, "Routes traffic to", "HTTPS")
-    Rel(load_balancer, admin_api_container, "Routes traffic to", "HTTPS")
-
-    Rel(frontend_container, admin_api_container, "Communicates with", "HTTP/HTTPS")
-
-    Rel(trading_bot_container, ib_gateway, "Connects to", "Proprietary Protocol")
-    Rel(trading_bot_container, google_sheets, "Polls data from", "API")
-    Rel(trading_bot_container, mongodb, "Reads/Writes data", "MongoDB Protocol")
-    Rel(trading_bot_container, telegram_api, "Sends messages", "API")
-    Rel(trading_bot_container, pubsub_system, "Publishes alerts", "Pub/Sub Protocol")
-
-    Rel(watchdog_container, ib_gateway, "Checks health of", "Proprietary Protocol")
-    Rel(watchdog_container, otel_collector_container, "Sends health/metrics", "OTLP")
-    Rel(watchdog_container, mongodb, "Checks health of", "MongoDB Protocol") # Assuming watchdog checks DB health
-
-    Rel(pubsub_system, report_worker_container, "Triggers (Push)", "Pub/Sub Protocol")
-    Rel(report_worker_container, mongodb, "Reads data", "MongoDB Protocol")
-    Rel(report_worker_container, email_service, "Sends reports", "SMTP/API")
-
-    Rel(pubsub_system, alert_router_container, "Triggers (Push)", "Pub/Sub Protocol")
-    Rel(alert_router_container, mongodb, "Fetches secrets", "MongoDB Protocol")
-    Rel(alert_router_container, telegram_api, "Sends alerts", "API")
-    Rel(alert_router_container, email_service, "Sends alerts", "SMTP/API")
-
-    Rel(admin_api_container, mongodb, "Reads/Writes data", "MongoDB Protocol")
-    Rel(admin_api_container, pubsub_system, "Publishes commands", "Pub/Sub Protocol") # Inferred from context
-
-    Rel(frontend_container, otel_collector_container, "Sends tracing data", "OTLP") # Assuming frontend also sends traces
-    Rel(admin_api_container, otel_collector_container, "Sends tracing data", "OTLP")
-    Rel(trading_bot_container, otel_collector_container, "Sends tracing data", "OTLP")
-    Rel(report_worker_container, otel_collector_container, "Sends tracing data", "OTLP")
-    Rel(alert_router_container, otel_collector_container, "Sends tracing data", "OTLP")
-
-    UpdateLayoutConfig({"direction":"TB"})
+flowchart TB
+    %% Title at the top
+    title[Deployment Architecture Diagram for SpreadPilot]
+    style title fill:none,stroke:none
+    
+    %% Cloud Environment
+    subgraph cloud_env["Cloud Environment (GCP or similar)"]
+        subgraph container_runtime["Container Runtime (e.g., Cloud Run, GKE)"]
+            frontend_container["Frontend<br><small>Docker Container<br>React app served by Nginx</small>"]
+            admin_api_container["Admin API<br><small>Docker Container<br>FastAPI application</small>"]
+            trading_bot_container["Trading Bot<br><small>Docker Container<br>FastAPI application</small>"]
+            watchdog_container["Watchdog<br><small>Docker Container<br>Python application</small>"]
+            report_worker_container["Report Worker<br><small>Docker Container<br>Flask application</small>"]
+            alert_router_container["Alert Router<br><small>Docker Container<br>FastAPI application</small>"]
+            otel_collector_container["OpenTelemetry Collector<br><small>Docker Container<br>Receives tracing data</small>"]
+        end
+        
+        subgraph database_node["Database Node (Managed Database Service)"]
+            mongodb["MongoDB<br><small>Database<br>Central data store</small>"]
+        end
+    end
+    
+    %% Internet/External
+    subgraph internet["Internet (External Network)"]
+        user["User<br><small>End User</small>"]
+        load_balancer["Load Balancer / Reverse Proxy<br><small>Entrypoint to the system</small>"]
+        ib_gateway["IB Gateway<br><small>Interactive Brokers Trading Gateway</small>"]
+        google_sheets["Google Sheets<br><small>Spreadsheet service</small>"]
+        email_service["Email Service<br><small>e.g., SendGrid</small>"]
+        telegram_api["Telegram API<br><small>Messaging service</small>"]
+        pubsub_system["Pub/Sub System<br><small>Managed Messaging Service</small>"]
+    end
+    
+    %% Relationships
+    user -- "Accesses<br>HTTPS" --> load_balancer
+    load_balancer -- "Routes traffic to<br>HTTPS" --> frontend_container
+    load_balancer -- "Routes traffic to<br>HTTPS" --> admin_api_container
+    
+    frontend_container -- "Communicates with<br>HTTP/HTTPS" --> admin_api_container
+    
+    trading_bot_container -- "Connects to<br>Proprietary Protocol" --> ib_gateway
+    trading_bot_container -- "Polls data from<br>API" --> google_sheets
+    trading_bot_container -- "Reads/Writes data<br>MongoDB Protocol" --> mongodb
+    trading_bot_container -- "Sends messages<br>API" --> telegram_api
+    trading_bot_container -- "Publishes alerts<br>Pub/Sub Protocol" --> pubsub_system
+    
+    watchdog_container -- "Checks health of<br>Proprietary Protocol" --> ib_gateway
+    watchdog_container -- "Sends health/metrics<br>OTLP" --> otel_collector_container
+    watchdog_container -- "Checks health of<br>MongoDB Protocol" --> mongodb
+    
+    pubsub_system -- "Triggers (Push)<br>Pub/Sub Protocol" --> report_worker_container
+    report_worker_container -- "Reads data<br>MongoDB Protocol" --> mongodb
+    report_worker_container -- "Sends reports<br>SMTP/API" --> email_service
+    
+    pubsub_system -- "Triggers (Push)<br>Pub/Sub Protocol" --> alert_router_container
+    alert_router_container -- "Fetches secrets<br>MongoDB Protocol" --> mongodb
+    alert_router_container -- "Sends alerts<br>API" --> telegram_api
+    alert_router_container -- "Sends alerts<br>SMTP/API" --> email_service
+    
+    admin_api_container -- "Reads/Writes data<br>MongoDB Protocol" --> mongodb
+    admin_api_container -- "Publishes commands<br>Pub/Sub Protocol" --> pubsub_system
+    
+    frontend_container -- "Sends tracing data<br>OTLP" --> otel_collector_container
+    admin_api_container -- "Sends tracing data<br>OTLP" --> otel_collector_container
+    trading_bot_container -- "Sends tracing data<br>OTLP" --> otel_collector_container
+    report_worker_container -- "Sends tracing data<br>OTLP" --> otel_collector_container
+    alert_router_container -- "Sends tracing data<br>OTLP" --> otel_collector_container
+    
+    %% Styling
+    classDef container fill:#d4f0f0,stroke:#333,stroke-width:1px;
+    classDef external fill:#f5e8d4,stroke:#333,stroke-width:1px;
+    classDef database fill:#f0d4e9,stroke:#333,stroke-width:1px;
+    
+    class frontend_container,admin_api_container,trading_bot_container,watchdog_container,report_worker_container,alert_router_container,otel_collector_container container;
+    class user,load_balancer,ib_gateway,google_sheets,email_service,telegram_api,pubsub_system external;
+    class mongodb database;
 ```
 
 ### Cross-cutting Concerns Diagram
 
 ```mermaid
-graph TD
-    subgraph "SpreadPilot Components"
+flowchart TD
+    %% Components
+    subgraph components["SpreadPilot Components"]
         A[Trading Bot]
         B[Watchdog]
         C[Admin API]
@@ -361,7 +381,8 @@ graph TD
         F[Frontend]
     end
 
-    subgraph "Infrastructure / External"
+    %% Infrastructure
+    subgraph infra["Infrastructure / External"]
         G[Secrets Store (MongoDB)]
         H[Otel Collector]
         I[Logging/Monitoring System]
@@ -370,7 +391,7 @@ graph TD
         L[Environment Variables]
     end
 
-    %% Observability
+    %% Observability Connections
     A -->|Observability| H
     B -->|Observability| H
     C -->|Observability| H
@@ -384,7 +405,7 @@ graph TD
     D -->|Observability (Stdout Logs)| I
     E -->|Observability (Stdout Logs)| I
 
-    %% Security
+    %% Security Connections
     G -->|Security (Secrets)| A
     G -->|Security (Secrets)| B
     G -->|Security (Secrets)| C
@@ -392,9 +413,9 @@ graph TD
     G -->|Security (Secrets)| E
     J -->|Security (Auth/Req)| K
     K -->|Security (Auth/Req)| C
-    C --.->|Security (Auth Gap)| J
+    C -.->|Security (Auth Gap)| J
 
-    %% Configuration
+    %% Configuration Connections
     L -->|Configuration| A
     L -->|Configuration| B
     L -->|Configuration| C
@@ -407,11 +428,21 @@ graph TD
     G -->|Configuration (Secrets)| D
     G -->|Configuration (Secrets)| E
 
-    %% Notes/Styling (Optional but helpful)
-    classDef component fill:#f9f,stroke:#333,stroke-width:2px;
-    class A,B,C,D,E,F component
-    classDef infra fill:#ccf,stroke:#333,stroke-width:2px;
-    class G,H,I,J,K,L infra
+    %% Simple Styling
+    style components fill:#f8f8f8,stroke:#333
+    style infra fill:#f0f0f0,stroke:#333
+    style A fill:#ffddee,stroke:#333
+    style B fill:#ffddee,stroke:#333
+    style C fill:#ffddee,stroke:#333
+    style D fill:#ffddee,stroke:#333
+    style E fill:#ffddee,stroke:#333
+    style F fill:#ffddee,stroke:#333
+    style G fill:#ddddff,stroke:#333
+    style H fill:#ddddff,stroke:#333
+    style I fill:#ddddff,stroke:#333
+    style J fill:#ddddff,stroke:#333
+    style K fill:#ddddff,stroke:#333
+    style L fill:#ddddff,stroke:#333
 ```
 
 ### Data Architecture Diagram
@@ -430,6 +461,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
+    
     Positions {
         string id PK
         string follower_id FK
@@ -441,6 +473,7 @@ erDiagram
         string assignment_state
         datetime updated_at
     }
+    
     Trades {
         string id PK
         string follower_id FK
@@ -449,23 +482,25 @@ erDiagram
         float strike
         float limit_price_requested
         string status
-        dictionary timestamps
-        string error_code OPTIONAL
-        string error_msg OPTIONAL
+        object timestamps
+        string error_code
+        string error_msg
         datetime created_at
         datetime updated_at
     }
+    
     Alerts {
         string id PK
-        string follower_id FK OPTIONAL
+        string follower_id FK
         string severity
         string type
         string message
         datetime created_at
         boolean acknowledged
-        datetime acknowledged_at OPTIONAL
-        string acknowledged_by OPTIONAL
+        datetime acknowledged_at
+        string acknowledged_by
     }
+    
     Secrets {
         string id PK
         string name
@@ -473,6 +508,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
+    
     Daily_PnL {
         string id PK
         string follower_id FK
@@ -482,6 +518,7 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
+    
     Monthly_Reports {
         string id PK
         string follower_id FK
