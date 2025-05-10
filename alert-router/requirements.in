@@ -1,0 +1,6 @@
+./spreadpilot-core
+fastapi
+uvicorn[standard]
+google-cloud-firestore
+sendgrid
+python-telegram-bot

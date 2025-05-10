@@ -84,8 +84,8 @@ services:
 
   report-worker:
     build:
-      context: ./report_worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: report_worker/Dockerfile
     container_name: spreadpilot-report-worker
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -104,8 +104,8 @@ services:
 
   alert-router:
     build:
-      context: ./alert_router
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: alert-router/Dockerfile
     container_name: spreadpilot-alert-router
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
@@ -122,13 +122,12 @@ services:
     depends_on:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
-      - otel-collector
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: alert-router/Dockerfile
     container_name: spreadpilot-frontend
     ports:
       - "8080:80"
