@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: spreadpilot-mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-password}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  admin-api:
+    build:
+      context: .
+      dockerfile: admin-api/Dockerfile
+    container_name: spreadpilot-admin-api
+    environment:
+      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin_test
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - JWT_SECRET=${JWT_SECRET:-testsecret}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - mongodb
+    ports:
+      - "8083:8080"
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
