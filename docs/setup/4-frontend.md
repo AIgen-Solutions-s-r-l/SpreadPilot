@@ -2,6 +2,8 @@
 
 This document provides detailed instructions for setting up the Frontend for the SpreadPilot system. It covers the configuration, startup, verification, and troubleshooting steps.
 
+> **Note:** For a simplified setup process, refer to the [FRONTEND-SETUP.md](../../FRONTEND-SETUP.md) file in the project root. It provides a Docker-based approach for running the Frontend with minimal configuration.
+
 ## Prerequisites
 
 - Docker and Docker Compose installed on your system
