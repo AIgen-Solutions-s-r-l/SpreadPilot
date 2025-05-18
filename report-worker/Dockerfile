@@ -11,31 +11,38 @@ ENV PIP_NO_CACHE_DIR=off \
 # Set the working directory in the container
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install pip-tools for compiling requirements
 RUN pip install --no-cache-dir --upgrade pip pip-tools
 
 # --- Install dependencies ---
-# Copy the core library source into the image (Path relative to project root context '.')
+# Copy the core library source into the image
 COPY ./spreadpilot-core /app/spreadpilot-core
-# Copy the requirements file (Path relative to project root context '.')
+# Install the core library in editable mode
+RUN pip install --no-cache-dir -e /app/spreadpilot-core
+
+# Copy the requirements file
 COPY ./report-worker/requirements.in /app/requirements.in
 # Compile requirements.in to requirements.txt and install
 RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container (Path relative to project root context '.')
+# Copy the application code into the container
 COPY ./report-worker/app /app/app
 
 # Set environment variables
 ENV PYTHONPATH=/app
-# Assuming report-worker might need a port, though it's a worker.
-# If it's triggered by events, a port might not be needed.
-# For now, setting a default port similar to others.
 ENV PORT=8084
 
-# Expose port (if needed)
+# Install gunicorn for production-ready WSGI server
+RUN pip install --no-cache-dir gunicorn
+
+# Expose port
 EXPOSE 8084
 
 # Define the command to run the application
-# Assuming main.py is the entry point
-CMD ["python", "app/main.py"]
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app.main:app

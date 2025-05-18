@@ -1,10 +1,9 @@
 import datetime
-import asyncio # Added asyncio
+import asyncio
 from typing import List, Tuple
 
-# Removed Firestore import
-from motor.motor_asyncio import AsyncIOMotorDatabase # Added Motor import
-from spreadpilot_core.db.mongodb import get_mongo_db # Added MongoDB import
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 
@@ -15,8 +14,6 @@ from . import notifier
 
 logger = get_logger(__name__)
 
-# Removed reliance on pnl.db
-
 class ReportService:
     """
     Orchestrates the monthly report generation and notification process.
@@ -25,7 +22,7 @@ class ReportService:
     async def _get_active_followers(self) -> List[Follower]:
         """Fetches all active followers from MongoDB."""
         try:
-            db: AsyncIOMotorDatabase = await get_mongo_db() # Get DB handle
+            db: AsyncIOMotorDatabase = await get_mongo_db()
         except RuntimeError:
             logger.error("MongoDB client not initialized. Cannot fetch followers.")
             return []
@@ -35,14 +32,13 @@ class ReportService:
 
         followers = []
         try:
-            # Assuming the Follower model in core now uses 'enabled' field based on previous refactors
-            # If the field name is different ('is_active'?), adjust the query.
+            # Assuming the Follower model in core uses 'enabled' field
             followers_collection = db["followers"]
-            cursor = followers_collection.find({"enabled": True}) # Query MongoDB
+            cursor = followers_collection.find({"enabled": True})
 
-            async for doc in cursor: # Iterate async cursor
+            async for doc in cursor:
                 try:
-                    # Validate using Pydantic model (handles _id alias)
+                    # Validate using Pydantic model
                     followers.append(Follower.model_validate(doc))
                 except Exception as e:
                     doc_id = doc.get("_id", "UNKNOWN_ID")
@@ -74,14 +70,10 @@ class ReportService:
         logger.info(f"Calculating reports for period: {report_period}")
 
         # --- Step 1: Calculate overall monthly P&L (needed for commission base) ---
-        # Note: This calculates P&L across *all* positions for the month,
-        # not per-follower P&L unless the Position model includes follower_id.
-        # Assuming commission is based on the overall strategy P&L for the month.
-        # If P&L needs to be follower-specific, pnl.py and Position model need updates.
         total_monthly_pnl = pnl.calculate_monthly_pnl(year, month)
         logger.info(f"Total calculated P&L for {report_period}: {total_monthly_pnl}")
 
-        # --- Step 2: Fetch active followers (now async) ---
+        # --- Step 2: Fetch active followers (async) ---
         active_followers = await self._get_active_followers()
         if not active_followers:
             logger.warning("No active followers found. Exiting report process.")
@@ -91,25 +83,24 @@ class ReportService:
         success_count = 0
         failure_count = 0
         for follower in active_followers:
-            logger.info(f"Processing report for follower: {follower.id}") # Removed reference to non-existent follower.name
+            logger.info(f"Processing report for follower: {follower.id}")
             try:
                 # --- 3a: Calculate Commission ---
-                # Use the follower's specific commission % or default
-                commission_pct = follower.commission_pct if follower.commission_pct is not None else config.DEFAULT_COMMISSION_PERCENTAGE # Corrected attribute name
+                commission_pct = follower.commission_pct if follower.commission_pct is not None else config.DEFAULT_COMMISSION_PERCENTAGE
                 commission_amount = pnl.calculate_commission(total_monthly_pnl, follower)
 
                 # --- 3b: Generate Reports ---
                 pdf_path = generator.generate_pdf_report(
                     follower=follower,
                     report_period=report_period,
-                    total_pnl=total_monthly_pnl, # Using overall P&L
+                    total_pnl=total_monthly_pnl,
                     commission_percentage=commission_pct,
                     commission_amount=commission_amount
                 )
                 excel_path = generator.generate_excel_report(
                     follower=follower,
                     report_period=report_period,
-                    total_pnl=total_monthly_pnl, # Using overall P&L
+                    total_pnl=total_monthly_pnl,
                     commission_percentage=commission_pct,
                     commission_amount=commission_amount
                 )

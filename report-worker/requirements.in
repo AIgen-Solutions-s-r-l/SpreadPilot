@@ -1,3 +1,22 @@
-./spreadpilot-core
-openpyxl
-reportlab
+# Base dependencies
+flask>=2.3.0,<3.0.0
+python-dotenv>=1.0.0,<2.0.0
+gunicorn>=21.0.0,<22.0.0
+pydantic>=2.0.0,<3.0.0
+
+# Google Cloud
+google-cloud-pubsub>=2.18.0,<3.0.0
+google-cloud-logging>=3.8.0,<4.0.0
+
+# MongoDB
+motor>=3.3.0,<3.4.0
+
+# Date/Time handling
+pytz>=2023.3,<2024.0
+
+# Reporting specific
+openpyxl>=3.1.0,<4.0.0
+reportlab>=4.0.0,<5.0.0
+
+# Core library (assuming it's installed locally in editable mode)
+-e ./spreadpilot-core
