@@ -3,68 +3,62 @@ import json
 import logging
 import os
 import uvicorn
-import asyncio # Import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient # Import motor
+import asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from fastapi import FastAPI, Request, HTTPException, status
 from pydantic import ValidationError
+from contextlib import asynccontextmanager
 
-# Assuming spreadpilot_core is installed or available in the Python path
-# Adjust import if necessary based on project structure/installation
+# Import from spreadpilot_core
 try:
-    from spreadpilot_core.logging.logger import setup_logging, get_logger # Import get_logger
+    from spreadpilot_core.logging.logger import setup_logging, get_logger
     from spreadpilot_core.models.alert import AlertEvent
-    from spreadpilot_core.utils.secrets import get_secret_from_mongo # Import secret getter
+    from spreadpilot_core.utils.secrets import get_secret_from_mongo
 except ImportError:
-    # Handle case where core library might not be directly importable
-    # This might happen during Docker build if not installed correctly
-    logging.error(
-        "Could not import from spreadpilot_core. Ensure it's installed."
-    )
-    # Define dummy classes/functions if needed for basic startup,
-    # or raise error
-    AlertEvent = None  # Placeholder
+    logging.error("Could not import from spreadpilot_core. Ensure it's installed.")
+    # Define dummy classes/functions if needed for basic startup
+    AlertEvent = None
 
     def setup_logging(*args, **kwargs):
         pass
 
+    def get_logger(*args, **kwargs):
+        return logging.getLogger(*args)
 
-# --- Secret Pre-loading ---
+    async def get_secret_from_mongo(*args, **kwargs):
+        return None
 
 # Initialize logger early for pre-loading
-# Note: setup_logging is called later, but we need a logger instance now.
-# This might log to stdout initially before file handlers are set up.
-preload_logger = logging.getLogger(__name__ + ".preload") # Use a distinct name initially
+preload_logger = logging.getLogger(__name__ + ".preload")
 
 # Define secrets needed by this specific service
 SECRETS_TO_FETCH = [
     "TELEGRAM_BOT_TOKEN",
     "SMTP_USER",
     "SMTP_PASSWORD",
-    # Add other secrets like API keys if they become necessary
 ]
 
 async def load_secrets_into_env():
     """Fetches secrets from MongoDB and sets them as environment variables."""
     preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
     mongo_uri = os.environ.get("MONGO_URI")
-    # Use a dedicated DB name for secrets or reuse admin one if appropriate
-    mongo_db_name = os.environ.get("MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")) # Default to 'spreadpilot_secrets'
+    mongo_db_name = os.environ.get("MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets"))
 
     if not mongo_uri:
         preload_logger.warning("MONGO_URI environment variable not set. Skipping MongoDB secret loading.")
         return
 
-    client: AsyncIOMotorClient | None = None
+    client = None
     try:
         preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
-        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000) # Add timeout
-        # Optionally ping server to check connection early
+        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        # Ping server to check connection early
         await client.admin.command('ping')
         db = client[mongo_db_name]
         preload_logger.info(f"Connected to MongoDB database '{mongo_db_name}'.")
 
-        app_env = os.environ.get("APP_ENV", "development") # Determine environment
+        app_env = os.environ.get("APP_ENV", "development")
 
         for secret_name in SECRETS_TO_FETCH:
             preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
@@ -84,7 +78,6 @@ async def load_secrets_into_env():
             client.close()
             preload_logger.info("MongoDB connection for secret loading closed.")
 
-
 # Run secret loading BEFORE initializing settings
 # Skips if TESTING env var is set
 if __name__ != "__main__" and not os.getenv("TESTING"):
@@ -93,35 +86,40 @@ if __name__ != "__main__" and not os.getenv("TESTING"):
     except RuntimeError as e:
         preload_logger.error(f"Could not run async secret loading: {e}")
 elif os.getenv("TESTING"):
-     preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading.")
+    preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading.")
 
-
-# --- Regular Application Setup ---
-
-from .config import settings # Settings instance created AFTER env vars are potentially populated
+# Import settings and router after potential env var population
+from .config import settings
 from .service.router import route_alert
 
-# Setup Logging (Now uses the final logger instance)
-# Determine log level from environment or default
+# Setup Logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 setup_logging(service_name="alert-router", level=log_level)
-# Note: setup_logging might reconfigure the root logger. Get the specific logger after setup.
-logger = get_logger(__name__) # Use get_logger from core library
+logger = get_logger(__name__)
 
-app = FastAPI(title="SpreadPilot Alert Router")
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Alert Router service starting...")
+    # Any additional startup logic can go here
+    
+    yield # Application runs here
+    
+    # Application shutdown
+    logger.info("Alert Router service shutting down...")
+    # Any cleanup logic can go here
 
-logger.info("Alert Router service starting...") # This log now happens AFTER potential secret loading
+app = FastAPI(
+    title="SpreadPilot Alert Router",
+    description="Service for routing alerts to various notification channels",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
 logger.info(f"GCP Project ID: {settings.GCP_PROJECT_ID}")
 logger.info(f"Dashboard URL: {settings.DASHBOARD_BASE_URL}")
-logger.info(
-    "Telegram Admins: "
-    f"{'Configured' if settings.TELEGRAM_ADMIN_IDS else 'Not Configured'}"
-)
-logger.info(
-    "Email Admins: "
-    f"{'Configured' if settings.EMAIL_ADMIN_RECIPIENTS else 'Not Configured'}"
-)
-
+logger.info(f"Telegram Admins: {'Configured' if settings.TELEGRAM_ADMIN_IDS else 'Not Configured'}")
+logger.info(f"Email Admins: {'Configured' if settings.EMAIL_ADMIN_RECIPIENTS else 'Not Configured'}")
 
 @app.post("/", status_code=status.HTTP_204_NO_CONTENT)
 async def receive_pubsub_message(request: Request):
@@ -155,9 +153,7 @@ async def receive_pubsub_message(request: Request):
 
         # Validate data with Pydantic model
         if AlertEvent is None:
-            logger.error(
-                "AlertEvent model not loaded. Cannot process message."
-            )
+            logger.error("AlertEvent model not loaded. Cannot process message.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Core library model not loaded.",
@@ -167,9 +163,7 @@ async def receive_pubsub_message(request: Request):
         logger.info(f"Parsed AlertEvent: {alert_event.event_type.value}")
 
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        logger.error(
-            f"Error decoding Pub/Sub message data: {e}", exc_info=True
-        )
+        logger.error(f"Error decoding Pub/Sub message data: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot decode message data",
@@ -177,18 +171,11 @@ async def receive_pubsub_message(request: Request):
     except ValidationError as e:
         logger.error(f"Invalid alert event data format: {e}", exc_info=True)
         logger.error(f"Received data: {event_data}")
-        # Don't raise 400 for validation errors, as Pub/Sub will retry.
-        # Acknowledge the message (by returning 204) to prevent infinite
-        # retries for malformed *valid* JSON. Log the error for investigation.
-        logger.error(
-            "Acknowledging message despite validation error to prevent "
-            "retries."
-        )
+        # Acknowledge the message to prevent infinite retries for malformed data
+        logger.error("Acknowledging message despite validation error to prevent retries.")
         return
     except Exception as e:
-        logger.error(
-            f"Unexpected error processing message: {e}", exc_info=True
-        )
+        logger.error(f"Unexpected error processing message: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error processing message",
@@ -197,26 +184,22 @@ async def receive_pubsub_message(request: Request):
     try:
         # Route the validated alert
         await route_alert(alert_event)
-        logger.info(
-            "Successfully processed and routed alert: "
-            f"{alert_event.event_type.value}"
-        )
+        logger.info(f"Successfully processed and routed alert: {alert_event.event_type.value}")
     except Exception as e:
         # Log error but return 2xx to acknowledge Pub/Sub message
-        # and prevent retries if routing fails temporarily.
-        # Persistent routing issues should be monitored via logs.
-        logger.error(
-            f"Error routing alert {alert_event.event_type.value}: {e}",
-            exc_info=True,
-        )
-        # Optionally, raise 500 if retries are desired for routing errors
-        # raise HTTPException(status_code=500, detail="Failed to route alert")
+        logger.error(f"Error routing alert {alert_event.event_type.value}: {e}", exc_info=True)
 
     # Return 204 No Content to acknowledge successful processing by Pub/Sub
     return
 
+@app.get("/health")
+async def health_check():
+    """
+    Simple health check endpoint.
+    """
+    return {"status": "healthy"}
 
-# For local development: uvicorn alert-router.app.main:app --reload --port 8080
+# For local development
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)

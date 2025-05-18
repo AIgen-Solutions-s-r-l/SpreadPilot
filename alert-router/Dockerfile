@@ -15,26 +15,23 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip pip-tools
 
 # --- Install spreadpilot-core ---
-# Copy the core library source into the image (Path relative to project root context '.')
+# Copy the core library source into the image
 COPY ./spreadpilot-core /app/spreadpilot-core
 # Install the core library in editable mode
-# This makes its modules available to the alert-router app
 RUN pip install --no-cache-dir -e /app/spreadpilot-core
 
 # --- Install alert-router dependencies ---
-# Copy the requirements file (Path relative to project root context '.')
+# Copy the requirements file
 COPY ./alert-router/requirements.in /app/requirements.in
 # Compile requirements.in to requirements.txt and install
-# This ensures deterministic builds using pinned versions
 RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container (Path relative to project root context '.')
+# Copy the application code into the container
 COPY ./alert-router/app /app/app
 
 # Expose the port the app runs on
 EXPOSE 8080
 
 # Define the command to run the application
-# Use the PORT environment variable provided by Cloud Run, default to 8080
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}

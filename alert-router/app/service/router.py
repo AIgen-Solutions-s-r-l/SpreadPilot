@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 from spreadpilot_core.utils.email import send_email
@@ -9,7 +9,6 @@ from ..config import settings
 
 logger = logging.getLogger(__name__)
 
-
 def _generate_deep_link(event: AlertEvent) -> Optional[str]:
     """Generates a deep link to the dashboard based on the event type."""
     if not settings.DASHBOARD_BASE_URL:
@@ -18,8 +17,7 @@ def _generate_deep_link(event: AlertEvent) -> Optional[str]:
     base_url = settings.DASHBOARD_BASE_URL.rstrip("/")
     params = event.params or {}
 
-    # Basic links based on event type - adjust paths as needed for actual
-    # dashboard routes
+    # Basic links based on event type
     if event.event_type in [
         AlertType.COMPONENT_DOWN,
         AlertType.GATEWAY_UNREACHABLE,
@@ -48,8 +46,7 @@ def _generate_deep_link(event: AlertEvent) -> Optional[str]:
 
     return f"{base_url}/dashboard"  # Default fallback
 
-
-def _format_alert_message(event: AlertEvent) -> tuple[str, str]:
+def _format_alert_message(event: AlertEvent) -> Tuple[str, str]:
     """Formats the alert subject and body."""
     deep_link = _generate_deep_link(event)
     link_text = f"\n\nDashboard Link: {deep_link}" if deep_link else ""
@@ -69,7 +66,6 @@ def _format_alert_message(event: AlertEvent) -> tuple[str, str]:
     body += link_text
     return subject, body
 
-
 async def route_alert(event: AlertEvent):
     """
     Routes the alert event to configured notification channels
@@ -80,29 +76,21 @@ async def route_alert(event: AlertEvent):
 
     # Send to Telegram
     if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ADMIN_IDS:
-        logger.info(
-            "Sending alert to Telegram admins: "
-            f"{settings.TELEGRAM_ADMIN_IDS}"
-        )
+        logger.info(f"Sending alert to Telegram admins: {settings.TELEGRAM_ADMIN_IDS}")
         # Loop through admin IDs and send individually
         for chat_id in settings.TELEGRAM_ADMIN_IDS:
             try:
                 logger.debug(f"Sending Telegram alert to chat_id: {chat_id}")
-                # Assuming send_telegram_message is async or running in executor
                 await send_telegram_message(
                     bot_token=settings.TELEGRAM_BOT_TOKEN,
-                    chat_id=chat_id, # Use correct argument 'chat_id'
+                    chat_id=chat_id,
                     message=body,
                 )
                 logger.info(f"Alert sent successfully via Telegram to {chat_id}.")
             except Exception as e:
-                logger.error(
-                    f"Failed to send alert via Telegram to {chat_id}: {e}", exc_info=True
-                )
+                logger.error(f"Failed to send alert via Telegram to {chat_id}: {e}", exc_info=True)
     else:
-        logger.warning(
-            "Telegram is not configured. Skipping Telegram notification."
-        )
+        logger.warning("Telegram is not configured. Skipping Telegram notification.")
 
     # Send to Email
     if (
@@ -110,34 +98,19 @@ async def route_alert(event: AlertEvent):
         and settings.EMAIL_ADMIN_RECIPIENTS
         and settings.SMTP_HOST
     ):
-        logger.info(
-            "Sending alert to email admins: "
-            f"{settings.EMAIL_ADMIN_RECIPIENTS}"
-        )
+        logger.info(f"Sending alert to email admins: {settings.EMAIL_ADMIN_RECIPIENTS}")
         # Loop through admin recipients and send individually
         for recipient_email in settings.EMAIL_ADMIN_RECIPIENTS:
             try:
                 logger.debug(f"Sending Email alert to recipient: {recipient_email}")
-                # Assuming send_email handles async or runs in executor if needed
-                # Note: send_email itself is synchronous in the core util,
-                # but called from an async function here.
                 send_email(
-                    from_email=settings.EMAIL_SENDER, # Use correct argument 'from_email'
-                    to_email=recipient_email, # Send to one recipient at a time
+                    from_email=settings.EMAIL_SENDER,
+                    to_email=recipient_email,
                     subject=subject,
-                    html_content=body, # Use correct argument 'html_content'
-                    # SMTP settings are handled internally by send_email if using env vars
-                    # or passed to EmailSender if using that directly.
-                    # The current send_email wrapper doesn't take SMTP args directly.
-                    # We rely on environment variables being set for send_email to work,
-                    # or the mock fixture in tests.
+                    html_content=body,
                 )
                 logger.info(f"Alert sent successfully via Email to {recipient_email}.")
             except Exception as e:
-                logger.error(
-                    f"Failed to send alert via Email to {recipient_email}: {e}", exc_info=True
-                )
+                logger.error(f"Failed to send alert via Email to {recipient_email}: {e}", exc_info=True)
     else:
-        logger.warning(
-            "Email is not configured. Skipping Email notification."
-        )
+        logger.warning("Email is not configured. Skipping Email notification.")
