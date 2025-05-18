@@ -79,7 +79,7 @@ from . import config
 # --- Initialization ---
 # Setup logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-setup_logging(service_name="report-worker", level=log_level)
+setup_logging(service_name="report-worker", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
 
 # Setup Cloud Logging integration if running in GCP

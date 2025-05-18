@@ -94,7 +94,7 @@ from .service.router import route_alert
 
 # Setup Logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-setup_logging(service_name="alert-router", level=log_level)
+setup_logging(service_name="alert-router", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
 
 # Lifespan context manager for startup/shutdown events

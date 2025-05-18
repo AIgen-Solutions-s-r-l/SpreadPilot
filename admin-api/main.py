@@ -13,7 +13,7 @@ from app.services.follower_service import FollowerService
 from app.api.v1.endpoints.dashboard import periodic_follower_update_task
 
 # Setup logging from the core library
-setup_logging()
+setup_logging(service_name="admin-api")
 logger = get_logger(__name__)
 
 # Get settings instance

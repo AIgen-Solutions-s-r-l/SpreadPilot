@@ -63,7 +63,7 @@ services:
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       # - FIRESTORE_EMULATOR_HOST=firestore:8080 # Removed Firestore
-      - MONGO_URI=mongodb://mongodb:27017 # Added MongoDB URI
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
       - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
       - TRADING_BOT_HOST=trading-bot
       - TRADING_BOT_PORT=8080
@@ -85,11 +85,13 @@ services:
   report-worker:
     build:
       context: .
-      dockerfile: report_worker/Dockerfile
+      dockerfile: report-worker/Dockerfile
     container_name: spreadpilot-report-worker
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
+      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
@@ -110,6 +112,8 @@ services:
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
+      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -127,7 +131,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: alert-router/Dockerfile
+      dockerfile: Dockerfile
     container_name: spreadpilot-frontend
     ports:
       - "8080:80"
