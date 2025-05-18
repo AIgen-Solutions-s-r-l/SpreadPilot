@@ -3,7 +3,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install dependencies
-RUN pip install --no-cache-dir fastapi uvicorn pymongo pydantic python-jose[cryptography] passlib[bcrypt] python-multipart
+RUN pip install --no-cache-dir fastapi uvicorn[standard] pymongo pydantic python-jose[cryptography] passlib[bcrypt] python-multipart websockets
 
 # Copy application code
 COPY app.py .
