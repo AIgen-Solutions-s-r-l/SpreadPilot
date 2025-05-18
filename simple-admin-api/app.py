@@ -1,11 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import uvicorn
 import pymongo
 
 app = FastAPI(title="SpreadPilot Admin API")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, you should restrict this to specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Define OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
@@ -76,6 +86,17 @@ async def get_followers(token: str = Depends(oauth2_scheme)):
     # In a real application, you would validate the token
     # and retrieve followers from the database
     return {"followers": []}
+
+# WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Message received: {data}")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
