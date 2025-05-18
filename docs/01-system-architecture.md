@@ -40,6 +40,8 @@ The Admin API provides backend services for the administrative dashboard:
 - REST API for follower management and system configuration
 - WebSocket API for real-time log streaming
 - Authentication and authorization
+- JWT-based security with password hashing
+- MongoDB integration for data persistence
 
 **Technology:** Python with FastAPI
 
@@ -50,6 +52,8 @@ The Report Worker generates periodic reports for followers:
 - Calculates daily and monthly P&L
 - Generates PDF and Excel reports
 - Emails reports to followers
+- Receives job requests via Google Cloud Pub/Sub
+- Securely loads secrets from MongoDB
 
 **Technology:** Python with Flask (for Pub/Sub handling)
 
@@ -60,6 +64,8 @@ The Alert Router manages the delivery of critical notifications:
 - Receives alert events via Pub/Sub
 - Routes alerts to appropriate channels (Telegram, email)
 - Formats messages with deep links to the dashboard
+- Securely loads secrets from MongoDB
+- Provides health check endpoint
 
 **Technology:** Python with FastAPI
 
@@ -106,6 +112,7 @@ MongoDB serves as the primary database for the system:
 - Stores follower information
 - Tracks positions and trades
 - Maintains system status and configuration
+- Stores secrets for secure access by services
 
 **Technology:** MongoDB (Self-hosted via Docker or potentially Atlas)
 
@@ -183,8 +190,9 @@ Grafana provides visualization and dashboards:
 
 - **Authentication**: JWT-based authentication for Admin API and Frontend
 - **Authorization**: Role-based access control for administrative functions
-- **Secrets Management**: GCP Secret Manager for sensitive configuration
+- **Secrets Management**: MongoDB and GCP Secret Manager for sensitive configuration
 - **Network Security**: Private VPC for service-to-service communication
+- **Password Security**: Bcrypt hashing for password storage
 
 ## Scalability
 
@@ -198,6 +206,7 @@ Grafana provides visualization and dashboards:
 - **Auto-Recovery**: Failed components are automatically restarted
 - **Alerting**: Critical failures trigger notifications
 - **Logging**: Comprehensive logging for troubleshooting
+- **Health Checks**: Services provide health check endpoints
 
 ## Code Organization
 
@@ -205,7 +214,7 @@ Grafana provides visualization and dashboards:
 
 SpreadPilot uses a consistent folder structure convention:
 
-- **Hyphenated Directory Names**: All service directories use hyphenated names (`trading-bot`, `admin-api`, etc.)
+- **Hyphenated Directory Names**: All service directories use hyphenated names (`trading-bot`, `admin-api`, `alert-router`, `report-worker`, etc.)
 - **Python Package Imports**: Each service directory contains `__init__.py` files to make it importable as a Python package
 - **Import Pattern**: When importing from hyphenated directories in Python code, `importlib.import_module()` is used:
 
@@ -215,3 +224,31 @@ trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
 ```
 
 This convention ensures consistency across deployment and testing environments while maintaining Python import compatibility.
+
+## Recent Architectural Improvements
+
+### Service Consolidation
+
+To improve maintainability and reduce duplication, the following services have been consolidated:
+
+1. **Admin API**: Consolidated three different implementations (`admin_api/`, `admin-api/`, and `simple-admin-api/`) into a single, unified version in `admin-api/` with:
+   - Structured modular architecture
+   - Async MongoDB connection
+   - JWT authentication with password hashing
+   - WebSocket support for real-time updates
+   - Comprehensive documentation
+
+2. **Alert Router**: Consolidated two different implementations (`alert_router/` and `alert-router/`) into a single, unified version in `alert-router/` with:
+   - Structured project layout
+   - Secret loading functionality
+   - PubSub message handling
+   - Comprehensive documentation
+
+3. **Report Worker**: Consolidated two different implementations (`report_worker/` and `report-worker/`) into a single, unified version in `report-worker/` with:
+   - Structured project layout
+   - Secret loading functionality
+   - PubSub message handling for report generation
+   - MongoDB integration
+   - Comprehensive documentation
+
+These consolidations have improved maintainability, reduced duplication, established a consistent naming convention, and enhanced documentation across all services.

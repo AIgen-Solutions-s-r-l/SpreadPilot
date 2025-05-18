@@ -20,8 +20,11 @@ The Admin API is a backend service that provides an administrative interface for
 3. Providing dashboard data for monitoring trading activity
 4. Exposing endpoints for manual control (e.g., closing positions)
 5. Serving as the backend for the frontend web interface
+6. Providing WebSocket support for real-time updates
 
 The Admin API is implemented as a FastAPI application that runs in a Docker container. It communicates with the MongoDB database for data persistence and with the Trading Bot for executing trading commands.
+
+> **Note on Consolidation:** The Admin API has been consolidated from three different implementations (`admin_api/`, `admin-api/`, and `simple-admin-api/`) into a single, unified version in `admin-api/`. This consolidation improves maintainability, reduces duplication, and provides a consistent API implementation with the best features from all three previous versions.
 
 ## 2. Admin API Configuration in docker-compose.yml
 
@@ -89,20 +92,34 @@ Replace the placeholder values with your actual credentials and settings.
 
 ## 4. Generating a Password Hash
 
-To generate a bcrypt hash for your admin password, you can use the following Python script:
+To generate a bcrypt hash for your admin password, you can use the provided utility in the Admin API:
 
-```python
-import bcrypt
-
-password = b"your_password"  # Replace with your desired password
-salt = bcrypt.gensalt()
-hashed = bcrypt.hashpw(password, salt)
-print(hashed.decode())
+```bash
+# Using the provided Docker utility
+docker-compose -f docker-compose.admin-api-setup.yml run --rm bcrypt-util
 ```
 
-Save this as `generate_hash.py` and run it with Python. Add the resulting hash to your `.env` file as `ADMIN_PASSWORD_HASH`.
+This will prompt you to enter a password and will output the bcrypt hash. Add the resulting hash to your `.env` file as `ADMIN_PASSWORD_HASH`.
 
-## 5. Starting the Admin API
+Alternatively, you can use the Python script directly:
+
+```bash
+# Using the Python script directly
+python admin-api/generate_hash.py
+```
+
+## 5. Testing MongoDB Connection
+
+Before starting the Admin API, you can test the MongoDB connection using the provided utility:
+
+```bash
+# Using the provided Docker utility
+docker-compose -f docker-compose.admin-api-setup.yml run --rm mongodb-test
+```
+
+This will attempt to connect to MongoDB using the configured URI and will output the result.
+
+## 6. Starting the Admin API
 
 To start the Admin API container:
 
@@ -116,7 +133,7 @@ This command:
 - Creates and initializes the Admin API container with the environment variables from `.env`
 - Automatically starts the required dependencies (MongoDB and Trading Bot) if they're not already running
 
-## 6. Verifying the Admin API is Running
+## 7. Verifying the Admin API is Running
 
 Check if the Admin API container is running with:
 
@@ -131,7 +148,7 @@ CONTAINER ID   IMAGE                    COMMAND                  CREATED        
 abcdef123456   spreadpilot-admin-api    "python main.py"         5 minutes ago    Up 5 minutes    0.0.0.0:8083->8080/tcp   spreadpilot-admin-api
 ```
 
-## 7. Checking Admin API Logs
+## 8. Checking Admin API Logs
 
 To verify that the Admin API is properly connecting to MongoDB and the Trading Bot:
 
@@ -144,19 +161,19 @@ Look for messages indicating successful connections:
 - "Connected to MongoDB"
 - "Connected to Trading Bot"
 
-## 8. Testing the Admin API
+## 9. Testing the Admin API
 
 The Admin API exposes several endpoints that you can use to test its functionality:
 
 ### Basic Health Check
 
 ```bash
-curl http://localhost:8083/
+curl http://localhost:8083/health
 ```
 
 Expected response:
 ```json
-{"Hello": "Admin API"}
+{"status": "healthy"}
 ```
 
 ### Authentication
@@ -182,7 +199,18 @@ curl http://localhost:8083/api/v1/followers \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
-## 9. Troubleshooting
+### WebSocket Connection
+
+The Admin API also provides WebSocket endpoints for real-time updates. You can test this using a WebSocket client or a simple JavaScript example:
+
+```javascript
+const ws = new WebSocket('ws://localhost:8083/api/v1/ws');
+ws.onmessage = (event) => {
+  console.log('Received:', event.data);
+};
+```
+
+## 10. Troubleshooting
 
 ### Authentication Issues
 
@@ -201,6 +229,7 @@ If the Admin API fails to connect to MongoDB:
 2. Check that the MongoDB credentials are correct
 3. Ensure that the `MONGO_URI` and `MONGO_DB_NAME` environment variables are set correctly
 4. Check the Admin API logs for specific error messages related to MongoDB
+5. Use the MongoDB test utility to verify the connection: `docker-compose -f docker-compose.admin-api-setup.yml run --rm mongodb-test`
 
 ### Trading Bot Connection Issues
 
@@ -220,7 +249,7 @@ If the Admin API container fails to start:
 3. Ensure that the dependencies (MongoDB and Trading Bot) are running
 4. Check system resources (CPU, memory, disk space)
 
-## 10. Security Considerations
+## 11. Security Considerations
 
 For production environments:
 
@@ -232,7 +261,7 @@ For production environments:
 6. Regularly audit access logs and user activities
 7. Consider implementing two-factor authentication for additional security
 
-## 11. Next Steps
+## 12. Next Steps
 
 After setting up the Admin API, you can proceed to configure the Frontend, which provides a user interface for interacting with the Admin API and monitoring the SpreadPilot system.
 
@@ -241,3 +270,4 @@ The Frontend will interact with the Admin API to:
 - Display dashboard data
 - Manage followers
 - Trigger manual commands (e.g., closing positions)
+- Receive real-time updates via WebSocket
