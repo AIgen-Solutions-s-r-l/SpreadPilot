@@ -1,65 +1,82 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from contextlib import asynccontextmanager
 import os
-import uvicorn
-from app.db.mongodb import check_connection
 
-app = FastAPI(title="SpreadPilot Admin API")
+# Import the main API router
+from app.api.v1.api import api_router
+from spreadpilot_core.logging.logger import setup_logging, get_logger
+from app.core.config import get_settings
+from app.db.mongodb import connect_to_mongo, close_mongo_connection
+from app.services.follower_service import FollowerService
+from app.api.v1.endpoints.dashboard import periodic_follower_update_task
 
-# Define OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
+# Setup logging from the core library
+setup_logging()
+logger = get_logger(__name__)
 
-# Define models
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+# Get settings instance
+settings = get_settings()
 
-class User(BaseModel):
-    username: str
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Application startup...")
+    
+    # Initialize MongoDB connection
+    await connect_to_mongo()
+    
+    # Initialize dependencies needed for the background task
+    follower_service = FollowerService()
+    
+    # Create and start the background task
+    update_task = asyncio.create_task(periodic_follower_update_task(follower_service))
+    logger.info("Periodic follower update task started.")
+    
+    yield # Application runs here
+    
+    # Application shutdown
+    logger.info("Application shutdown...")
+    update_task.cancel()
+    try:
+        await update_task # Wait for task cancellation
+    except asyncio.CancelledError:
+        logger.info("Periodic follower update task cancelled successfully.")
+    
+    # Close MongoDB connection
+    await close_mongo_connection()
+    logger.info("Application shutdown complete.")
 
-# Root endpoint
-@app.get("/")
-def read_root():
-    return {"Hello": "Admin API"}
 
-# Health check endpoint
-@app.get("/health")
+app = FastAPI(
+    title="SpreadPilot Admin API",
+    description="API service for managing SpreadPilot followers and operations.",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    # Use origins from settings, split comma-separated string into a list
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(',')] if settings.cors_origins else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health", tags=["Health"])
 async def health_check():
-    # Check MongoDB connection
-    db_connected = await check_connection()
-    
-    if not db_connected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failed",
-        )
-    
-    return {"status": "healthy", "database": "connected"}
+    """
+    Simple health check endpoint.
+    """
+    return {"status": "ok"}
 
-# Authentication endpoint
-@app.post("/api/v1/auth/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    # In a real application, you would validate the username and password
-    # against the database and generate a JWT token
-    # For now, we'll just return a dummy token
-    if form_data.username != os.getenv("ADMIN_USERNAME", "admin"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # In a real application, you would validate the password hash
-    # For now, we'll just return a dummy token
-    return {"access_token": "dummy_token", "token_type": "bearer"}
-
-# Protected endpoint example
-@app.get("/api/v1/followers")
-async def get_followers(token: str = Depends(oauth2_scheme)):
-    # In a real application, you would validate the token
-    # and retrieve followers from the database
-    return {"followers": []}
+# Include the main API router using prefix from settings
+app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 if __name__ == "__main__":
+    import uvicorn
+    # The port 8080 is chosen to match the docker-compose configuration
     uvicorn.run(app, host="0.0.0.0", port=8080)

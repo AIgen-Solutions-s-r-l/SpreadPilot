@@ -12,6 +12,8 @@ RUN npm install
 
 # Copy the rest of the application code
 COPY . .
+# Copy the environment file from the workspace root
+COPY ../.env.frontend ./.env
 
 # Build the application
 RUN npm run build

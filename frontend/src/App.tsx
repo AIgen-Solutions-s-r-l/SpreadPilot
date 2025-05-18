@@ -8,7 +8,7 @@ import LogsPage from './pages/LogsPage';
 import CommandsPage from './pages/CommandsPage'; // Import CommandsPage
 
 // TODO: Move WebSocket URL to environment variables
-const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000/api/v1/ws';
+const WEBSOCKET_URL = import.meta.env.REACT_APP_WS_URL;
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
