@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: spreadpilot-mongodb-simple
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  admin-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spreadpilot-admin-api-simple
+    environment:
+      - MONGO_URI=mongodb://admin:password@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD_HASH=$$2b$$12$$Vpj/uoizndG.JmoQg09vIO./kQioWRFnEESlnVBhz9Pbck0EO1CK2
+      - JWT_SECRET=testsecret
+    depends_on:
+      - mongodb
+    ports:
+      - "8083:8080"
+    restart: unless-stopped

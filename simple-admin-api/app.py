@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 import os
 import uvicorn
-from app.db.mongodb import check_connection
+import pymongo
 
 app = FastAPI(title="SpreadPilot Admin API")
 
@@ -18,6 +18,20 @@ class Token(BaseModel):
 class User(BaseModel):
     username: str
 
+# Get MongoDB connection details from environment variables
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:password@mongodb:27017")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "spreadpilot_admin")
+
+print(f"Connecting to MongoDB with URI: {MONGO_URI}")
+print(f"Using database: {MONGO_DB_NAME}")
+
+# Create a MongoDB client
+client = pymongo.MongoClient(MONGO_URI)
+db = client[MONGO_DB_NAME]
+
+# Define collections
+followers_collection = db.followers
+
 # Root endpoint
 @app.get("/")
 def read_root():
@@ -27,15 +41,17 @@ def read_root():
 @app.get("/health")
 async def health_check():
     # Check MongoDB connection
-    db_connected = await check_connection()
-    
-    if not db_connected:
+    try:
+        # The ismaster command is cheap and does not require auth
+        client.admin.command('ismaster')
+        print("Successfully connected to MongoDB!")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failed",
+            detail=f"Database connection failed: {str(e)}",
         )
-    
-    return {"status": "healthy", "database": "connected"}
 
 # Authentication endpoint
 @app.post("/api/v1/auth/token", response_model=Token)

@@ -1,0 +1,17 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY admin-api/requirements.in .
+RUN pip install --no-cache-dir -r requirements.in
+
+# Copy application code
+COPY admin-api/app ./app
+COPY admin-api/main.py .
+
+# Expose the port
+EXPOSE 8080
+
+# Run the application
+CMD ["python", "main.py"]

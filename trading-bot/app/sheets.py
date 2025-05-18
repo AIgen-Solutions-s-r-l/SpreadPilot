@@ -120,7 +120,7 @@ class GoogleSheetsClient:
                     # Find header row
                     header_row = None
                     for i, row in enumerate(values):
-                        if "Date" in row and "Ticker" in row and "Strategy" in row:
+                        if "Data" in row and "Ticker" in row and "Strategia" in row:
                             header_row = i
                             break
                     
@@ -130,24 +130,31 @@ class GoogleSheetsClient:
                     
                     # Get header indices
                     headers = values[header_row]
-                    date_index = headers.index("Date")
+                    date_index = headers.index("Data")
                     ticker_index = headers.index("Ticker")
-                    strategy_index = headers.index("Strategy")
+                    strategy_index = headers.index("Strategia")
                     
                     # Find columns for strikes and quantity
                     qty_index = None
-                    strike_long_index = None
-                    strike_short_index = None
+                    buy_put_index = None
+                    sell_put_index = None
+                    sell_call_index = None
+                    buy_call_index = None
                     
                     for i, header in enumerate(headers):
-                        if "Qty" in header:
+                        if "Quantità per Leg" in header:
                             qty_index = i
-                        elif "Strike" in header and "Long" in header:
-                            strike_long_index = i
-                        elif "Strike" in header and "Short" in header:
-                            strike_short_index = i
+                        elif header == "Buy Put":
+                            buy_put_index = i
+                        elif header == "Sell Put":
+                            sell_put_index = i
+                        elif header == "Sell Call":
+                            sell_call_index = i
+                        elif header == "Buy Call":
+                            buy_call_index = i
                     
-                    if qty_index is None or strike_long_index is None or strike_short_index is None:
+                    if (qty_index is None or buy_put_index is None or sell_put_index is None or
+                        sell_call_index is None or buy_call_index is None):
                         logger.warning(
                             "Required columns not found in sheet data",
                             headers=headers,
@@ -195,14 +202,34 @@ class GoogleSheetsClient:
                         )
                         return None
                     
+                    # Determine which strike prices to use based on strategy
+                    strategy = row[strategy_index]
+                    strike_long = None
+                    strike_short = None
+                    
+                    if strategy == "Long":
+                        # For Long strategy, use Buy Put and Sell Put
+                        strike_long = float(row[buy_put_index])
+                        strike_short = float(row[sell_put_index])
+                    elif strategy == "Short":
+                        # For Short strategy, use Buy Call and Sell Call
+                        strike_long = float(row[buy_call_index])
+                        strike_short = float(row[sell_call_index])
+                    else:
+                        logger.warning(
+                            "Unknown strategy in signal",
+                            strategy=strategy,
+                        )
+                        return None
+                    
                     # Create signal dict
                     signal = {
                         "date": current_date,
                         "ticker": row[ticker_index],
-                        "strategy": row[strategy_index],
+                        "strategy": strategy,
                         "qty_per_leg": int(row[qty_index]),
-                        "strike_long": float(row[strike_long_index]),
-                        "strike_short": float(row[strike_short_index]),
+                        "strike_long": strike_long,
+                        "strike_short": strike_short,
                     }
                     
                     # Update last fetch time and signal

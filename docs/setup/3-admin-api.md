@@ -2,6 +2,8 @@
 
 This document provides detailed instructions for setting up the Admin API for the SpreadPilot system. It covers the configuration, startup, verification, and troubleshooting steps.
 
+> **Note:** For a simplified setup process, refer to the [ADMIN-API-SETUP.md](../../ADMIN-API-SETUP.md) file in the project root. It provides a Docker-based approach for generating password hashes, testing MongoDB connections, and running the Admin API.
+
 ## Prerequisites
 
 - Docker and Docker Compose installed on your system
