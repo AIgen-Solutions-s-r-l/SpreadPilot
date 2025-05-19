@@ -1,9 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext'; // Import WebSocketProvider
+import ThemeProvider from './theme/ThemeProvider';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/layout/DashboardLayout';
+import DashboardPage from './pages/DashboardPage'; // Import DashboardPage
 import FollowersPage from './pages/FollowersPage';
+import TradingActivityPage from './pages/TradingActivityPage'; // Import TradingActivityPage
 import LogsPage from './pages/LogsPage';
 import CommandsPage from './pages/CommandsPage'; // Import CommandsPage
 
@@ -23,40 +26,44 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={!isAuthenticated ? <LoginPage /> : <Navigate to="/followers" replace />} // Redirect if already logged in
-      />
-      <Route
-        path="/*" // All other routes are protected
-        element={
-          isAuthenticated ? (
-            <WebSocketProvider url={WEBSOCKET_URL}>
-              <DashboardLayout>
+    <ThemeProvider>
+      <Routes>
+        <Route
+          path="/login"
+          element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" replace />} // Redirect if already logged in
+        />
+        <Route
+          path="/*" // All other routes are protected
+          element={
+            isAuthenticated ? (
+              <WebSocketProvider url={WEBSOCKET_URL}>
+                <DashboardLayout>
                 {/* Define nested routes within the layout */}
                 <Routes>
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/followers" element={<FollowersPage />} />
+                  <Route path="/trading-activity" element={<TradingActivityPage />} />
                   {/* Add routes for Log Console and Manual Commands later */}
                   <Route path="/logs" element={<LogsPage />} />
                   <Route path="/commands" element={<CommandsPage />} />
 
                   {/* Default route within the dashboard */}
-                  <Route index element={<Navigate to="/followers" replace />} />
-                  <Route path="/" element={<Navigate to="/followers" replace />} />
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                   {/* Optional: Catch-all for unknown dashboard routes */}
                   {/* <Route path="*" element={<div>Dashboard Page Not Found</div>} /> */}
                 </Routes>
-              </DashboardLayout>
-            </WebSocketProvider>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      {/* Root path redirect is handled by the nested index route now */}
-    </Routes>
+                </DashboardLayout>
+              </WebSocketProvider>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        {/* Root path redirect is handled by the nested index route now */}
+      </Routes>
+    </ThemeProvider>
   );
 }
 
