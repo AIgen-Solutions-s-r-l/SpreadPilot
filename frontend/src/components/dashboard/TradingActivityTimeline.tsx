@@ -1,16 +1,24 @@
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Box, 
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
   Button,
-  List,
-  ListItem,
-  Divider,
-  useTheme
+  useTheme,
+  Paper
 } from '@mui/material';
-import { 
+import {
+  Timeline,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDot,
+  TimelineOppositeContent,
+  timelineOppositeContentClasses,
+} from '@mui/lab';
+import {
   TrendingUp as TrendingUpIcon,
   ArrowForward as ArrowForwardIcon,
   ArrowCircleUp as ArrowCircleUpIcon,
@@ -88,118 +96,87 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, index }) => {
   };
   
   return (
-    <ListItem 
-      sx={{ 
-        position: 'relative',
-        pl: 6,
-        pr: 2,
-        py: 2,
+    <TimelineItem
+      sx={{
         animation: 'fadeIn 0.5s ease-in-out',
         animationDelay: `${index * 0.1}s`,
         animationFillMode: 'both',
         '@keyframes fadeIn': {
-          '0%': {
-            opacity: 0,
-            transform: 'translateY(10px)'
-          },
-          '100%': {
-            opacity: 1,
-            transform: 'translateY(0)'
-          }
+          '0%': { opacity: 0, transform: 'translateY(10px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' }
+        },
+        '&::before': { // Removes the default opposite content padding if not used
+          flex: 0.1, // Adjust flex to control space for time, or remove if time is part of TimelineDot
+          padding: 0,
         }
       }}
     >
-      {/* Timeline dot */}
-      <Box 
-        sx={{ 
-          position: 'absolute',
-          left: 16,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          bgcolor: 'primary.50',
-          border: '2px solid',
-          borderColor: 'primary.200',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1
-        }}
-      >
-        {getActionIcon()}
-      </Box>
-      
-      {/* Timeline line */}
-      <Box 
-        sx={{ 
-          position: 'absolute',
-          left: 31,
-          top: 0,
-          bottom: 0,
-          width: 2,
-          bgcolor: 'divider',
-          zIndex: 0
-        }}
-      />
-      
-      {/* Time */}
-      <Box 
-        sx={{ 
-          position: 'absolute',
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 16,
+      <TimelineOppositeContent
+        sx={{
+          m: 'auto 0',
+          flex: 0.2, // Give a bit more space for time
           textAlign: 'right',
-          pr: 1,
-          fontSize: '0.75rem',
-          color: 'text.secondary'
+          pr: 2, // Add padding to separate from the line
         }}
+        align="right"
+        variant="body2"
+        color="text.secondary"
       >
         {activity.time}
-      </Box>
-      
-      {/* Content */}
-      <Box 
-        sx={{ 
-          p: 2,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          width: '100%',
-          transition: 'all 0.2s',
-          '&:hover': {
-            bgcolor: 'action.hover',
-            transform: 'translateY(-2px)',
-            boxShadow: 1,
-          },
-        }}
-      >
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-          <Typography variant="subtitle2" fontWeight="medium">
-            {activity.followerId}
-          </Typography>
-          <Typography variant="subtitle2" fontWeight="medium" color="primary.main">
-            {activity.symbol}
-          </Typography>
-        </Box>
-        
-        <Box display="flex" alignItems="center">
-          <Typography 
-            variant="body2" 
-            fontWeight="medium"
-            sx={{ color: getActionColor() }}
-          >
-            {activity.action}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-            {activity.details}
-          </Typography>
-        </Box>
-      </Box>
-    </ListItem>
+      </TimelineOppositeContent>
+      <TimelineSeparator>
+        <TimelineConnector sx={{ bgcolor: 'divider' }} />
+        <TimelineDot
+          variant="outlined"
+          sx={{
+            borderColor: 'primary.200',
+            bgcolor: 'primary.50',
+            p: 0.5
+          }}
+        >
+          {getActionIcon()}
+        </TimelineDot>
+        <TimelineConnector sx={{ bgcolor: 'divider' }} />
+      </TimelineSeparator>
+      <TimelineContent sx={{ py: '12px', px: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            transition: 'all 0.2s',
+            '&:hover': {
+              bgcolor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: 1,
+            },
+           }}
+        >
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+            <Typography variant="subtitle2" fontWeight="medium">
+              {activity.followerId}
+            </Typography>
+            <Typography variant="subtitle2" fontWeight="medium" color="primary.main">
+              {activity.symbol}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center">
+            <Typography
+              variant="body2"
+              fontWeight="medium"
+              sx={{ color: getActionColor() }}
+            >
+              {activity.action}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+              {activity.details}
+            </Typography>
+          </Box>
+        </Paper>
+      </TimelineContent>
+    </TimelineItem>
   );
 };
 
@@ -250,12 +227,18 @@ const TradingActivityTimeline: React.FC<TradingActivityTimelineProps> = ({
             VIEW ALL
           </Button>
         </Box>
-        
-        <List disablePadding sx={{ position: 'relative' }}>
+        <Timeline
+          sx={{
+            p:0, // Remove default padding from Timeline
+            [`& .${timelineOppositeContentClasses.root}`]: {
+              flex: 0.2, // Control width of opposite content (time)
+            },
+          }}
+        >
           {mockActivities.map((activity, index) => (
-            <ActivityItem key={`${activity.time}-${activity.followerId}`} activity={activity} index={index} />
+            <ActivityItem key={`${activity.time}-${activity.followerId}-${index}`} activity={activity} index={index} />
           ))}
-        </List>
+        </Timeline>
       </CardContent>
     </Card>
   );
