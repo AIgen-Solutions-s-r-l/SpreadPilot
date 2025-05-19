@@ -160,7 +160,7 @@ def get_settings() -> Settings:
 
 # Configuration for the Original EMA Crossover Strategy
 ORIGINAL_EMA_STRATEGY = {
-    "enabled": True,
+    "enabled": False,  # Disabled in favor of Vertical Spreads Strategy
     "ibkr_secret_ref": "ibkr_original_strategy",  # For dedicated credentials
     "symbols": ["SOXS", "SOXL"],
     "fast_ema": 7,
@@ -171,4 +171,18 @@ ORIGINAL_EMA_STRATEGY = {
     "dollar_amount": 10000,
     "trailing_stop_pct": 1.0,
     "close_at_eod": True
+}
+
+# Configuration for the Vertical Spreads on QQQ Strategy
+VERTICAL_SPREADS_STRATEGY = {
+    "enabled": True,
+    "ibkr_secret_ref": "ibkr_vertical_spreads_strategy",  # For dedicated credentials
+    "symbol": "QQQ",
+    "signal_time": "09:27:00",  # NY Time to check for signals
+    "max_attempts": 10,  # Maximum number of attempts for limit orders
+    "price_increment": 0.01,  # Price increment for each attempt
+    "min_price": 0.70,  # Minimum price threshold for vertical spreads
+    "timeout_seconds": 5,  # Timeout in seconds for each attempt
+    "time_value_threshold": 0.10,  # Time Value threshold for closing positions
+    "time_value_check_interval": 60  # Check Time Value every 60 seconds
 }

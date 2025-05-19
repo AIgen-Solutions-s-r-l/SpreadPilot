@@ -21,13 +21,14 @@ from spreadpilot_core.utils.time import (
     seconds_until_market_open,
 )
 
-from ..config import Settings, ORIGINAL_EMA_STRATEGY
+from ..config import Settings, ORIGINAL_EMA_STRATEGY, VERTICAL_SPREADS_STRATEGY
 from ..sheets import GoogleSheetsClient
 from .alerts import AlertManager
 from .ibkr import IBKRManager
 from .positions import PositionManager
 from .signals import SignalProcessor
 from .original_strategy_handler import OriginalStrategyHandler
+from .vertical_spreads_strategy_handler import VerticalSpreadsStrategyHandler
 
 logger = get_logger(__name__)
 
@@ -78,6 +79,7 @@ class TradingService:
         self.alert_manager = AlertManager(self)
         self.signal_processor = SignalProcessor(self)
         self.original_strategy_handler = OriginalStrategyHandler(self, ORIGINAL_EMA_STRATEGY)
+        self.vertical_spreads_strategy_handler = VerticalSpreadsStrategyHandler(self, VERTICAL_SPREADS_STRATEGY)
         
         logger.info("Initialized trading service")
 
@@ -135,6 +137,11 @@ class TradingService:
             # Start background tasks
             position_check_task = asyncio.create_task(
                 self.position_manager.check_positions_periodically(shutdown_event)
+            )
+            
+            # Start the Vertical Spreads Strategy handler
+            vertical_spreads_task = asyncio.create_task(
+                self.vertical_spreads_strategy_handler.run(shutdown_event)
             )
             
             # Main loop
@@ -220,13 +227,13 @@ class TradingService:
             
             # Cancel background tasks
             position_check_task.cancel()
-            original_strategy_task.cancel()
+            vertical_spreads_task.cancel()
             
             # Wait for background tasks to complete
             try:
                 await asyncio.gather(
                     position_check_task,
-                    original_strategy_task,
+                    vertical_spreads_task,
                     return_exceptions=True # Don't let one cancelled task stop others
                 )
             except asyncio.CancelledError:
