@@ -1,0 +1,15 @@
+# Environment files
+.env
+.env.infra
+.env.local
+
+# Data directories
+data/
+!data/.gitkeep
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

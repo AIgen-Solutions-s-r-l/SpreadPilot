@@ -30,10 +30,16 @@ spreadpilot/
 ├── report-worker/            # Report worker service
 ├── alert-router/             # Alert router service
 ├── frontend/                 # React frontend
+├── infra/                    # Infrastructure (Docker Compose)
+│   ├── docker-compose.yml    # Infrastructure services
+│   ├── compose-up.sh         # Infrastructure startup script
+│   ├── compose-down.sh       # Infrastructure shutdown script
+│   ├── health-check.sh       # Infrastructure health monitoring
+│   └── README.md             # Infrastructure documentation
 ├── config/                   # Configuration files
 ├── credentials/              # Credentials (gitignored)
 ├── reports/                  # Generated reports
-└── docker-compose.yml        # Local development setup
+└── docker-compose.yml        # Application services setup
 ```
 
 ### Folder Naming Convention
@@ -138,6 +144,12 @@ pip install -r requirements-dev.in
 The easiest way to run the entire SpreadPilot system locally is using Docker Compose:
 
 ```bash
+# First, start the infrastructure services
+cd infra/
+./compose-up.sh
+cd ..
+
+# Then start the application services
 # Using Make
 make up
 
@@ -148,30 +160,40 @@ docker-compose up -d
 This will start all services defined in the `docker-compose.yml` file, including:
 
 - Core services (trading-bot, watchdog, admin-api, report-worker, alert-router, frontend)
-- Infrastructure services (firestore emulator, ib-gateway)
+- Legacy services (firestore emulator, ib-gateway)
 - Observability services (otel-collector, prometheus, grafana)
+
+The infrastructure services (PostgreSQL, Vault, MinIO, Traefik) are managed separately via `infra/docker-compose.yml`.
 
 ### 2. View Service Logs
 
 ```bash
-# View logs for all services
+# View logs for all application services
 make logs
 
 # Or directly with Docker Compose
 docker-compose logs -f
 
-# View logs for a specific service
+# View logs for a specific application service
 docker-compose logs -f trading-bot
+
+# View logs for infrastructure services
+cd infra/ && docker-compose logs -f
+cd infra/ && docker-compose logs -f postgres
 ```
 
 ### 3. Stop Services
 
 ```bash
+# Stop application services
 # Using Make
 make down
 
 # Or directly with Docker Compose
 docker-compose down
+
+# Stop infrastructure services
+cd infra/ && ./compose-down.sh
 ```
 
 ## Running Individual Services
@@ -189,6 +211,8 @@ export GOOGLE_CLOUD_PROJECT=spreadpilot-dev
 export FIRESTORE_EMULATOR_HOST=localhost:8084
 export IB_GATEWAY_HOST=localhost
 export IB_GATEWAY_PORT=4002
+# Source infrastructure environment variables
+source infra/.env.infra
 # Set other required environment variables from .env
 
 # Run the trading bot
@@ -206,6 +230,8 @@ export GOOGLE_CLOUD_PROJECT=spreadpilot-dev
 export FIRESTORE_EMULATOR_HOST=localhost:8084
 export TRADING_BOT_HOST=localhost
 export TRADING_BOT_PORT=8081
+# Source infrastructure environment variables
+source infra/.env.infra
 # Set other required environment variables from .env
 
 # Run the admin API
@@ -573,7 +599,28 @@ new_service_module = importlib.import_module('new-service.app.service.main')
 
 ## Troubleshooting
 
-### 1. MongoDB Connection Issues (Local Docker)
+### 1. Database Connection Issues
+
+#### PostgreSQL Connection (Infrastructure)
+
+If you encounter issues connecting to the PostgreSQL database:
+
+```bash
+# Check infrastructure services
+cd infra/
+./health-check.sh
+
+# Check PostgreSQL container logs
+docker-compose logs postgres
+
+# Restart PostgreSQL
+docker-compose restart postgres
+
+# Connect directly to database
+docker-compose exec postgres psql -U spreadpilot -d spreadpilot
+```
+
+#### MongoDB Connection Issues (Legacy)
 
 If you encounter issues connecting to the MongoDB container defined in `docker-compose.yml`, try the following:
 

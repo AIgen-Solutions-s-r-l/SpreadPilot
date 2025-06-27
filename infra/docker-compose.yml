@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: spreadpilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spreadpilot
+      POSTGRES_USER: spreadpilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spreadpilot_dev_pass}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - spreadpilot
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spreadpilot -d spreadpilot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # HashiCorp Vault (Development Mode)
+  vault:
+    image: vault:1.17
+    container_name: spreadpilot-vault
+    restart: unless-stopped
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN:-dev-only-token}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://127.0.0.1:8200
+    ports:
+      - "8200:8200"
+    networks:
+      - spreadpilot
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vault.rule=Host(`vault.local`)"
+      - "traefik.http.routers.vault.tls=true"
+      - "traefik.http.services.vault.loadbalancer.server.port=8200"
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: spreadpilot-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+      MINIO_BROWSER_REDIRECT_URL: https://minio.local
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - spreadpilot
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      # MinIO API
+      - "traefik.http.routers.minio-api.rule=Host(`minio-api.local`)"
+      - "traefik.http.routers.minio-api.tls=true"
+      - "traefik.http.routers.minio-api.service=minio-api"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      # MinIO Console
+      - "traefik.http.routers.minio.rule=Host(`minio.local`)"
+      - "traefik.http.routers.minio.tls=true"
+      - "traefik.http.routers.minio.service=minio"
+      - "traefik.http.services.minio.loadbalancer.server.port=9001"
+
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: spreadpilot-traefik
+    restart: unless-stopped
+    command:
+      # Global configuration
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      # API and dashboard configuration (disabled)
+      - --api=false
+      - --api.dashboard=false
+      # Entrypoints configuration
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # HTTP to HTTPS redirect
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # Docker provider
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=spreadpilot
+      # Let's Encrypt configuration
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      # Logging
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/letsencrypt:/letsencrypt
+    networks:
+      - spreadpilot
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # MinIO Client for bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: spreadpilot-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set minio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}) do echo 'Waiting for MinIO...' && sleep 1; done;
+      /usr/bin/mc mb minio/reports --ignore-existing;
+      /usr/bin/mc policy set download minio/reports;
+      echo 'MinIO bucket initialized successfully';
+      exit 0;
+      "
+    networks:
+      - spreadpilot
+
+networks:
+  spreadpilot:
+    driver: bridge
+    name: spreadpilot
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
+  letsencrypt_data:
+    driver: local
