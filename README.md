@@ -216,7 +216,8 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 
 ### Components
 
-*   **Trading Bot:** Connects to IBKR, polls Google Sheets, executes orders, handles assignments, manages positions.
+*   **Signal Listener:** Scheduled service that polls Google Sheets at 09:27 EST daily for trading signals and publishes them to Redis Pub/Sub.
+*   **Trading Bot:** Consumes signals from Redis Pub/Sub, connects to IBKR, executes orders, handles assignments, manages positions.
 *   **Order Executor:** Advanced limit-ladder execution engine with pre-trade margin validation and dynamic pricing strategies.
 *   **Watchdog:** Monitors service health, attempts restarts, updates status, triggers alerts.
 *   **Admin API:** Provides backend for the admin dashboard (follower management, real-time logs, authentication).
@@ -229,6 +230,7 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 
 ### Infrastructure Components
 
+*   **Redis:** In-memory data store for Pub/Sub messaging and caching trading signals.
 *   **PostgreSQL:** Primary database for application data, followers, and trading records.
 *   **HashiCorp Vault:** Secure secret management for API keys, credentials, and sensitive configuration.
 *   **MinIO:** S3-compatible object storage for reports, logs, and file artifacts.
@@ -241,11 +243,11 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 ### Communication Patterns
 
 *   **Synchronous:** REST APIs (service-to-service, client-to-service), WebSockets (real-time updates).
-*   **Asynchronous:** Pub/Sub (event-driven communication for alerts and reports).
+*   **Asynchronous:** Redis Pub/Sub (trading signals), Google Cloud Pub/Sub (event-driven communication for alerts and reports).
 
 ### Data Flow
 
-1.  **Trading Signal Flow:** Google Sheets -> Trading Bot -> Order Executor -> Gateway Manager -> IB Gateway -> MongoDB
+1.  **Trading Signal Flow:** Google Sheets -> Signal Listener -> Redis Pub/Sub -> Trading Bot -> Order Executor -> Gateway Manager -> IB Gateway -> MongoDB
 2.  **Order Execution Flow:** Order Executor -> IB Gateway (margin check) -> Order Executor (limit-ladder) -> IB Gateway (fills)
 3.  **Follower Management Flow:** Admin API -> Gateway Manager -> Docker (IBGateway containers)
 4.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
