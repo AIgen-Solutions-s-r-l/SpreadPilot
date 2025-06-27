@@ -83,11 +83,8 @@ class IBKRClient:
         self._last_positions_update = 0
         
         logger.info(
-            "IBKR client initialized",
-            username=username,
-            trading_mode=trading_mode,
-            host=host,
-            port=port,
+            "IBKR client initialized for user %s in %s mode at %s:%s", 
+            username, trading_mode, host, port
         )
 
     async def connect(self) -> bool:
