@@ -25,6 +25,9 @@ setup(
         "docker>=6.0.0",      # Docker API client
         "backoff>=2.2.0",     # Exponential backoff utilities
         "hvac>=2.0.0",        # HashiCorp Vault client
+        "apscheduler>=3.10.0", # Advanced Python Scheduler
+        "redis>=5.0.0",       # Redis client
+        "gspread>=5.11.0",    # Google Sheets API wrapper
     ],
     python_requires=">=3.11",
     author="SpreadPilot Team",

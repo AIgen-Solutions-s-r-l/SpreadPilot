@@ -10,12 +10,24 @@ SpreadPilot is a copy-trading platform for QQQ options strategies, designed to a
 
 ### Core Services
 
+#### Signal Listener
+
+The Signal Listener is a scheduled service that handles trading signal acquisition:
+
+- Scheduled to run at 09:27 EST daily using APScheduler
+- Connects to Google Sheets to poll for today's trading signals
+- Waits for ticker cells to be filled before processing signals
+- Publishes signals to Redis Pub/Sub channel for consumption by Trading Bot
+- Built with timezone-aware scheduling for US/Eastern time zone
+
+**Technology:** Python with APScheduler, Redis, gspread
+
 #### Trading Bot
 
 The Trading Bot is the central component of the SpreadPilot system. It is responsible for:
 
+- Consuming trading signals from Redis Pub/Sub channel
 - Connecting to Interactive Brokers (IBKR) via the IB Gateway
-- Polling Google Sheets for trading signals
 - Executing orders on behalf of followers
 - Detecting and handling assignments
 - Managing positions and tracking P&L
@@ -105,6 +117,16 @@ The IB Gateway provides connectivity to Interactive Brokers:
 
 **Technology:** IB Gateway container
 
+#### Redis
+
+Redis serves as the in-memory data store for real-time signal processing:
+
+- Pub/Sub messaging for trading signals between Signal Listener and Trading Bot
+- Caching layer for frequently accessed data
+- High-performance data structure store
+
+**Technology:** Redis (Self-hosted via Docker)
+
 #### MongoDB
 
 MongoDB serves as the primary database for the system:
@@ -156,7 +178,10 @@ Grafana provides visualization and dashboards:
 
 ### Asynchronous Communication
 
-- **Pub/Sub**: Used for event-driven communication between services
+- **Redis Pub/Sub**: Used for real-time trading signal distribution
+  - Signal Listener publishes trading signals to Redis channel
+  - Trading Bot subscribes to signals from Redis channel
+- **Google Cloud Pub/Sub**: Used for event-driven communication between services
   - Alert events from Trading Bot to Alert Router
   - Report generation triggers to Report Worker
 
@@ -164,7 +189,9 @@ Grafana provides visualization and dashboards:
 
 1. **Trading Signal Flow**:
    - Google Sheets algorithm generates trading signals
-   - Trading Bot polls Google Sheets for signals
+   - Signal Listener polls Google Sheets for signals at 09:27 EST daily
+   - Signal Listener publishes validated signals to Redis Pub/Sub channel
+   - Trading Bot consumes signals from Redis Pub/Sub channel
    - Trading Bot executes orders via IB Gateway
    - Trading Bot stores position and trade data in MongoDB
 
