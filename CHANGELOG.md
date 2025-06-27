@@ -5,6 +5,26 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.3.0] - 2025-06-27
+
+### Added
+- **Signal Listener Service**: Scheduled service that polls Google Sheets at 09:27 EST daily for trading signals
+- **Redis Pub/Sub Integration**: Real-time signal distribution between Signal Listener and Trading Bot
+- **Advanced Order Execution**: Enhanced VerticalSpreadExecutor with comprehensive limit-ladder strategy
+- **Comprehensive Testing**: Extensive unit test suites for both signal processing and order execution
+- **APScheduler Integration**: Timezone-aware scheduling for US/Eastern time zone
+- **Signal Model**: Complete Signal dataclass with Redis serialization support
+
+### Enhanced
+- **Order Execution Flow**: Pre-trade margin checks, MID price validation, and incremental pricing
+- **Trading Architecture**: Updated data flow to include Redis Pub/Sub signal processing
+- **System Documentation**: Updated architecture diagrams and component descriptions
+- **Test Infrastructure**: Improved test setup with mocked dependencies and isolated testing
+
+### Fixed
+- **Import Paths**: Updated test import paths for better module resolution
+- **Test Dependencies**: Enhanced test environment setup and dependency management
+
 ## [v1.1.2.0] - 2025-06-27
 
 ### Added
