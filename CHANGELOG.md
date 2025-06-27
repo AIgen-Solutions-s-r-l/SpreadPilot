@@ -5,6 +5,31 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.0] - 2025-06-27
+
+### Added
+- **Gateway Manager**: Automatic IBGateway Docker container management for multiple followers
+- **Multi-Follower Support**: Isolated IBKR connections with unique port and client ID allocation
+- **Container Lifecycle Management**: Automatic startup, health monitoring, and cleanup
+- **Exponential Backoff Retry Logic**: Robust connection handling with configurable retry parameters
+- **Resource Management**: Dynamic port and client ID allocation with conflict resolution
+- **Integration Tests**: Comprehensive test suite with mocked Docker and IB components
+
+### Enhanced
+- **System Architecture**: Updated documentation to reflect gateway management
+- **Documentation**: Complete Gateway Manager API reference and usage guide
+- **Dependencies**: Added `docker>=6.0.0` and `backoff>=2.2.0` for container management
+- **Mermaid Diagrams**: Updated system architecture with multiple IBGateway instances
+
+### Technical Implementation
+- **GatewayManager Class**: Core class managing Docker containers and IB connections
+- **GatewayInstance DataClass**: Container metadata and status tracking
+- **Health Monitoring**: Continuous gateway health checks with automatic reconnection
+- **Echo Functionality**: Connection validation with "API client connected" feedback
+- **Resource Cleanup**: Proper container and connection cleanup on shutdown
+
+This release adds critical multi-follower infrastructure enabling the platform to scale to multiple concurrent users with isolated trading environments.
+
 ## [v1.0.0.0] - 2025-06-27
 
 ### Added
