@@ -5,6 +5,29 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.1] - 2025-06-27
+
+### Added
+- **Limit-Ladder Order Execution**: Advanced vertical spread execution engine with dynamic pricing strategy
+- **Pre-trade Margin Validation**: IB API `whatIf` integration for margin checks before order placement
+- **Risk Management**: Automatic rejection when spread MID price falls below 0.70 threshold
+- **Alert Integration**: Real-time notifications for execution events and risk conditions
+- **Comprehensive Unit Testing**: 15+ test methods covering all execution scenarios with ib_insync mocks
+
+### Enhanced  
+- **Order Execution Strategy**: Limit-ladder approach starting at MID price, incrementing by 0.01 every 5 seconds
+- **Multi-Strategy Support**: Both Bull Put (Long) and Bear Call (Short) vertical spreads
+- **Fill Detection**: Handles successful fills, partial fills, and timeout scenarios
+- **Documentation**: Complete order execution guide with API examples and troubleshooting
+
+### Technical Implementation
+- **VerticalSpreadExecutor Class**: Core execution engine with margin validation and dynamic pricing
+- **Limit-Ladder Algorithm**: Systematic price improvement until fill or threshold breach
+- **Error Handling**: Comprehensive exception management with detailed error responses
+- **Performance Monitoring**: Execution metrics and detailed logging for analysis
+
+This release adds sophisticated order execution capabilities enabling optimal fill rates while maintaining strict risk controls.
+
 ## [v1.1.0] - 2025-06-27
 
 ### Added

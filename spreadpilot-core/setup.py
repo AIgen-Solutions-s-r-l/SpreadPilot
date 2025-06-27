@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="spreadpilot-core",
-    version="1.1.0",
+    version="1.1.1",
     packages=find_packages(),
     install_requires=[
         # "google-cloud-firestore>=2.11.0", # Removed as part of Firestore -> MongoDB migration
