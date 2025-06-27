@@ -15,6 +15,7 @@ from ib_insync import IB
 from ..logging import get_logger
 from ..db.mongodb import get_mongo_db
 from ..models.follower import Follower, FollowerState
+from ..utils.vault import get_vault_client
 
 logger = get_logger(__name__)
 
@@ -53,7 +54,8 @@ class GatewayManager:
         client_id_range_end: int = 9999,
         container_prefix: str = "ibgateway-follower",
         healthcheck_interval: int = 30,
-        max_startup_time: int = 120
+        max_startup_time: int = 120,
+        vault_enabled: bool = True
     ):
         """Initialize the gateway manager.
         
@@ -66,6 +68,7 @@ class GatewayManager:
             container_prefix: Prefix for container names
             healthcheck_interval: Interval between healthchecks in seconds
             max_startup_time: Maximum time to wait for container startup
+            vault_enabled: Whether to use Vault for credential retrieval
         """
         self.gateway_image = gateway_image
         self.port_range_start = port_range_start
@@ -75,6 +78,7 @@ class GatewayManager:
         self.container_prefix = container_prefix
         self.healthcheck_interval = healthcheck_interval
         self.max_startup_time = max_startup_time
+        self.vault_enabled = vault_enabled
         
         self.docker_client = docker.from_env()
         self.gateways: Dict[str, GatewayInstance] = {}
@@ -84,6 +88,34 @@ class GatewayManager:
         # Background task handle
         self._monitor_task: Optional[asyncio.Task] = None
         self._shutdown = False
+    
+    def _get_ibkr_credentials_from_vault(self, secret_ref: str) -> Optional[Dict[str, str]]:
+        """Get IBKR credentials from Vault.
+        
+        Args:
+            secret_ref: Secret reference/path for IBKR credentials
+            
+        Returns:
+            Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
+        """
+        if not self.vault_enabled:
+            logger.warning("Vault is disabled, cannot retrieve IBKR credentials")
+            return None
+            
+        try:
+            vault_client = get_vault_client()
+            credentials = vault_client.get_ibkr_credentials(secret_ref)
+            
+            if credentials:
+                logger.info(f"Retrieved IBKR credentials from Vault for secret: {secret_ref}")
+                return credentials
+            else:
+                logger.warning(f"No IBKR credentials found in Vault for secret: {secret_ref}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
+            return None
     
     async def start(self) -> None:
         """Start the gateway manager and load enabled followers."""
@@ -206,6 +238,23 @@ class GatewayManager:
             except docker.errors.NotFound:
                 pass
             
+            # Get IBKR credentials from Vault
+            ibkr_password = 'placeholder'  # Default fallback
+            if hasattr(follower, 'vault_secret_ref') and follower.vault_secret_ref:
+                # Try to get credentials from Vault using follower's secret reference
+                credentials = self._get_ibkr_credentials_from_vault(follower.vault_secret_ref)
+                if credentials:
+                    ibkr_username = credentials.get('IB_USER', follower.ibkr_username)
+                    ibkr_password = credentials.get('IB_PASS', 'placeholder')
+                    logger.info(f"Using Vault credentials for follower {follower.id}")
+                else:
+                    logger.warning(f"Failed to retrieve Vault credentials for follower {follower.id}, using fallback")
+                    ibkr_username = follower.ibkr_username
+            else:
+                # Fall back to using follower's stored username
+                logger.info(f"No Vault secret reference for follower {follower.id}, using stored username")
+                ibkr_username = follower.ibkr_username
+            
             # Start container
             container = self.docker_client.containers.run(
                 self.gateway_image,
@@ -214,8 +263,8 @@ class GatewayManager:
                     '4002/tcp': host_port,  # TWS API port
                 },
                 environment={
-                    'TWS_USERID': follower.ibkr_username,
-                    'TWS_PASSWORD': 'placeholder',  # TODO: Retrieve from Secret Manager
+                    'TWS_USERID': ibkr_username,
+                    'TWS_PASSWORD': ibkr_password,
                     'TRADING_MODE': 'paper',  # Default to paper trading
                     'TWS_SETTINGS_PATH': '/opt/ibc',
                     'DISPLAY': ':0',

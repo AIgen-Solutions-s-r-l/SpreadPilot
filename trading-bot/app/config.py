@@ -2,12 +2,13 @@
 
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Dict
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
 
 from spreadpilot_core.logging import get_logger
+from spreadpilot_core.utils.vault import get_vault_client
 
 logger = get_logger(__name__)
 
@@ -129,12 +130,69 @@ class Settings(BaseSettings):
         description="Dashboard URL for deep links in alerts",
     )
     
+    # Vault configuration
+    vault_url: str = Field(
+        default="http://vault:8200",
+        env="VAULT_ADDR",
+        description="HashiCorp Vault server URL",
+    )
+    vault_token: str = Field(
+        default="dev-only-token",
+        env="VAULT_TOKEN",
+        description="HashiCorp Vault authentication token",
+    )
+    vault_mount_point: str = Field(
+        default="secret",
+        env="VAULT_MOUNT_POINT", 
+        description="Vault KV mount point",
+    )
+    vault_enabled: bool = Field(
+        default=True,
+        env="VAULT_ENABLED",
+        description="Enable Vault integration for secrets",
+    )
+    
     @validator("ib_trading_mode")
     def validate_trading_mode(cls, v):
         """Validate trading mode."""
         if v not in ["paper", "live"]:
             raise ValueError("Trading mode must be 'paper' or 'live'")
         return v
+    
+    def get_ibkr_credentials_from_vault(self, secret_ref: str) -> Optional[Dict[str, str]]:
+        """Get IBKR credentials from Vault.
+        
+        Args:
+            secret_ref: Secret reference/path for IBKR credentials
+            
+        Returns:
+            Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
+        """
+        if not self.vault_enabled:
+            logger.info("Vault integration is disabled, skipping credential retrieval")
+            return None
+            
+        try:
+            vault_client = get_vault_client()
+            # Override client settings with config values
+            vault_client.vault_url = self.vault_url
+            vault_client.vault_token = self.vault_token
+            vault_client.mount_point = self.vault_mount_point
+            # Reset client to pick up new settings
+            vault_client._client = None
+            
+            credentials = vault_client.get_ibkr_credentials(secret_ref)
+            
+            if credentials:
+                logger.info(f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}")
+                return credentials
+            else:
+                logger.warning(f"No IBKR credentials found in Vault for: {secret_ref}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
+            return None
     
     class Config:
         """Pydantic config."""
