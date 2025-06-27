@@ -22,6 +22,8 @@ setup(
         "python-telegram-bot>=20.3",  # Telegram integration
         "pytz>=2023.3",       # Timezone handling
         "aiohttp>=3.8.5",     # Async HTTP
+        "docker>=6.0.0",      # Docker API client
+        "backoff>=2.2.0",     # Exponential backoff utilities
     ],
     python_requires=">=3.11",
     author="SpreadPilot Team",
