@@ -26,6 +26,7 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 ## Features
 
 *   **Automated Trading:** Replicate QQQ options strategies directly from Google Sheets to IBKR.
+*   **Advanced Order Execution:** Limit-ladder execution strategy with pre-trade margin checks and dynamic pricing.
 *   **Microservice Architecture:** Scalable and maintainable design with dedicated services for trading, monitoring, administration, reporting, and alerting.
 *   **Multi-Follower Support:** Automatic IBGateway container management for each enabled follower with isolated connections.
 *   **Real-time Monitoring:** Admin dashboard with real-time logs and system status updates.
@@ -178,6 +179,7 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 ### Components
 
 *   **Trading Bot:** Connects to IBKR, polls Google Sheets, executes orders, handles assignments, manages positions.
+*   **Order Executor:** Advanced limit-ladder execution engine with pre-trade margin validation and dynamic pricing strategies.
 *   **Watchdog:** Monitors service health, attempts restarts, updates status, triggers alerts.
 *   **Admin API:** Provides backend for the admin dashboard (follower management, real-time logs, authentication).
 *   **Report Worker:** Generates periodic P&L reports (PDF/Excel) and emails them.
@@ -198,11 +200,12 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 
 ### Data Flow
 
-1.  **Trading Signal Flow:** Google Sheets -> Trading Bot -> Gateway Manager -> IB Gateway -> MongoDB
-2.  **Follower Management Flow:** Admin API -> Gateway Manager -> Docker (IBGateway containers)
-3.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
-4.  **Alerting Flow:** Services -> Pub/Sub -> Alert Router -> Telegram/SendGrid
-5.  **Monitoring Flow:** Services -> OpenTelemetry Collector -> Prometheus/Cloud Monitoring -> Grafana
+1.  **Trading Signal Flow:** Google Sheets -> Trading Bot -> Order Executor -> Gateway Manager -> IB Gateway -> MongoDB
+2.  **Order Execution Flow:** Order Executor -> IB Gateway (margin check) -> Order Executor (limit-ladder) -> IB Gateway (fills)
+3.  **Follower Management Flow:** Admin API -> Gateway Manager -> Docker (IBGateway containers)
+4.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
+5.  **Alerting Flow:** Services -> Pub/Sub -> Alert Router -> Telegram/SendGrid
+6.  **Monitoring Flow:** Services -> OpenTelemetry Collector -> Prometheus/Cloud Monitoring -> Grafana
 
 ## Contribution Guidelines
 
