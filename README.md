@@ -50,7 +50,36 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 
 ### Using Docker Compose (Recommended for local development)
 
+#### Quick Start with Infrastructure
+
 1.  Clone the repository:
+    ```bash
+    git clone https://github.com/your-repo/spreadpilot.git
+    cd spreadpilot
+    ```
+
+2.  Start the development infrastructure:
+    ```bash
+    cd infra/
+    ./compose-up.sh
+    ```
+    This will automatically start PostgreSQL, Vault, MinIO, and Traefik with all required secrets.
+
+3.  Build and start the SpreadPilot services:
+    ```bash
+    cd ..
+    docker-compose up --build -d
+    ```
+
+4.  Verify that all containers are running:
+    ```bash
+    docker-compose ps
+    cd infra/ && ./health-check.sh
+    ```
+
+#### Manual Setup
+
+1.  Clone the repository and create environment files:
     ```bash
     git clone https://github.com/your-repo/spreadpilot.git
     cd spreadpilot
@@ -59,10 +88,6 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 3.  Build and start the services:
     ```bash
     docker-compose up --build -d
-    ```
-4.  Verify that the containers are running:
-    ```bash
-    docker-compose ps
     ```
 
 ### Manual Installation (For development without Docker)
@@ -123,6 +148,19 @@ Key environment variables include:
 *   `JWT_SECRET`: Secret key for JWT authentication
 *   `MONGO_URI`: MongoDB connection URI
 *   `MONGO_DB_NAME`: MongoDB database name
+*   `VAULT_ADDR`: HashiCorp Vault server URL (default: `http://vault:8200`)
+*   `VAULT_TOKEN`: Vault authentication token (default: `dev-only-token`)
+*   `VAULT_ENABLED`: Enable Vault integration for credentials (default: `true`)
+
+### Vault Integration
+
+SpreadPilot supports HashiCorp Vault for secure credential management. IBKR credentials are automatically retrieved from Vault using the following secret paths:
+
+*   `secret/ibkr/original_strategy` - Credentials for the Original EMA Strategy
+*   `secret/ibkr/vertical_spreads_strategy` - Credentials for the Vertical Spreads Strategy
+*   `secret/ibkr/follower_[id]` - Follower-specific credentials (optional)
+
+For detailed Vault configuration and usage, see `docs/vault-integration.md`.
 
 Refer to `deploy/.env.dev.template` for a complete list and descriptions.
 
@@ -188,7 +226,14 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 *   **SpreadPilot Core:** Shared Python library with IBKR client, database models, logging, and utilities.
 *   **Gateway Manager:** Manages IBGateway Docker containers for each enabled follower, providing isolated connections and automatic port/client ID allocation.
 *   **IB Gateway:** Provides connectivity to Interactive Brokers (managed by Gateway Manager).
-*   **MongoDB:** Primary database for follower data, positions, trades, and system status.
+
+### Infrastructure Components
+
+*   **PostgreSQL:** Primary database for application data, followers, and trading records.
+*   **HashiCorp Vault:** Secure secret management for API keys, credentials, and sensitive configuration.
+*   **MinIO:** S3-compatible object storage for reports, logs, and file artifacts.
+*   **Traefik:** Reverse proxy with automatic HTTPS and Let's Encrypt certificate management.
+*   **MongoDB:** Legacy database support (being migrated to PostgreSQL).
 *   **OpenTelemetry Collector:** Gathers telemetry data (metrics, traces, logs).
 *   **Prometheus:** Stores and processes metrics.
 *   **Grafana:** Provides visualization and dashboards for metrics.

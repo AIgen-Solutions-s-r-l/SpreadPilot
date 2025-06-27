@@ -28,7 +28,24 @@ graph TD
     
     Frontend[Frontend] --> AdminAPI
     
-    %% Infrastructure
+    %% Infrastructure Services
+    TradingBot --> PostgreSQL[(PostgreSQL)]
+    AdminAPI --> PostgreSQL
+    ReportWorker --> PostgreSQL
+    
+    TradingBot --> Vault[(Vault)]
+    AdminAPI --> Vault
+    OrderExecutor --> Vault
+    GatewayManager --> Vault
+    
+    ReportWorker --> MinIO[(MinIO)]
+    AdminAPI --> MinIO
+    
+    Frontend --> Traefik[Traefik]
+    AdminAPI --> Traefik
+    Vault --> Traefik
+    MinIO --> Traefik
+    
     CloudScheduler[Cloud Scheduler] --> PubSubReports
     
     %% Observability
@@ -53,7 +70,7 @@ graph TD
     classDef external fill:#9AA0A6,stroke:#80868B,color:white
     
     class TradingBot,Watchdog,AdminAPI,ReportWorker,AlertRouter,Frontend,GatewayManager,OrderExecutor coreService
-    class IBGateway1,IBGateway2,IBGatewayN,CloudScheduler infrastructure
+    class IBGateway1,IBGateway2,IBGatewayN,CloudScheduler,Traefik infrastructure
     class OTel,Prometheus,Grafana,CloudMonitoring observability
-    class MongoDB,PubSubAlerts,PubSubReports database
+    class MongoDB,PostgreSQL,Vault,MinIO,PubSubAlerts,PubSubReports database
     class GoogleSheets,SendGrid,Telegram external
