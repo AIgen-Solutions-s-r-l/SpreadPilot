@@ -1,7 +1,7 @@
 # Development dependencies for SpreadPilot
 
 # Include application dependencies needed for integration tests
--r admin_api/requirements.in
+-r admin-api/requirements.in
 # Testing
 pytest>=7.3.1
 pytest-cov>=4.1.0

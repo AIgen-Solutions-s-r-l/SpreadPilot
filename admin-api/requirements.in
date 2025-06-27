@@ -5,8 +5,8 @@ pydantic[email]>=2.0.0,<3.0.0
 
 # MongoDB async client
 # Use a specific version of motor that's compatible with pymongo
-motor==3.2.0
-pymongo==4.5.0
+motor>=3.4.0
+pymongo>=4.9.0
 
 # Authentication
 python-jose[cryptography]>=3.3.0,<4.0.0
