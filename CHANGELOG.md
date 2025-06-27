@@ -5,6 +5,37 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.2.0] - 2025-06-27
+
+### Added
+- **HashiCorp Vault Integration**: Secure credential management for IBKR credentials and sensitive configuration
+- **Docker Compose Infrastructure**: Complete infrastructure setup with PostgreSQL, Vault, MinIO, and Traefik services
+- **Vault Client Library**: Comprehensive `VaultClient` utility class with KV v2 secrets engine support
+- **Infrastructure Automation**: Management scripts for infrastructure lifecycle and health monitoring
+- **Unit Test Coverage**: Comprehensive test suite with mocked hvac Client for Vault integration
+
+### Enhanced
+- **Credential Management**: Vault-first approach with fallback to existing credential systems
+- **Gateway Manager**: Integrated Vault credential retrieval for IBGateway container startup
+- **Trading Bot Configuration**: Added Vault configuration fields and credential retrieval methods
+- **System Architecture**: Updated documentation and diagrams to reflect Vault integration
+- **Development Environment**: Infrastructure services managed separately from application services
+
+### Technical Implementation
+- **VaultClient Class**: Centralized Vault operations with authentication and health checking
+- **Configuration Integration**: Environment variable configuration for Vault endpoint and authentication
+- **Follower-Specific Credentials**: Support for per-follower secret references in Vault
+- **Backward Compatibility**: Graceful degradation when Vault is unavailable or disabled
+- **Infrastructure Scripts**: `compose-up.sh`, `compose-down.sh`, and `health-check.sh` for complete automation
+
+### Security Features
+- **Secure Secret Storage**: IBKR credentials stored in Vault instead of environment variables
+- **Development Mode**: Vault development mode for local testing with automatic secret initialization
+- **Access Control**: Structured secret paths for different strategies and followers
+- **SSL/TLS Support**: Configurable SSL verification for production Vault deployments
+
+This release adds enterprise-grade secret management and infrastructure automation, significantly enhancing security and operational capabilities.
+
 ## [v1.1.1] - 2025-06-27
 
 ### Added
