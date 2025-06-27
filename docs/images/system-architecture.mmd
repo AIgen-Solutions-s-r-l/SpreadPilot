@@ -1,19 +1,23 @@
 graph TD
     %% Core Services
-    TradingBot[Trading Bot] --> IBGateway[IB Gateway]
-    TradingBot --> Firestore[(Firestore)]
+    TradingBot[Trading Bot] --> GatewayManager[Gateway Manager]
+    GatewayManager --> IBGateway1[IB Gateway: Follower 1]
+    GatewayManager --> IBGateway2[IB Gateway: Follower 2]
+    GatewayManager --> IBGatewayN[IB Gateway: Follower N]
+    TradingBot --> MongoDB[(MongoDB)]
     TradingBot --> GoogleSheets[(Google Sheets)]
     TradingBot --> PubSubAlerts[Pub/Sub: alerts]
     
     Watchdog[Watchdog] --> TradingBot
-    Watchdog --> IBGateway
-    Watchdog --> Firestore
+    Watchdog --> GatewayManager
+    Watchdog --> MongoDB
     Watchdog --> PubSubAlerts
     
     AdminAPI[Admin API] --> TradingBot
-    AdminAPI --> Firestore
+    AdminAPI --> GatewayManager
+    AdminAPI --> MongoDB
     
-    ReportWorker[Report Worker] --> Firestore
+    ReportWorker[Report Worker] --> MongoDB
     ReportWorker --> SendGrid[(SendGrid)]
     PubSubReports[Pub/Sub: reports] --> ReportWorker
     
@@ -33,6 +37,7 @@ graph TD
     
     %% Service connections to observability
     TradingBot -.-> OTel
+    GatewayManager -.-> OTel
     Watchdog -.-> OTel
     AdminAPI -.-> OTel
     ReportWorker -.-> OTel
@@ -45,8 +50,8 @@ graph TD
     classDef database fill:#EA4335,stroke:#C5221F,color:white
     classDef external fill:#9AA0A6,stroke:#80868B,color:white
     
-    class TradingBot,Watchdog,AdminAPI,ReportWorker,AlertRouter,Frontend coreService
-    class IBGateway,CloudScheduler infrastructure
+    class TradingBot,Watchdog,AdminAPI,ReportWorker,AlertRouter,Frontend,GatewayManager coreService
+    class IBGateway1,IBGateway2,IBGatewayN,CloudScheduler infrastructure
     class OTel,Prometheus,Grafana,CloudMonitoring observability
-    class Firestore,PubSubAlerts,PubSubReports database
+    class MongoDB,PubSubAlerts,PubSubReports database
     class GoogleSheets,SendGrid,Telegram external

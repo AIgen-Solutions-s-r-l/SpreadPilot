@@ -27,6 +27,7 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 
 *   **Automated Trading:** Replicate QQQ options strategies directly from Google Sheets to IBKR.
 *   **Microservice Architecture:** Scalable and maintainable design with dedicated services for trading, monitoring, administration, reporting, and alerting.
+*   **Multi-Follower Support:** Automatic IBGateway container management for each enabled follower with isolated connections.
 *   **Real-time Monitoring:** Admin dashboard with real-time logs and system status updates.
 *   **Flexible Alerting:** Configurable alerts via Telegram and email for critical events.
 *   **Automated Reporting:** Periodic P&L reports generated in PDF and Excel formats.
@@ -183,7 +184,8 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 *   **Alert Router:** Manages alert delivery via Telegram and email.
 *   **Frontend:** Admin dashboard for monitoring and management.
 *   **SpreadPilot Core:** Shared Python library with IBKR client, database models, logging, and utilities.
-*   **IB Gateway:** Provides connectivity to Interactive Brokers.
+*   **Gateway Manager:** Manages IBGateway Docker containers for each enabled follower, providing isolated connections and automatic port/client ID allocation.
+*   **IB Gateway:** Provides connectivity to Interactive Brokers (managed by Gateway Manager).
 *   **MongoDB:** Primary database for follower data, positions, trades, and system status.
 *   **OpenTelemetry Collector:** Gathers telemetry data (metrics, traces, logs).
 *   **Prometheus:** Stores and processes metrics.
@@ -196,10 +198,11 @@ SpreadPilot is built with a microservice architecture, designed for scalability 
 
 ### Data Flow
 
-1.  **Trading Signal Flow:** Google Sheets -> Trading Bot -> IB Gateway -> MongoDB
-2.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
-3.  **Alerting Flow:** Services -> Pub/Sub -> Alert Router -> Telegram/SendGrid
-4.  **Monitoring Flow:** Services -> OpenTelemetry Collector -> Prometheus/Cloud Monitoring -> Grafana
+1.  **Trading Signal Flow:** Google Sheets -> Trading Bot -> Gateway Manager -> IB Gateway -> MongoDB
+2.  **Follower Management Flow:** Admin API -> Gateway Manager -> Docker (IBGateway containers)
+3.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
+4.  **Alerting Flow:** Services -> Pub/Sub -> Alert Router -> Telegram/SendGrid
+5.  **Monitoring Flow:** Services -> OpenTelemetry Collector -> Prometheus/Cloud Monitoring -> Grafana
 
 ## Contribution Guidelines
 
