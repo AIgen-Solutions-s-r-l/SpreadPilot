@@ -24,6 +24,7 @@ setup(
         "aiohttp>=3.8.5",     # Async HTTP
         "docker>=6.0.0",      # Docker API client
         "backoff>=2.2.0",     # Exponential backoff utilities
+        "hvac>=2.0.0",        # HashiCorp Vault client
     ],
     python_requires=">=3.11",
     author="SpreadPilot Team",

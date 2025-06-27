@@ -301,7 +301,7 @@ class TradingService:
             self.status = ServiceStatus.ERROR
 
     async def get_secret(self, secret_ref: str) -> Optional[str]:
-        """Get secret from Secret Manager.
+        """Get secret from Secret Manager (legacy method).
 
         Args:
             secret_ref: Secret reference
@@ -320,6 +320,34 @@ class TradingService:
             return response.payload.data.decode("UTF-8")
         except Exception as e:
             logger.error(f"Error getting secret {secret_ref}: {e}")
+            return None
+
+    def get_ibkr_credentials(self, secret_ref: str) -> Optional[Dict[str, str]]:
+        """Get IBKR credentials, preferring Vault over Google Cloud Secret Manager.
+
+        Args:
+            secret_ref: Secret reference for IBKR credentials
+
+        Returns:
+            Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
+        """
+        # Try Vault first if enabled
+        if self.settings.vault_enabled:
+            credentials = self.settings.get_ibkr_credentials_from_vault(secret_ref)
+            if credentials:
+                return credentials
+            else:
+                logger.warning(f"Vault enabled but no credentials found for {secret_ref}, falling back to Google Cloud Secret Manager")
+        
+        # Fallback to Google Cloud Secret Manager (legacy)
+        logger.info(f"Using Google Cloud Secret Manager for IBKR credentials: {secret_ref}")
+        try:
+            # This would require implementing the secret manager logic here
+            # For now, just log that this is the fallback path
+            logger.warning("Google Cloud Secret Manager fallback not implemented for IBKR credentials")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting IBKR credentials from Google Cloud Secret Manager: {e}")
             return None
 
     def is_healthy(self) -> bool:
