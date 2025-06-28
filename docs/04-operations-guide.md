@@ -280,6 +280,52 @@ gcloud run services describe $SERVICE --region=us-central1 | grep $SECRET_NAME
 gcloud secrets versions disable 1 --secret=$SECRET_NAME
 ```
 
+### 📅 Scheduled Jobs
+
+#### ⏰ Automated Tasks
+
+| Job | Schedule | Service | Description |
+|-----|----------|---------|-------------|
+| **Daily P&L Calculation** | 16:30 ET Daily | Report Worker | Calculate and store daily P&L |
+| **Monthly Report Generation** | 00:10 ET 1st of Month | Report Worker | Generate monthly reports |
+| **Commission Email Reports** | 09:00 UTC Monday | Report Worker | Email weekly commission reports |
+| **Database Backup** | 02:00 UTC Daily | MongoDB/PostgreSQL | Automated backup to GCS |
+
+#### 📧 Commission Email Job Configuration
+
+**Cron Schedule:**
+```bash
+# Weekly commission report emails (Monday 9AM UTC)
+0 9 * * 1 cd /app && python app/cron_email_reports.py
+```
+
+**Manual Execution:**
+```bash
+# Run commission email job manually
+docker exec -it spreadpilot-report-worker python app/cron_email_reports.py
+
+# Check job logs
+docker logs spreadpilot-report-worker | grep "commission report"
+tail -f /var/log/commission_reports.log
+```
+
+**Monitoring Email Jobs:**
+```bash
+# Check pending reports
+psql -U postgres -d spreadpilot_pnl -c "
+SELECT follower_id, year, month, commission_amount 
+FROM commission_monthly 
+WHERE sent = false AND is_payable = true;"
+
+# Check recently sent reports
+psql -U postgres -d spreadpilot_pnl -c "
+SELECT follower_id, sent_at, commission_amount 
+FROM commission_monthly 
+WHERE sent = true 
+ORDER BY sent_at DESC 
+LIMIT 10;"
+```
+
 ## 🔍 Troubleshooting
 
 ### 🚫 Common Issues
