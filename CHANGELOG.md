@@ -5,6 +5,23 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.12.0] - 2025-06-28
+
+### Added
+- **Comprehensive Security Checklist**: 10-category security verification guide with pre-deployment checklist
+- **Trivy Security Scanner**: Automated vulnerability scanning for Docker images and dependencies
+- **PIN Verification System**: 0312 PIN protection for dangerous endpoints with rate limiting
+- **CI Security Scanning**: GitHub Actions workflow for automated security checks
+- **Security Utilities**: Command-line tools for PIN generation, password policy, and security audits
+- **Security Configuration Template**: Complete security.env.template with all security settings
+
+### Enhanced
+- **Container Security**: Verification of non-root users and health checks in all services
+- **Security Documentation**: Added security practices to development and operations guides
+- **Database Security**: TLS/SSL configuration checks for MongoDB and PostgreSQL
+- **Security Headers**: CSP, HSTS, and other security headers implementation
+- **IAM Best Practices**: Least-privilege documentation and verification
+
 ## [v1.1.11.0] - 2025-06-28
 
 ### Added
