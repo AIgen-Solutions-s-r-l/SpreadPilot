@@ -72,6 +72,7 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
       - ADMIN_API_PORT=8002
       - ADMIN_API_HOST=0.0.0.0
+      - ADMIN_API_MODULE=admin_api:app
     volumes:
       - ./credentials:/app/credentials
     depends_on:
