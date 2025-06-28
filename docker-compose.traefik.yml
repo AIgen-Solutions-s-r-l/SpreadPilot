@@ -1,0 +1,151 @@
+version: '3.8'
+
+# Traefik override configuration for SpreadPilot Admin API
+# This file extends the main docker-compose.yml to add Traefik routing
+
+services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: spreadpilot-traefik
+    command:
+      # Enable Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=web"
+      # API and dashboard
+      - "--api.dashboard=true"
+      - "--api.debug=true"
+      # Entry points
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      # Let's Encrypt configuration (optional)
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # Logging
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - web
+      - spreadpilot-network
+    labels:
+      - "traefik.enable=true"
+      # Dashboard routing (optional)
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH:-admin:$$2y$$10$$8fmHMC0Y0n3Y3ZvPxof6e.CQB9XxejqYwV7DlRcUoKSUqzM0MjEKm}"
+    restart: unless-stopped
+
+  # Admin API with Traefik labels
+  admin-api:
+    build:
+      context: .
+      dockerfile: admin-api/Dockerfile
+    container_name: spreadpilot-admin-api
+    environment:
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-spreadpilot-dev}
+      - MONGO_URI=${MONGO_URI:-mongodb://mongodb:27017}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-spreadpilot_admin}
+      - TRADING_BOT_HOST=trading-bot
+      - TRADING_BOT_PORT=8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES:-1440}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,https://dashboard.${DOMAIN}}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+      - ADMIN_API_PORT=8002
+      - ADMIN_API_HOST=0.0.0.0
+    volumes:
+      - ./credentials:/app/credentials
+    depends_on:
+      - mongodb
+      - trading-bot
+      - traefik
+    networks:
+      - web
+      - spreadpilot-network
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      # HTTP router
+      - "traefik.http.routers.admin-api.rule=Host(`dashboard.${DOMAIN}`)"
+      - "traefik.http.routers.admin-api.entrypoints=websecure"
+      - "traefik.http.routers.admin-api.tls=true"
+      - "traefik.http.routers.admin-api.tls.certresolver=letsencrypt"
+      # Service configuration
+      - "traefik.http.services.admin-api.loadbalancer.server.port=8002"
+      - "traefik.http.services.admin-api.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.admin-api.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.admin-api.loadbalancer.healthcheck.timeout=3s"
+      # CORS headers middleware
+      - "traefik.http.middlewares.admin-api-cors.headers.accesscontrolallowmethods=*"
+      - "traefik.http.middlewares.admin-api-cors.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.admin-api-cors.headers.accesscontrolalloworiginlist=http://localhost:3000,http://localhost:8080,https://dashboard.${DOMAIN}"
+      - "traefik.http.middlewares.admin-api-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.admin-api-cors.headers.addvaryheader=true"
+      # Apply middlewares
+      - "traefik.http.routers.admin-api.middlewares=admin-api-cors"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Admin Dashboard (Vue) with Traefik labels
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+    container_name: spreadpilot-admin-dashboard
+    depends_on:
+      - admin-api
+      - traefik
+    networks:
+      - web
+      - spreadpilot-network
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      # HTTP router for the frontend
+      - "traefik.http.routers.admin-dashboard.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.admin-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.admin-dashboard.tls=true"
+      - "traefik.http.routers.admin-dashboard.tls.certresolver=letsencrypt"
+      # Service configuration
+      - "traefik.http.services.admin-dashboard.loadbalancer.server.port=80"
+    restart: unless-stopped
+
+  # Ensure MongoDB is on the correct network
+  mongodb:
+    networks:
+      - spreadpilot-network
+
+  # Ensure Trading Bot is on the correct network
+  trading-bot:
+    networks:
+      - spreadpilot-network
+
+networks:
+  web:
+    external: true
+  spreadpilot-network:
+    driver: bridge
