@@ -253,6 +253,8 @@ scan_secrets() {
     
     for pattern in "${secret_patterns[@]}"; do
         # Exclude common false positives
+        # Use set +e to prevent grep from causing script exit
+        set +e
         matches=$(grep -r -i "${pattern}" . \
             --exclude-dir=.git \
             --exclude-dir=node_modules \
@@ -261,10 +263,11 @@ scan_secrets() {
             --exclude="*.md" \
             --exclude="*.json" \
             --exclude="trivy_scan.sh" \
-            | grep -v "env.example" \
+            2>/dev/null | grep -v "env.example" \
             | grep -v "template" \
             | grep -v "TODO" \
             | grep -v "FIXME" || true)
+        set -e
         
         if [ ! -z "${matches}" ]; then
             echo -e "${RED}❌ Potential secrets found for pattern: ${pattern}${NC}"
