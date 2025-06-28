@@ -1,85 +1,333 @@
-# SpreadPilot Trading Bot
+# 🤖 SpreadPilot Trading Bot
 
-This is the trading bot service for the SpreadPilot platform. It's responsible for:
+> ⚡ **Core trading engine** that executes QQQ options strategies with advanced order management and real-time position monitoring
 
-1. Connecting to Interactive Brokers (IBKR)
-2. Polling Google Sheets for trading signals
-3. Executing vertical spread orders
-4. Monitoring positions for assignments
-5. Calculating P&L
+The Trading Bot is the heart of SpreadPilot, responsible for automated strategy execution, position management, and real-time P&L calculations with sophisticated risk controls.
 
-## Architecture
+## 🎯 Core Responsibilities
 
-The trading bot is built as a FastAPI application with a modular service structure:
+### 📊 **Strategy Execution**
+- 🔗 **IBKR Integration**: Direct connection to Interactive Brokers Gateway
+- 📈 **Signal Processing**: Google Sheets signal polling and validation
+- ⚡ **Order Execution**: Advanced limit-ladder execution with margin checks
+- 🎯 **Multi-Follower**: Isolated execution for multiple trading accounts
 
-- `app/main.py`: FastAPI application entry point
-- `app/config.py`: Configuration settings
-- `app/sheets.py`: Google Sheets client
-- `app/service/`: Modular service components
-  - `base.py`: Core TradingService class
-  - `ibkr.py`: IBKR client interaction
-  - `signals.py`: Signal processing
-  - `positions.py`: Position management and assignment handling
-  - `alerts.py`: Alert creation and notification
+### 🛡️ **Risk Management**
+- ⚠️ **Time Value Monitor**: Automatic liquidation when TV < $0.10
+- 📋 **Position Tracking**: Real-time position monitoring and assignment handling
+- 💰 **P&L Calculation**: 30-second MTM updates with PostgreSQL storage
+- 🔒 **Margin Validation**: Pre-trade margin checks and position limits
 
-## API Endpoints
+### 🔄 **Real-time Operations**
+- ⏱️ **Live Monitoring**: Continuous position and market data updates
+- 🚨 **Alert Generation**: Automated notifications for critical events
+- 📊 **Data Pipeline**: Real-time data flow to PostgreSQL and MongoDB
+- 🎛️ **API Interface**: RESTful endpoints for external control
 
-- `GET /health`: Health check endpoint
-- `GET /status`: Get trading bot status
-- `POST /trade/signal`: Process a trade signal manually
-- `POST /close/{follower_id}`: Close all positions for a follower
-- `POST /close/all`: Close all positions for all followers
+---
 
-## Development
+## 🏗️ Architecture
 
-### Prerequisites
+### 🧩 **Service Components**
 
-- Python 3.11
-- Interactive Brokers Gateway
-- Google Sheets API access
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| 🎛️ **TradingService** | Main orchestrator | `app/service/base.py` |
+| 🏦 **IBKR Client** | Interactive Brokers integration | `app/service/ibkr.py` |
+| 📡 **Signal Processor** | Google Sheets polling & signal validation | `app/service/signals.py` |
+| 📋 **Position Manager** | Position tracking & assignment handling | `app/service/positions.py` |
+| ⚠️ **Time Value Monitor** | Risk management & liquidation | `app/service/time_value_monitor.py` |
+| 💰 **P&L Service** | Real-time P&L calculation | `app/service/pnl_service.py` |
+| 🔔 **Alert Manager** | Notification generation | `app/service/alerts.py` |
 
-### Import Pattern
+### 📊 **Data Flow**
 
-The trading bot service uses a hyphenated directory name (`trading-bot`) which is made importable as a Python package through `__init__.py` files. When importing from this directory in other parts of the codebase (like tests), use the `importlib.import_module()` function:
+```mermaid
+graph LR
+    A[📊 Google Sheets] --> B[📡 Signal Processor]
+    B --> C[🤖 Trading Service]
+    C --> D[🏦 IBKR Gateway]
+    D --> E[📋 Position Manager]
+    E --> F[💰 P&L Service]
+    F --> G[🐘 PostgreSQL]
+    E --> H[🍃 MongoDB]
+    C --> I[🔔 Alert Manager]
+```
+
+---
+
+## 🚀 API Endpoints
+
+### 🔍 **Monitoring**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 📊 GET | `/health` | Service health check |
+| 📈 GET | `/status` | Detailed trading bot status |
+
+### 🎯 **Trading Control**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| ⚡ POST | `/trade/signal` | Execute manual trade signal |
+| ❌ POST | `/close/{follower_id}` | Close positions for specific follower |
+| 🚫 POST | `/close/all` | Emergency close all positions |
+
+### 📋 **API Examples**
+
+#### Execute Manual Signal
+```bash
+curl -X POST "http://localhost:8001/trade/signal" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "strategy": "vertical_spread",
+    "qty_per_leg": 10,
+    "strike_long": 445.0,
+    "strike_short": 450.0,
+    "follower_id": "follower123"
+  }'
+```
+
+#### Check Trading Status
+```bash
+curl "http://localhost:8001/status"
+```
+
+---
+
+## 🛠️ Development
+
+### 📋 Prerequisites
+
+- 🐍 **Python 3.11+** - Runtime environment
+- 🏦 **IB Gateway/TWS** - Interactive Brokers connection
+- 📊 **Google Sheets API** - Strategy signal source
+- 🐘 **PostgreSQL** - P&L data storage
+- 🍃 **MongoDB** - Trading data and configuration
+- 🔐 **HashiCorp Vault** - Credential management (optional)
+
+### 🔧 Local Setup
+
+```bash
+# 1️⃣ Install dependencies
+cd trading-bot/
+pip install -e ../spreadpilot-core
+pip install -r requirements.txt
+
+# 2️⃣ Set up environment
+cp .env.template .env
+# Edit .env with your configuration
+
+# 3️⃣ Start IB Gateway
+# Configure IB Gateway with paper trading account
+
+# 4️⃣ Run the service
+uvicorn app.main:app --reload --port 8001
+```
+
+### ⚙️ Configuration
+
+Key environment variables:
+
+```bash
+# 🏦 Interactive Brokers
+IB_GATEWAY_HOST=127.0.0.1
+IB_GATEWAY_PORT=4002  # 4001 for live, 4002 for paper
+IB_CLIENT_ID=1
+IB_TRADING_MODE=paper
+
+# 📊 Google Sheets
+GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/...
+GOOGLE_SHEETS_API_KEY=your_api_key
+
+# 🎯 Trading Parameters
+MIN_PRICE=0.70
+PRICE_INCREMENT=0.01
+MAX_ATTEMPTS=10
+TIMEOUT_SECONDS=5
+
+# ⏱️ Polling Intervals
+POLLING_INTERVAL_SECONDS=1.0
+POSITION_CHECK_INTERVAL_SECONDS=60.0
+
+# 🔔 Alerts
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+SENDGRID_API_KEY=your_sendgrid_key
+ADMIN_EMAIL=admin@example.com
+```
+
+---
+
+## 🐳 Docker Deployment
+
+### 🏗️ Build & Run
+
+```bash
+# 🏗️ Build the image
+docker build -t spreadpilot-trading-bot .
+
+# 🚀 Run locally
+docker run -p 8001:8001 --env-file .env spreadpilot-trading-bot
+
+# 📋 Check container
+docker ps | grep trading-bot
+```
+
+### ☁️ Cloud Deployment
+
+```bash
+# 🏗️ Build for GCR
+docker build -t gcr.io/your-project/trading-bot:latest .
+
+# 📤 Push to registry
+docker push gcr.io/your-project/trading-bot:latest
+
+# 🚀 Deploy to Cloud Run
+gcloud run deploy trading-bot \
+  --image gcr.io/your-project/trading-bot:latest \
+  --platform managed \
+  --port 8001
+```
+
+---
+
+## 🧪 Testing & Development
+
+### 🧪 Running Tests
+
+```bash
+# 🧪 All tests
+pytest tests/
+
+# ⚡ Unit tests only
+pytest tests/unit/
+
+# 🔗 Integration tests
+pytest tests/integration/
+
+# 📊 Coverage report
+pytest --cov=app --cov-report=html
+```
+
+### 🎨 Code Quality
+
+```bash
+# 🎨 Format code
+black app/ tests/
+
+# 📏 Linting
+flake8 app/ tests/
+
+# 🔍 Type checking
+mypy app/
+```
+
+### 🐛 Debugging
+
+```bash
+# 📄 View logs
+docker logs trading-bot
+
+# 🔍 Debug mode
+LOG_LEVEL=DEBUG uvicorn app.main:app --reload
+
+# 🏦 Test IBKR connection
+python -c "
+from app.service.ibkr import IBKRClient
+client = IBKRClient()
+print('IBKR Connected:', client.is_connected())
+"
+```
+
+---
+
+## ⚡ Import Pattern
+
+The trading bot uses a hyphenated directory name which requires special import handling:
 
 ```python
-# Example: Importing from the trading-bot directory
+# ✅ Correct import method
 import importlib
 
-# Import the entire module
-trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
-trading_bot_sheets = importlib.import_module('trading-bot.app.sheets')
+# Import modules
+trading_service = importlib.import_module('trading-bot.app.service.base')
+signal_processor = importlib.import_module('trading-bot.app.service.signals')
 
-# Import specific components
-SignalProcessor = trading_bot_service.SignalProcessor
-GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient
+# Access classes
+TradingService = trading_service.TradingService
+SignalProcessor = signal_processor.SignalProcessor
 ```
 
-### Setup
+---
 
-1. Install dependencies:
+## 🔧 Troubleshooting
+
+### 🏦 **IBKR Connection Issues**
 
 ```bash
-pip install -e ../spreadpilot-core
-pip install fastapi uvicorn
+# ✅ Check IB Gateway status
+curl http://localhost:5000/v1/api/portal/sso/validate
+
+# ✅ Verify port configuration
+netstat -an | grep 4002
+
+# ✅ Test connection
+telnet localhost 4002
 ```
 
-2. Run the application:
+### 📊 **Google Sheets Issues**
+
+- ✅ Verify service account has Sheet access
+- ✅ Check API key permissions
+- ✅ Validate Sheet URL format
+- ✅ Test with `gspread` library directly
+
+### 🗄️ **Database Connection**
 
 ```bash
-uvicorn app.main:app --reload
+# 🐘 Test PostgreSQL
+psql postgresql://user:pass@localhost:5432/spreadpilot_pnl
+
+# 🍃 Test MongoDB
+mongosh mongodb://user:pass@localhost:27017/spreadpilot_admin
 ```
 
-## Deployment
+### 📞 **Getting Help**
 
-The service is containerized using Docker and deployed on Google Cloud Run.
+- 📄 Check logs: `docker logs trading-bot`
+- 🔍 Enable debug: `LOG_LEVEL=DEBUG`
+- 📊 Monitor metrics: `curl localhost:8001/metrics`
+- 🎛️ Check dashboard: Admin UI at port 8080
 
-```bash
-# Build the Docker image
-docker build -t gcr.io/spreadpilot/trading-bot:latest -f Dockerfile ..
+---
 
-# Run the container locally
-docker run -p 8080:8080 gcr.io/spreadpilot/trading-bot:latest
+## 🎯 Key Features
 
-# Push to Google Container Registry
-docker push gcr.io/spreadpilot/trading-bot:latest
+### ⚡ **Advanced Order Execution**
+- 🎯 Limit-ladder strategy with dynamic pricing
+- 🔍 Pre-trade margin validation
+- ⏱️ Configurable timeout and retry logic
+- 📊 Real-time fill monitoring
+
+### 🛡️ **Risk Management**
+- ⚠️ Time value monitoring (TV < $0.10 liquidation)
+- 📋 Position limit enforcement
+- 💰 Real-time P&L tracking
+- 🚨 Automated alert generation
+
+### 🔄 **Multi-Follower Support**
+- 👥 Isolated execution per follower
+- 🔐 Vault-based credential management
+- 📊 Individual P&L tracking
+- ⚙️ Configurable parameters per follower
+
+---
+
+<div align="center">
+
+**🤖 Powering automated options trading with precision and reliability**
+
+[📖 API Docs](./docs/api.md) • [🏗️ Architecture](./docs/architecture.md) • [🔧 Configuration](./docs/configuration.md)
+
+</div>

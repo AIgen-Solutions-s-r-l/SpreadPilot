@@ -1,348 +1,409 @@
-+++
-id = "README"
-title = "SpreadPilot Project README"
-context_type = "documentation"
-scope = "Project Overview"
-target_audience = ["developers", "users", "contributors"]
-granularity = "overview"
-status = "active"
-last_updated = "2025-05-10"
-tags = ["readme", "documentation", "project-setup", "api", "architecture", "testing", "deployment", "contribution", "troubleshooting", "changelog", "license", "acknowledgments"]
-+++
-
-# SpreadPilot
-
-SpreadPilot is a sophisticated copy-trading platform designed to automate the execution of QQQ options strategies from a Google Sheets algorithm to Interactive Brokers (IBKR) accounts. Built as a collection of microservices, SpreadPilot provides a robust and scalable solution for replicating trading signals and managing positions.
-
-## Badges
-
-(Use placeholders or examples if specific URLs/status are unknown)
-
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
-![Docker](https://img.shields.io/badge/docker-enabled-blue)
-
-## Features
-
-*   **Automated Trading:** Replicate QQQ options strategies directly from Google Sheets to IBKR.
-*   **Advanced Order Execution:** Limit-ladder execution strategy with pre-trade margin checks and dynamic pricing.
-*   **Real-time P&L Monitoring:** Comprehensive P&L tracking with 30-second MTM calculations and PostgreSQL storage.
-*   **Automated Risk Management:** Time value monitoring with automatic liquidation when TV < $0.10.
-*   **Daily & Monthly Rollups:** Automated P&L aggregation at 16:30 ET daily and 00:10 ET monthly.
-*   **Commission Calculation:** Automated monthly commission calculation on positive P&L with IBAN tracking and payment management.
-*   **Microservice Architecture:** Scalable and maintainable design with dedicated services for trading, monitoring, administration, reporting, and alerting.
-*   **Multi-Follower Support:** Automatic IBGateway container management for each enabled follower with isolated connections.
-*   **Real-time Monitoring:** Admin dashboard with real-time logs and system status updates.
-*   **Flexible Alerting:** Configurable alerts via Telegram and email for critical events.
-*   **Automated Reporting:** Periodic P&L reports generated in PDF and Excel formats.
-*   **Containerized Deployment:** Easy setup and deployment using Docker and Docker Compose.
-*   **Cloud-Ready:** Designed for deployment on Google Cloud Platform (GCP) using Cloud Build and Cloud Run.
-
-## Installation
-
-### Prerequisites
-
-*   Docker and Docker Compose
-*   Python 3.9+
-*   PostgreSQL 13+ (for P&L data storage)
-*   MongoDB (for trading data and configuration)
-*   `make` (optional, for using the Makefile)
-*   An Interactive Brokers (IBKR) account and credentials
-*   Google Cloud Platform (GCP) account and credentials (for cloud deployment)
-*   SendGrid account and API key (for email notifications)
-*   Telegram Bot token and chat ID (for Telegram notifications)
-*   Google Sheets URL for the trading strategy
-
-### Using Docker Compose (Recommended for local development)
-
-#### Quick Start with Infrastructure
-
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/your-repo/spreadpilot.git
-    cd spreadpilot
-    ```
-
-2.  Start the development infrastructure:
-    ```bash
-    cd infra/
-    ./compose-up.sh
-    ```
-    This will automatically start PostgreSQL, Vault, MinIO, and Traefik with all required secrets.
-
-3.  Build and start the SpreadPilot services:
-    ```bash
-    cd ..
-    docker-compose up --build -d
-    ```
-
-4.  Verify that all containers are running:
-    ```bash
-    docker-compose ps
-    cd infra/ && ./health-check.sh
-    ```
-
-#### Manual Setup
-
-1.  Clone the repository and create environment files:
-    ```bash
-    git clone https://github.com/your-repo/spreadpilot.git
-    cd spreadpilot
-    ```
-2.  Create a `.env` file in the project root based on `deploy/.env.dev.template` and fill in your credentials and configuration.
-3.  Build and start the services:
-    ```bash
-    docker-compose up --build -d
-    ```
-
-### Manual Installation (For development without Docker)
-
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/your-repo/spreadpilot.git
-    cd spreadpilot
-    ```
-2.  Initialize the development environment (requires Python 3.9+):
-    ```bash
-    make init-dev
-    # or manually:
-    # python3 -m venv venv
-    # source venv/bin/activate
-    # pip install --upgrade pip
-    # pip install -r requirements-dev.txt
-    # pip install -e ./spreadpilot-core
-    ```
-3.  Install all project dependencies:
-    ```bash
-    make install-all
-    # or manually:
-    # pip install -r requirements.txt
-    # pip install -r requirements-dev.txt
-    ```
-4.  Configure environment variables (e.g., by sourcing a `.env` file or setting them in your shell).
-5.  Run individual services (refer to each service's documentation for specific instructions).
-
-## Quick Start
-
-1.  Follow the [Installation](#installation) steps to set up the project using Docker Compose.
-2.  Ensure your `.env` file is correctly configured with your IBKR, Google Sheets, and communication credentials.
-3.  Start the services:
-    ```bash
-    docker-compose up -d
-    ```
-4.  Access the Admin Dashboard in your web browser (default: `http://localhost:8080`).
-5.  Log in using the credentials configured in your `.env` file.
-6.  Use the dashboard to manage followers, view logs, and monitor system status.
-7.  The Trading Bot will automatically start polling your Google Sheet for trading signals and execute trades via the IB Gateway.
-
-## Configuration
-
-Configuration is primarily managed through environment variables. A `.env` file is used for local development.
-
-Key environment variables include:
-
-*   `IB_USERNAME`: Interactive Brokers username
-*   `IB_PASSWORD`: Interactive Brokers password
-*   `GOOGLE_SHEET_URL`: URL of the Google Sheet containing the trading strategy
-*   `GOOGLE_APPLICATION_CREDENTIALS`: Path to the Google service account key file
-*   `SENDGRID_API_KEY`: SendGrid API key for email notifications
-*   `TELEGRAM_BOT_TOKEN`: Telegram Bot token
-*   `TELEGRAM_CHAT_ID`: Telegram chat ID for notifications
-*   `ADMIN_USERNAME`: Username for the Admin Dashboard
-*   `ADMIN_PASSWORD_HASH`: Hashed password for the Admin Dashboard
-*   `JWT_SECRET`: Secret key for JWT authentication
-*   `MONGO_URI`: MongoDB connection URI
-*   `MONGO_DB_NAME`: MongoDB database name
-*   `VAULT_ADDR`: HashiCorp Vault server URL (default: `http://vault:8200`)
-*   `VAULT_TOKEN`: Vault authentication token (default: `dev-only-token`)
-*   `VAULT_ENABLED`: Enable Vault integration for credentials (default: `true`)
-
-### Vault Integration
-
-SpreadPilot supports HashiCorp Vault for secure credential management. IBKR credentials are automatically retrieved from Vault using the following secret paths:
-
-*   `secret/ibkr/original_strategy` - Credentials for the Original EMA Strategy
-*   `secret/ibkr/vertical_spreads_strategy` - Credentials for the Vertical Spreads Strategy
-*   `secret/ibkr/follower_[id]` - Follower-specific credentials (optional)
-
-For detailed Vault configuration and usage, see `docs/vault-integration.md`.
-
-Refer to `deploy/.env.dev.template` for a complete list and descriptions.
-
-## Admin API Documentation
-
-The Admin API provides endpoints for managing followers and accessing system data.
-
-Base URL: `/api/v1`
-
-### Endpoints
-
-#### `GET /api/v1/followers`
-
-Retrieves a list of all registered followers.
-
-**Response:** `List[FollowerRead]` (See `admin_api/app/schemas/follower.py` for schema)
-
-#### `POST /api/v1/followers`
-
-Registers a new follower in the system.
-
-**Request Body:** `FollowerCreate` (See `admin_api/app/schemas/follower.py` for schema)
-
-**Response:** `FollowerRead`
-**Status Code:** `201 Created`
-
-#### `POST /api/v1/followers/{follower_id}/toggle`
-
-Enables or disables a specific follower.
-
-**Parameters:**
-
-*   `follower_id`: The ID of the follower (string)
-
-**Response:** `FollowerRead` (The updated follower object)
-
-#### `POST /api/v1/close/{follower_id}`
-
-Sends a command to the trading bot to close all positions for a specific follower.
-
-**Parameters:**
-
-*   `follower_id`: The ID of the follower (string)
-
-**Response:** `{"message": "Close positions command accepted for follower {follower_id}."}`
-**Status Code:** `202 Accepted` (The action is asynchronous)
-
-## Architecture
-
-SpreadPilot is built with a microservice architecture, designed for scalability and maintainability.
-
-![System Architecture Diagram](./docs/images/system-architecture.png)
-
-### Components
-
-*   **Signal Listener:** Scheduled service that polls Google Sheets at 09:27 EST daily for trading signals and publishes them to Redis Pub/Sub.
-*   **Trading Bot:** Consumes signals from Redis Pub/Sub, connects to IBKR, executes orders, handles assignments, manages positions.
-*   **Order Executor:** Advanced limit-ladder execution engine with pre-trade margin validation and dynamic pricing strategies.
-*   **Watchdog:** Monitors service health, attempts restarts, updates status, triggers alerts.
-*   **Admin API:** Provides backend for the admin dashboard (follower management, real-time logs, authentication).
-*   **Report Worker:** Generates periodic P&L reports (PDF/Excel) and emails them.
-*   **Alert Router:** Manages alert delivery via Telegram and email.
-*   **Frontend:** Admin dashboard for monitoring and management.
-*   **SpreadPilot Core:** Shared Python library with IBKR client, database models, logging, and utilities.
-*   **Gateway Manager:** Manages IBGateway Docker containers for each enabled follower, providing isolated connections and automatic port/client ID allocation.
-*   **IB Gateway:** Provides connectivity to Interactive Brokers (managed by Gateway Manager).
-
-### Infrastructure Components
-
-*   **Redis:** In-memory data store for Pub/Sub messaging and caching trading signals.
-*   **PostgreSQL:** Primary database for application data, followers, and trading records.
-*   **HashiCorp Vault:** Secure secret management for API keys, credentials, and sensitive configuration.
-*   **MinIO:** S3-compatible object storage for reports, logs, and file artifacts.
-*   **Traefik:** Reverse proxy with automatic HTTPS and Let's Encrypt certificate management.
-*   **MongoDB:** Legacy database support (being migrated to PostgreSQL).
-*   **OpenTelemetry Collector:** Gathers telemetry data (metrics, traces, logs).
-*   **Prometheus:** Stores and processes metrics.
-*   **Grafana:** Provides visualization and dashboards for metrics.
-
-### Communication Patterns
-
-*   **Synchronous:** REST APIs (service-to-service, client-to-service), WebSockets (real-time updates).
-*   **Asynchronous:** Redis Pub/Sub (trading signals), Google Cloud Pub/Sub (event-driven communication for alerts and reports).
-
-### Data Flow
-
-1.  **Trading Signal Flow:** Google Sheets -> Signal Listener -> Redis Pub/Sub -> Trading Bot -> Order Executor -> Gateway Manager -> IB Gateway -> MongoDB
-2.  **Order Execution Flow:** Order Executor -> IB Gateway (margin check) -> Order Executor (limit-ladder) -> IB Gateway (fills)
-3.  **Follower Management Flow:** Admin API -> Gateway Manager -> Docker (IBGateway containers)
-4.  **Reporting Flow:** Cloud Scheduler -> Pub/Sub -> Report Worker -> MongoDB -> SendGrid
-5.  **Alerting Flow:** Services -> Pub/Sub -> Alert Router -> Telegram/SendGrid
-6.  **Monitoring Flow:** Services -> OpenTelemetry Collector -> Prometheus/Cloud Monitoring -> Grafana
-
-## Contribution Guidelines
-
-We welcome contributions to SpreadPilot! Please follow these guidelines:
-
-1.  **Fork the repository** and create a new branch for your feature or bug fix.
-2.  **Set up your development environment** using the instructions in the [Installation](#installation) section.
-3.  **Adhere to the code style** used in the project (run `make format` to auto-format).
-4.  **Write tests** for your changes (unit and/or integration tests).
-5.  **Ensure all tests pass** (`make test`).
-6.  **Write clear and concise commit messages** following the Conventional Commits specification.
-7.  **Submit a pull request** to the `main` branch.
-
-## Testing
-
-The project includes unit and integration tests.
-
-*   **Unit Tests:** Located in the `tests/unit/` directory. These tests verify individual components in isolation.
-*   **Integration Tests:** Located in the `tests/integration/` directory. These tests verify the interaction between multiple services. Refer to [tests/integration/README.md](tests/integration/README.md) for detailed setup and running instructions.
-
-To run all tests:
+# 📊 SpreadPilot
+
+> 🚀 **Sophisticated copy-trading platform** that automates QQQ options strategies from Google Sheets to Interactive Brokers accounts
+
+SpreadPilot is a modern microservices-based trading platform designed for scalable and reliable options trading automation. Built with Python, PostgreSQL, and cloud-native technologies.
+
+## 🏆 Features
+
+### 🔄 **Automated Trading**
+- 📈 Replicate QQQ options strategies directly from Google Sheets to IBKR
+- ⚡ Advanced limit-ladder execution with pre-trade margin checks
+- 🎯 Dynamic pricing strategies for optimal order placement
+
+### 💰 **Real-time P&L Management**
+- ⏱️ 30-second MTM calculations with PostgreSQL storage
+- 📊 Daily & monthly P&L rollups (16:30 ET daily, 00:10 ET monthly)
+- 💳 Automated commission calculation on positive P&L with IBAN tracking
+
+### 🛡️ **Risk Management**
+- ⚠️ Time value monitoring with automatic liquidation (TV < $0.10)
+- 🔒 Multi-follower support with isolated IBKR connections
+- 📋 Comprehensive position monitoring and assignment handling
+
+### 📈 **Reporting & Monitoring**
+- 📄 Professional PDF and Excel reports with daily P&L breakdowns
+- ☁️ Secure GCS storage with signed URL access
+- 🎛️ Real-time admin dashboard with live logs and system status
+- 🔔 Flexible alerting via Telegram and email
+
+### 🏗️ **Architecture**
+- 🐳 Containerized microservices with Docker
+- ☁️ Cloud-ready deployment on Google Cloud Platform
+- 🔐 HashiCorp Vault integration for secure credential management
+- 📊 OpenTelemetry observability with Prometheus and Grafana
+
+---
+
+## 🚀 Quick Start
+
+### 📋 Prerequisites
+
+- 🐳 **Docker & Docker Compose**
+- 🐍 **Python 3.9+**
+- 🗄️ **PostgreSQL 13+** (P&L data storage)
+- 🍃 **MongoDB** (trading data & configuration)
+- 🔧 **Make** (optional, for convenience commands)
+- 🏦 **Interactive Brokers account** with credentials
+- ☁️ **Google Cloud Platform account** (for cloud deployment)
+- 📧 **SendGrid API key** (email notifications)
+- 🤖 **Telegram Bot token** (Telegram notifications)
+- 📊 **Google Sheets URL** for trading strategy
+
+### ⚡ One-Command Setup
 
 ```bash
+# 1️⃣ Clone and enter directory
+git clone https://github.com/your-repo/spreadpilot.git
+cd spreadpilot
+
+# 2️⃣ Start infrastructure services
+cd infra/
+./compose-up.sh
+
+# 3️⃣ Build and start SpreadPilot
+cd ..
+docker-compose up --build -d
+
+# 4️⃣ Verify everything is running
+docker-compose ps
+cd infra/ && ./health-check.sh
+```
+
+### 🎯 Access Points
+
+- 🎛️ **Admin Dashboard**: http://localhost:8080
+- 📊 **Grafana Monitoring**: http://localhost:3000
+- 🗄️ **PostgreSQL**: localhost:5432
+- 🍃 **MongoDB**: localhost:27017
+
+---
+
+## ⚙️ Configuration
+
+### 📝 Environment Setup
+
+Create a `.env` file based on `deploy/.env.dev.template`:
+
+```bash
+# 🏦 Interactive Brokers
+IB_USERNAME=your_ib_username
+IB_PASSWORD=your_ib_password
+
+# 📊 Google Sheets Integration
+GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/...
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+# 📧 Communication
+SENDGRID_API_KEY=your_sendgrid_key
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# 🎛️ Admin Dashboard
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=hashed_password
+JWT_SECRET=your_jwt_secret
+
+# 🗄️ Databases
+MONGO_URI=mongodb://user:password@localhost:27017
+POSTGRES_URI=postgresql+asyncpg://user:password@localhost:5432/spreadpilot_pnl
+
+# 🔐 Vault (Optional)
+VAULT_ADDR=http://vault:8200
+VAULT_TOKEN=dev-only-token
+VAULT_ENABLED=true
+
+# ☁️ Google Cloud Storage
+GCS_BUCKET_NAME=spreadpilot-reports
+GCS_SERVICE_ACCOUNT_KEY_PATH=/path/to/gcs-key.json
+```
+
+### 🔐 Vault Integration
+
+SpreadPilot supports HashiCorp Vault for secure credential management:
+
+- 📊 `secret/ibkr/vertical_spreads_strategy` - Main strategy credentials
+- 👥 `secret/ibkr/follower_[id]` - Follower-specific credentials
+- 🔧 `secret/ibkr/original_strategy` - Legacy EMA strategy credentials
+
+---
+
+## 🏗️ Architecture
+
+### 🎯 Core Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| 🤖 **Trading Bot** | Executes trades, manages positions | 8001 |
+| 🎛️ **Admin API** | Backend for dashboard, follower management | 8002 |
+| 🖥️ **Frontend** | React admin dashboard | 8080 |
+| 👀 **Watchdog** | Service health monitoring | 8003 |
+| 📊 **Report Worker** | PDF/Excel report generation | 8004 |
+| 🔔 **Alert Router** | Telegram/email notifications | 8005 |
+
+### 🗄️ Data Stores
+
+- 🐘 **PostgreSQL**: P&L data, commission calculations
+- 🍃 **MongoDB**: Trading data, follower configuration
+- 🔴 **Redis**: Pub/Sub messaging, signal caching
+- 🔐 **Vault**: Secure credential storage
+- ☁️ **GCS**: Report file storage
+
+### 📊 Data Flow
+
+```mermaid
+graph LR
+    A[📊 Google Sheets] --> B[📡 Signal Listener]
+    B --> C[🔴 Redis Pub/Sub]
+    C --> D[🤖 Trading Bot]
+    D --> E[🏦 IB Gateway]
+    E --> F[🐘 PostgreSQL]
+    F --> G[📊 Report Worker]
+    G --> H[☁️ GCS Storage]
+```
+
+---
+
+## 🛠️ Development
+
+### 🏃‍♂️ Running Locally
+
+```bash
+# 🔧 Initialize development environment
+make init-dev
+
+# 📦 Install all dependencies
+make install-all
+
+# 🧪 Run tests
 make test
-```
 
-To run integration tests specifically:
+# 🎨 Format code
+make format
 
-```bash
-pytest tests/integration/
-```
+# 🔍 Run linting
+make lint
 
-To run tests with coverage:
-
-```bash
+# 📊 Test with coverage
 make test-coverage
 ```
 
-## Deployment
+### 🧪 Testing
 
-SpreadPilot is designed for deployment on Google Cloud Platform (GCP) using Cloud Build and Cloud Run.
+```bash
+# 🧪 All tests
+make test
 
-1.  **Configure GCP:** Set up a GCP project, enable the necessary APIs (Cloud Build, Cloud Run, Artifact Registry, Pub/Sub, Secret Manager), and configure authentication.
-2.  **Build Docker Images:** Cloud Build automatically builds Docker images for each service based on the `Dockerfile`s in their respective directories. The `cloudbuild.yaml` file defines the build steps.
-3.  **Push Images to Artifact Registry:** Built images are pushed to GCP Artifact Registry.
-4.  **Deploy to Cloud Run:** Services are deployed to Cloud Run as managed services. The `cloudbuild.yaml` includes steps for deploying to a development environment.
-5.  **Secrets Management:** Use GCP Secret Manager to store sensitive configuration like API keys and credentials. Configure Cloud Run services to access these secrets.
-6.  **Pub/Sub Setup:** Create Pub/Sub topics for alerts and reports.
-7.  **Cloud Scheduler:** Configure Cloud Scheduler jobs to trigger the Report Worker via Pub/Sub.
+# ⚡ Unit tests only
+pytest tests/unit/
 
-Refer to the `deploy/` directory for deployment scripts and templates, including `cloudbuild.yaml` and `.env.prod.template`.
+# 🔗 Integration tests only
+pytest tests/integration/
 
-## Troubleshooting
+# 📊 Coverage report
+make test-coverage
+```
 
-If you encounter issues while setting up or running SpreadPilot, consider the following:
+### 🐳 Docker Development
 
-*   **Check Docker Containers:** Ensure all required Docker containers are running (`docker-compose ps`). Restart services if necessary (`docker-compose down` then `docker-compose up -d`).
-*   **Environment Variables:** Verify that all necessary environment variables are set correctly in your `.env` file or environment.
-*   **Logs:** Check the logs for individual services using `docker-compose logs [service_name]` for detailed error messages.
-*   **IB Gateway Connection:** Ensure the IB Gateway is running and accessible to the trading bot. Check the IB Gateway logs for connection issues.
-*   **Google Sheets Access:** Verify that the Google service account has the necessary permissions to access the trading strategy Google Sheet.
-*   **Firewall Rules:** If deploying to GCP, ensure firewall rules allow necessary communication between services and external services (IBKR, Google Sheets, SendGrid, Telegram).
-*   **MongoDB Connection:** If running MongoDB manually, ensure it is accessible and the connection URI is correct.
+```bash
+# 🏗️ Build all services
+docker-compose build
 
-(Add more specific troubleshooting steps as common issues are identified and documented.)
+# 🚀 Start all services
+docker-compose up -d
 
-## Changelog
+# 📋 Check service status
+docker-compose ps
 
-(Use placeholders or standard format)
+# 📄 View logs
+docker-compose logs trading-bot
 
-### [Unreleased]
+# 🔄 Restart a service
+docker-compose restart trading-bot
 
-*   Initial development
+# 🧹 Clean up
+docker-compose down
+```
 
-## License
+---
 
-(Use placeholders or check for LICENSE file)
+## 🌐 API Documentation
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. (Placeholder - check for actual LICENSE file)
+### 🎛️ Admin API Endpoints
 
-## Acknowledgments
+Base URL: `/api/v1`
 
-(Use placeholders)
+#### 👥 Followers Management
 
-*   Hat tip to anyone whose code was used
-*   Inspiration
-*   etc.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 📋 GET | `/followers` | List all followers |
+| ➕ POST | `/followers` | Register new follower |
+| 🔄 POST | `/followers/{id}/toggle` | Enable/disable follower |
+| ❌ POST | `/close/{id}` | Close all positions |
+
+#### 📊 Example Response
+
+```json
+{
+  "id": "follower123",
+  "email": "trader@example.com",
+  "iban": "DE12345678901234567890",
+  "commission_pct": 20.0,
+  "active": true,
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+## ☁️ Deployment
+
+### 🚀 Google Cloud Platform
+
+```bash
+# 🔧 Configure GCP
+gcloud config set project your-project-id
+
+# 🏗️ Build and deploy
+gcloud builds submit --config cloudbuild.yaml
+
+# 📊 Monitor deployment
+gcloud run services list
+```
+
+### 📋 Deployment Checklist
+
+- ✅ GCP project configured
+- ✅ Cloud Build, Cloud Run, Artifact Registry APIs enabled
+- ✅ Secret Manager configured with credentials
+- ✅ Pub/Sub topics created for alerts/reports
+- ✅ Cloud Scheduler jobs configured
+- ✅ Firewall rules configured
+- ✅ Domain and SSL certificates set up
+
+---
+
+## 🔧 Troubleshooting
+
+### 🚨 Common Issues
+
+#### 🐳 Container Issues
+```bash
+# Check container status
+docker-compose ps
+
+# View service logs
+docker-compose logs trading-bot
+
+# Restart services
+docker-compose restart
+```
+
+#### 🏦 IBKR Connection
+- ✅ Verify IB Gateway is running
+- ✅ Check credentials in Vault/environment
+- ✅ Ensure firewall allows connections
+- ✅ Validate account permissions
+
+#### 📊 Google Sheets Access
+- ✅ Service account has Sheet access
+- ✅ Google credentials file is valid
+- ✅ Sheet URL is correct format
+
+#### 🗄️ Database Connections
+```bash
+# Test PostgreSQL
+psql postgresql://user:pass@localhost:5432/spreadpilot_pnl
+
+# Test MongoDB
+mongosh mongodb://user:pass@localhost:27017/spreadpilot_admin
+```
+
+### 📞 Getting Help
+
+- 📖 Check service-specific READMEs in each directory
+- 📄 Review logs with `docker-compose logs [service]`
+- 🔍 Enable debug logging with `LOG_LEVEL=DEBUG`
+- 🐛 Report issues on GitHub (if applicable)
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+### 📋 Contribution Process
+
+1. 🍴 **Fork** the repository
+2. 🌿 **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. 🎨 **Format** code (`make format`)
+4. 🧪 **Test** changes (`make test`)
+5. 📝 **Commit** with conventional format (`feat: add amazing feature`)
+6. 📤 **Push** to branch (`git push origin feature/amazing-feature`)
+7. 🔄 **Create** Pull Request
+
+### 📏 Code Standards
+
+- 🐍 Python 3.9+ compatibility
+- 🎨 Black code formatting
+- 📏 Flake8 linting compliance
+- 🧪 95%+ test coverage for new features
+- 📝 Conventional Commits for messages
+- 📚 Documentation for public APIs
+
+### 🏗️ Development Workflow
+
+```bash
+# 🔧 Set up development environment
+make init-dev
+
+# 🎨 Format before committing
+make format
+
+# 🧪 Run full test suite
+make test
+
+# 🔍 Check linting
+make lint
+```
+
+---
+
+## 📋 Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 🎯 **v1.1.7.0** | 2024-12-28 | ➕ Enhanced PDF/Excel reports with GCS integration |
+| 💰 **v1.1.6.0** | 2024-12-27 | ➕ Monthly commission calculation system |
+| 📊 **v1.1.5.0** | 2024-12-26 | ➕ Real-time P&L system with PostgreSQL |
+| ⚠️ **v1.1.4.0** | 2024-12-25 | ➕ Time value monitoring and liquidation |
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- 🏦 **Interactive Brokers** for trading platform
+- 📊 **Google Sheets** for strategy signals
+- 🐳 **Docker & Docker Compose** for containerization
+- ☁️ **Google Cloud Platform** for cloud infrastructure
+- 🔐 **HashiCorp Vault** for secrets management
+- 📧 **SendGrid** for email delivery
+- 🤖 **Telegram** for instant notifications
+
+---
+
+<div align="center">
+
+**🚀 Built with ❤️ for automated trading**
+
+[📖 Documentation](./docs/) • [🐛 Issues](https://github.com/your-repo/spreadpilot/issues) • [💬 Discussions](https://github.com/your-repo/spreadpilot/discussions)
+
+</div>
