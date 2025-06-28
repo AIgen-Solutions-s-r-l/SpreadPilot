@@ -5,6 +5,20 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.4.0] - 2025-06-28
+
+### Added
+- **Time Value Monitor**: RISK-2.1 implementation with automated liquidation when time value < $0.10
+- **Risk Status Management**: SAFE/RISK/CRITICAL status tracking in Redis with real-time updates
+- **Automated Liquidation**: Market order execution for positions when time value threshold is breached
+- **Alert Integration**: Comprehensive alert publishing for risk status changes and liquidation events
+- **60-Second Monitoring**: Continuous time value monitoring during market hours
+
+### Enhanced
+- **Time Value Calculation**: TV = spread_mark_price - intrinsic_value with comprehensive error handling
+- **Redis Integration**: Real-time status publishing and caching for follower risk monitoring
+- **Test Coverage**: 16 comprehensive unit tests for time value monitoring functionality
+
 ## [v1.1.3.0] - 2025-06-27
 
 ### Added
