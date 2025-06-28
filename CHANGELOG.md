@@ -5,6 +5,21 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.6.0] - 2025-06-28
+
+### Added
+- **Commission Calculation System**: Automated monthly commission calculation on positive P&L
+- **Commission Rule Implementation**: if pnl_month > 0 => commission = pct * pnl_month, else 0
+- **IBAN Integration**: Follower banking details retrieval from MongoDB for commission tracking
+- **Payment Management**: Commission payment tracking with references and status management
+- **Commission Monthly Table**: New PostgreSQL table with Alembic migration for commission data
+- **Administrative APIs**: Commission retrieval, filtering, and payment marking functionality
+
+### Enhanced
+- **P&L Service Integration**: Commission calculation seamlessly integrated into monthly rollup process
+- **Database Architecture**: Extended PostgreSQL schema with commission tracking capabilities
+- **Comprehensive Testing**: 17 unit tests including exact scenario validation (month +$1,000, 20% => €200)
+
 ## [v1.1.5.0] - 2025-06-28
 
 ### Added
