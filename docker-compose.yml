@@ -37,10 +37,13 @@ services:
       - CHECK_INTERVAL_SECONDS=15
       - HEALTH_CHECK_TIMEOUT=5
       - MAX_CONSECUTIVE_FAILURES=3
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
       - ./spreadpilot-core:/app/spreadpilot-core    # Core library for alerts
     depends_on:
+      - mongodb
       - trading-bot
       - admin-api
       - report-worker

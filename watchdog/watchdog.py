@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import httpx
+from motor.motor_asyncio import AsyncIOMotorClient
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 # Configure logging
@@ -46,9 +47,13 @@ SERVICES = {
 }
 
 # Configuration
-CHECK_INTERVAL_SECONDS = 15
-HEALTH_CHECK_TIMEOUT = 5  # seconds
-MAX_CONSECUTIVE_FAILURES = 3
+CHECK_INTERVAL_SECONDS = int(os.getenv("CHECK_INTERVAL_SECONDS", "15"))
+HEALTH_CHECK_TIMEOUT = int(os.getenv("HEALTH_CHECK_TIMEOUT", "5"))
+MAX_CONSECUTIVE_FAILURES = int(os.getenv("MAX_CONSECUTIVE_FAILURES", "3"))
+
+# MongoDB configuration
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodb:27017")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "spreadpilot_admin")
 
 
 class ServiceWatchdog:
@@ -57,16 +62,22 @@ class ServiceWatchdog:
     def __init__(self):
         self.failure_counts: Dict[str, int] = {service: 0 for service in SERVICES}
         self.http_client: Optional[httpx.AsyncClient] = None
+        self.mongo_client: Optional[AsyncIOMotorClient] = None
+        self.mongo_db = None
 
     async def __aenter__(self):
         """Async context manager entry"""
         self.http_client = httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT)
+        self.mongo_client = AsyncIOMotorClient(MONGO_URI)
+        self.mongo_db = self.mongo_client[MONGO_DB_NAME]
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit"""
         if self.http_client:
             await self.http_client.aclose()
+        if self.mongo_client:
+            self.mongo_client.close()
 
     async def check_service_health(self, service_name: str) -> bool:
         """
@@ -149,8 +160,16 @@ class ServiceWatchdog:
         """
         service_config = SERVICES[service_name]
         
+        # Determine alert type based on action and success
+        if action == "recovery":
+            event_type = AlertType.COMPONENT_RECOVERED
+        elif not success:
+            event_type = AlertType.COMPONENT_DOWN
+        else:
+            event_type = AlertType.COMPONENT_RECOVERED
+        
         alert = AlertEvent(
-            event_type=AlertType.COMPONENT_DOWN if not success else AlertType.COMPONENT_RECOVERED,
+            event_type=event_type,
             timestamp=datetime.utcnow(),
             message=f"{service_config['display_name']} {action} {'succeeded' if success else 'failed'}",
             params={
@@ -162,12 +181,19 @@ class ServiceWatchdog:
             },
         )
         
-        # In a real implementation, this would publish to Pub/Sub
-        # For now, we'll just log it
-        logger.info(f"Alert published: {alert.message}")
+        # Store alert in MongoDB
+        try:
+            if self.mongo_db:
+                alert_dict = alert.dict()
+                await self.mongo_db.alerts.insert_one(alert_dict)
+                logger.info(f"Alert stored in MongoDB: {alert.message}")
+            else:
+                logger.warning("MongoDB not connected, alert not stored")
+        except Exception as e:
+            logger.error(f"Failed to store alert in MongoDB: {e}")
         
-        # TODO: Integrate with actual alert publishing mechanism
-        # Example: await publish_to_pubsub(alert)
+        # Log the alert
+        logger.info(f"Alert published: {alert.message}")
 
     async def monitor_service(self, service_name: str):
         """
