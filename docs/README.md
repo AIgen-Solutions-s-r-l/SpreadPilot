@@ -253,7 +253,7 @@ All documentation reflects **SpreadPilot v1.1.7.0** features:
 
 ## 📄 License
 
-This documentation is part of the SpreadPilot project and is licensed under the **MIT License** - see the [LICENSE](../LICENSE) file for details.
+This documentation is part of the SpreadPilot project.
 
 ---
 

@@ -1,16 +1,32 @@
-# MongoDB Setup Guide for SpreadPilot
+# 🗄️ MongoDB Setup Guide for SpreadPilot
 
-This document provides detailed instructions for setting up MongoDB for the SpreadPilot trading system. It covers the initial setup, configuration, user creation, and verification steps.
+This comprehensive guide provides detailed instructions for setting up MongoDB for the SpreadPilot trading system, covering initial setup, configuration, user management, and best practices.
 
-## Prerequisites
+## 📋 Table of Contents
 
-- Docker and Docker Compose installed on your system
+- [Prerequisites](#-prerequisites)
+- [MongoDB Configuration](#-mongodb-configuration)
+- [Environment Setup](#-environment-setup)
+- [Starting MongoDB](#-starting-mongodb)
+- [Verification](#-verification)
+- [Database Setup](#-database-setup)
+- [Troubleshooting](#-troubleshooting)
+- [Security Best Practices](#-security-best-practices)
+- [Monitoring & Maintenance](#-monitoring--maintenance)
+
+## 🔧 Prerequisites
+
+- **Docker** and **Docker Compose** installed
 - Basic understanding of MongoDB concepts
 - Access to the SpreadPilot repository
+- Terminal/command line access
+- At least 2GB free disk space
 
-## 1. MongoDB Configuration in docker-compose.yml
+## 🐳 MongoDB Configuration
 
-The SpreadPilot system uses MongoDB as its primary database, configured in the `docker-compose.yml` file. Here's the relevant section:
+### Docker Compose Configuration
+
+The SpreadPilot system uses MongoDB 7.x as its primary database. Here's the configuration in `docker-compose.yml`:
 
 ```yaml
 mongodb:
@@ -22,7 +38,7 @@ mongodb:
   volumes:
     - mongo_data:/data/db
   ports:
-    - "27017:27017" # Expose to host for potential direct access during dev
+    - "27017:27017" # Expose to host for dev access
   restart: unless-stopped
   healthcheck:
     test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
@@ -32,172 +48,364 @@ mongodb:
     start_period: 40s
 ```
 
-This configuration:
-- Uses the official MongoDB 7.x image
-- Names the container `spreadpilot-mongodb`
-- Sets up environment variables for root username and password (loaded from `.env` file)
-- Mounts a persistent volume for data storage
-- Exposes port 27017 for direct access during development
-- Configures automatic restart unless explicitly stopped
-- Includes a healthcheck to verify MongoDB is running properly
+### Configuration Features
 
-## 2. Environment Variables Setup
+| Feature | Description | Purpose |
+|---------|-------------|---------|
+| **Image** | `mongo:7` | Latest stable MongoDB 7.x version |
+| **Container Name** | `spreadpilot-mongodb` | Consistent naming for easy management |
+| **Volumes** | `mongo_data:/data/db` | Persistent data storage |
+| **Port** | `27017:27017` | Standard MongoDB port exposed for development |
+| **Restart Policy** | `unless-stopped` | Automatic recovery from failures |
+| **Health Check** | MongoDB ping command | Ensures database availability |
 
-MongoDB credentials are stored in the `.env` file at the project root. At minimum, you need to define:
+## 🔐 Environment Setup
 
-```
-# MongoDB
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=password
-```
+### 1️⃣ Create Environment File
 
-**Important:** For production environments, use strong, unique passwords. The values shown here are for development purposes only.
-
-## 3. Starting MongoDB
-
-To start the MongoDB container:
+Create a `.env` file in the project root with MongoDB credentials:
 
 ```bash
+# MongoDB Root Credentials
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=your_secure_password_here
+
+# Application Database Credentials
+MONGODB_DATABASE=spreadpilot
+MONGODB_USERNAME=spreadpilot_user
+MONGODB_PASSWORD=your_app_password_here
+```
+
+### 2️⃣ Generate Secure Passwords
+
+For production environments, generate strong passwords:
+
+```bash
+# Generate secure password
+openssl rand -base64 32
+
+# Or using Python
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+## 🚀 Starting MongoDB
+
+### 1️⃣ Start MongoDB Container
+
+```bash
+# Start MongoDB in detached mode
+docker-compose up -d mongodb
+
+# View logs
+docker-compose logs -f mongodb
+```
+
+### 2️⃣ Wait for Initialization
+
+MongoDB needs time to initialize. Check readiness:
+
+```bash
+# Check container status
+docker ps --filter name=spreadpilot-mongodb
+
+# Wait for healthy status
+while ! docker inspect spreadpilot-mongodb --format='{{.State.Health.Status}}' | grep -q healthy; do
+    echo "Waiting for MongoDB to be healthy..."
+    sleep 5
+done
+echo "MongoDB is ready!"
+```
+
+## ✅ Verification
+
+### 🔍 Check Container Status
+
+```bash
+# View running containers
+docker ps | grep mongodb
+
+# Expected output:
+# CONTAINER ID   IMAGE     STATUS                    PORTS                      NAMES
+# 59e1188004c8   mongo:7   Up 2 minutes (healthy)    0.0.0.0:27017->27017/tcp   spreadpilot-mongodb
+```
+
+### 📊 Check Logs
+
+```bash
+# View MongoDB logs
+docker logs spreadpilot-mongodb --tail 20
+
+# Look for successful initialization:
+# "Waiting for connections", "port": 27017
+```
+
+### 🔌 Test Connection
+
+```bash
+# Test connection using mongosh
+docker exec -it spreadpilot-mongodb mongosh --eval "db.adminCommand('ping')"
+
+# Expected output:
+# { ok: 1 }
+```
+
+## 🗄️ Database Setup
+
+### 1️⃣ Connect as Root User
+
+```bash
+docker exec -it spreadpilot-mongodb mongosh \
+    --username $MONGO_INITDB_ROOT_USERNAME \
+    --password $MONGO_INITDB_ROOT_PASSWORD \
+    --authenticationDatabase admin
+```
+
+### 2️⃣ Create Application Database and User
+
+Execute the following commands in the MongoDB shell:
+
+```javascript
+// Switch to application database
+use spreadpilot
+
+// Create application user with specific permissions
+db.createUser({
+  user: "spreadpilot_user",
+  pwd: "your_app_password_here",
+  roles: [
+    { role: "readWrite", db: "spreadpilot" },
+    { role: "dbAdmin", db: "spreadpilot" }
+  ]
+})
+
+// Create collections with validation
+db.createCollection("followers", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["account_id", "status", "created_at"],
+      properties: {
+        account_id: { bsonType: "string" },
+        status: { enum: ["active", "paused", "inactive"] }
+      }
+    }
+  }
+})
+
+db.createCollection("positions", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["follower_id", "symbol", "quantity"]
+    }
+  }
+})
+
+db.createCollection("trades")
+db.createCollection("alerts")
+
+// Create indexes for performance
+db.followers.createIndex({ "account_id": 1 }, { unique: true })
+db.positions.createIndex({ "follower_id": 1, "symbol": 1 })
+db.trades.createIndex({ "executed_at": -1 })
+db.alerts.createIndex({ "created_at": -1 })
+
+// Verify collections
+show collections
+```
+
+### 3️⃣ Verify Application User Access
+
+```bash
+# Exit root session
+exit
+
+# Connect as application user
+docker exec -it spreadpilot-mongodb mongosh \
+    --username spreadpilot_user \
+    --password your_app_password_here \
+    --authenticationDatabase spreadpilot \
+    spreadpilot
+
+# Test permissions
+db.followers.insertOne({ 
+    account_id: "TEST001", 
+    status: "active", 
+    created_at: new Date() 
+})
+
+# Verify insert
+db.followers.findOne({ account_id: "TEST001" })
+
+# Clean up test data
+db.followers.deleteOne({ account_id: "TEST001" })
+```
+
+## 🔧 Troubleshooting
+
+### 🚫 Common Issues
+
+#### Authentication Failures
+
+```bash
+# Check credentials in .env
+cat .env | grep MONGO
+
+# Verify environment variables are loaded
+docker-compose config | grep -A5 mongodb
+
+# Reset MongoDB (WARNING: Deletes all data!)
+docker-compose down -v mongodb
 docker-compose up -d mongodb
 ```
 
-This command:
-- Starts MongoDB in detached mode (`-d`)
-- Uses the configuration from `docker-compose.yml`
-- Creates and initializes the MongoDB container with the root user credentials from `.env`
-
-## 4. Verifying MongoDB is Running
-
-Check if MongoDB is running with:
+#### Connection Refused
 
 ```bash
-docker ps | grep mongodb
+# Check if MongoDB is listening
+docker exec spreadpilot-mongodb netstat -tlnp | grep 27017
+
+# Check firewall rules
+sudo iptables -L | grep 27017
+
+# Test internal connectivity
+docker exec spreadpilot-mongodb mongosh --eval "db.adminCommand('ping')"
 ```
 
-You should see output similar to:
-
-```
-CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS                    PORTS                      NAMES
-59e1188004c8   mongo:7   "docker-entrypoint.s…"   5 seconds ago    Up 4 seconds (healthy)    0.0.0.0:27017->27017/tcp   spreadpilot-mongodb
-```
-
-The `(healthy)` status indicates that MongoDB passed the healthcheck defined in the docker-compose file.
-
-## 5. Connecting to MongoDB
-
-To connect to MongoDB with the root user:
-
-```bash
-docker exec -it spreadpilot-mongodb mongosh admin --username admin --password password --authenticationDatabase admin
-```
-
-This command:
-- Executes the MongoDB shell (`mongosh`) inside the running container
-- Connects to the `admin` database
-- Uses the root credentials specified in the `.env` file
-- Specifies `admin` as the authentication database
-
-If successful, you'll see the MongoDB shell prompt:
-
-```
-Current Mongosh Log ID: 681f5ec43174469589d861df
-Connecting to:          mongodb://<credentials>@127.0.0.1:27017/admin?directConnection=true&serverSelectionTimeoutMS=2000&authSource=admin&appName=mongosh+2.5.0
-Using MongoDB:          7.0.20
-Using Mongosh:          2.5.0
-
-For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
-
-admin>
-```
-
-## 6. Creating Application Database and User
-
-For security best practices, we create a dedicated database and user for the SpreadPilot application. This follows the principle of least privilege, ensuring the application has only the permissions it needs.
-
-While connected to MongoDB with the root user, execute:
+#### Performance Issues
 
 ```javascript
-// Switch to the application database
-use spreadpilot
+// Check current operations
+db.currentOp()
 
-// Create a dedicated user for the application
-db.createUser({
-  user: "spreadpilot_user",
-  pwd: "spreadpilot_password",
-  roles: [ { role: "readWrite", db: "spreadpilot" } ]
-})
+// View collection statistics
+db.followers.stats()
+
+// Analyze query performance
+db.followers.find({ status: "active" }).explain("executionStats")
 ```
 
-This:
-- Creates a new database called `spreadpilot` (MongoDB creates databases on-demand)
-- Creates a new user `spreadpilot_user` with password `spreadpilot_password`
-- Grants this user `readWrite` permissions only on the `spreadpilot` database
+## 🔒 Security Best Practices
 
-You should see `{ ok: 1 }` as the response, indicating success.
+### 🛡️ Production Security Checklist
 
-## 7. Verifying Application User Access
+1. **Strong Authentication**
+   ```javascript
+   // Enable SCRAM-SHA-256
+   db.adminCommand({
+     setParameter: 1,
+     authenticationMechanisms: "SCRAM-SHA-256"
+   })
+   ```
 
-Exit the MongoDB shell by typing `exit`, then verify the application user can connect:
+2. **Network Security**
+   ```yaml
+   # Restrict port exposure in production
+   mongodb:
+     ports: []  # Remove port mapping
+     networks:
+       - internal
+   ```
+
+3. **Encryption at Rest**
+   ```yaml
+   # Add to docker-compose.yml
+   command: mongod --enableEncryption --encryptionKeyFile /etc/mongodb-keyfile
+   ```
+
+4. **Regular Backups**
+   ```bash
+   # Automated backup script
+   #!/bin/bash
+   BACKUP_DIR="/backups/mongodb/$(date +%Y%m%d_%H%M%S)"
+   mkdir -p $BACKUP_DIR
+   
+   docker exec spreadpilot-mongodb mongodump \
+     --username $MONGO_USERNAME \
+     --password $MONGO_PASSWORD \
+     --authenticationDatabase admin \
+     --out /dump
+   
+   docker cp spreadpilot-mongodb:/dump $BACKUP_DIR
+   ```
+
+5. **Audit Logging**
+   ```javascript
+   // Enable audit logging
+   db.adminCommand({
+     setParameter: 1,
+     auditAuthorizationSuccess: true
+   })
+   ```
+
+## 📊 Monitoring & Maintenance
+
+### 📈 Performance Monitoring
+
+```javascript
+// Monitor database statistics
+db.serverStatus()
+
+// Check collection sizes
+db.stats()
+
+// Monitor active connections
+db.serverStatus().connections
+
+// View slow queries
+db.setProfilingLevel(1, { slowms: 100 })
+db.system.profile.find().limit(5).sort({ ts: -1 }).pretty()
+```
+
+### 🧹 Maintenance Tasks
+
+```javascript
+// Compact collections (reduces disk usage)
+db.runCommand({ compact: "followers" })
+
+// Rebuild indexes
+db.followers.reIndex()
+
+// Validate data integrity
+db.followers.validate({ full: true })
+```
+
+### 📊 Monitoring Script
+
+Create `scripts/monitor-mongodb.sh`:
 
 ```bash
-docker exec -it spreadpilot-mongodb mongosh spreadpilot --username spreadpilot_user --password spreadpilot_password --authenticationDatabase spreadpilot
+#!/bin/bash
+
+echo "=== MongoDB Health Check ==="
+docker exec spreadpilot-mongodb mongosh \
+  --username $MONGODB_USERNAME \
+  --password $MONGODB_PASSWORD \
+  --authenticationDatabase spreadpilot \
+  --eval '
+    const status = db.serverStatus();
+    print("Uptime: " + status.uptime + " seconds");
+    print("Connections: " + status.connections.current + "/" + status.connections.available);
+    print("Operations: " + JSON.stringify(status.opcounters));
+    
+    const dbStats = db.stats();
+    print("Database Size: " + (dbStats.dataSize / 1024 / 1024).toFixed(2) + " MB");
+    print("Collections: " + dbStats.collections);
+  '
 ```
 
-This command:
-- Connects directly to the `spreadpilot` database
-- Uses the application-specific credentials
-- Specifies `spreadpilot` as the authentication database
+## 🎯 Next Steps
 
-If successful, you'll see the MongoDB shell prompt for the spreadpilot database:
+After successfully setting up MongoDB:
 
-```
-Current Mongosh Log ID: 681f5f4f5aef7b6241d861df
-Connecting to:          mongodb://<credentials>@127.0.0.1:27017/spreadpilot?directConnection=true&serverSelectionTimeoutMS=2000&authSource=spreadpilot&appName=mongosh+2.5.0
-Using MongoDB:          7.0.20
-Using Mongosh:          2.5.0
+1. ✅ Configure the [Interactive Brokers Gateway](./1-ib-gateway.md)
+2. ✅ Set up the [Trading Bot Service](./2-trading-bot.md)
+3. ✅ Configure the [Admin API](./3-admin-api.md)
+4. ✅ Set up monitoring with [Watchdog](./4-watchdog.md)
 
-For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+## 📚 Additional Resources
 
-spreadpilot>
-```
-
-## 8. Troubleshooting
-
-### Authentication Failures
-
-If you encounter authentication failures:
-
-1. Verify the credentials in your `.env` file match what you're using to connect
-2. Ensure MongoDB has fully initialized (check logs with `docker logs spreadpilot-mongodb`)
-3. If you've changed credentials, you may need to recreate the container:
-   ```bash
-   docker-compose down -v mongodb
-   docker-compose up -d mongodb
-   ```
-   This removes the volume, ensuring a clean start with the new credentials.
-
-### Connection Issues
-
-If you can't connect to MongoDB:
-
-1. Verify the container is running: `docker ps | grep mongodb`
-2. Check container logs: `docker logs spreadpilot-mongodb`
-3. Ensure port 27017 is not blocked by a firewall
-4. Verify Docker networking is functioning correctly
-
-## 9. Security Considerations for Production
-
-For production environments:
-
-1. Use strong, unique passwords for both root and application users
-2. Consider using a secrets management solution rather than storing credentials in `.env`
-3. Restrict network access to MongoDB (remove or restrict the port mapping)
-4. Enable MongoDB authentication and TLS/SSL
-5. Implement regular backups of the MongoDB data
-6. Consider using MongoDB Atlas or another managed service for production deployments
-
-## 10. Next Steps
-
-After setting up MongoDB, you can proceed to configure other services in the SpreadPilot system, such as the Interactive Brokers Gateway, Trading Bot, and Admin API.
-
-Each of these services will connect to MongoDB using the application user credentials you've created.
+- [MongoDB Documentation](https://docs.mongodb.com/)
+- [Docker MongoDB Image](https://hub.docker.com/_/mongo)
+- [MongoDB Security Checklist](https://docs.mongodb.com/manual/administration/security-checklist/)
+- [MongoDB Performance Tuning](https://docs.mongodb.com/manual/administration/analyzing-mongodb-performance/)

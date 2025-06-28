@@ -1,54 +1,69 @@
-# SpreadPilot Development Guide
+# 🚀 SpreadPilot Development Guide
 
-This guide provides instructions for setting up a local development environment for the SpreadPilot project, running the services locally, testing individual components, and understanding the code structure.
+This comprehensive guide provides instructions for setting up a local development environment for the SpreadPilot project, running services locally, testing components, and understanding the code structure.
 
-## Prerequisites
+## 📋 Table of Contents
+
+- [Prerequisites](#-prerequisites)
+- [Repository Structure](#-repository-structure)
+- [Initial Setup](#-initial-setup)
+- [Running Services](#-running-services)
+- [Testing](#-testing)
+- [Code Organization](#-code-organization)
+- [Development Workflow](#-development-workflow)
+- [Debugging](#-debugging)
+- [Common Tasks](#-common-tasks)
+- [Troubleshooting](#-troubleshooting)
+- [Best Practices](#-best-practices)
+
+## 🔧 Prerequisites
 
 Before you begin, ensure you have the following installed on your development machine:
 
-- Python 3.11 or higher
-- Node.js 18 or higher
-- Docker and Docker Compose
-- Git
-- Make (optional, but recommended)
+- **Python** 3.11 or higher
+- **Node.js** 18 or higher
+- **Docker** and Docker Compose
+- **Git**
+- **Make** (optional, but recommended)
+- **Google Cloud SDK** (for production deployments)
 
-## Repository Structure
+## 📁 Repository Structure
 
 The SpreadPilot project is organized as a monorepo with the following structure:
 
 ```
 spreadpilot/
-├── spreadpilot-core/         # Core library
+├── 📦 spreadpilot-core/         # Core library
 │   └── spreadpilot_core/
-│       ├── logging/          # Structured logging
-│       ├── ibkr/             # IBKR client wrapper
-│       ├── models/           # Database models (MongoDB)
-│       └── utils/            # Utilities
-├── trading-bot/              # Trading bot service
-├── watchdog/                 # Watchdog service
-├── admin-api/                # Admin API service
-├── report-worker/            # Report worker service
-├── alert-router/             # Alert router service
-├── frontend/                 # React frontend
-├── infra/                    # Infrastructure (Docker Compose)
-│   ├── docker-compose.yml    # Infrastructure services
-│   ├── compose-up.sh         # Infrastructure startup script
-│   ├── compose-down.sh       # Infrastructure shutdown script
-│   ├── health-check.sh       # Infrastructure health monitoring
-│   └── README.md             # Infrastructure documentation
-├── config/                   # Configuration files
-├── credentials/              # Credentials (gitignored)
-├── reports/                  # Generated reports
-└── docker-compose.yml        # Application services setup
+│       ├── 📊 logging/          # Structured logging
+│       ├── 💹 ibkr/             # IBKR client wrapper
+│       ├── 🗄️ models/           # Database models (MongoDB)
+│       └── 🛠️ utils/            # Utilities
+├── 🤖 trading-bot/              # Trading bot service
+├── 👁️ watchdog/                 # Watchdog service
+├── 🎛️ admin-api/                # Admin API service
+├── 📈 report-worker/            # Report worker service
+├── 🚨 alert-router/             # Alert router service
+├── 🖥️ frontend/                 # React frontend
+├── 🏗️ infra/                    # Infrastructure (Docker Compose)
+│   ├── docker-compose.yml       # Infrastructure services
+│   ├── compose-up.sh           # Infrastructure startup script
+│   ├── compose-down.sh         # Infrastructure shutdown script
+│   ├── health-check.sh         # Infrastructure health monitoring
+│   └── README.md               # Infrastructure documentation
+├── ⚙️ config/                   # Configuration files
+├── 🔐 credentials/              # Credentials (gitignored)
+├── 📄 reports/                  # Generated reports
+└── 🐳 docker-compose.yml        # Application services setup
 ```
 
-### Folder Naming Convention
+### 🏷️ Folder Naming Convention
 
-SpreadPilot uses hyphenated directory names (`trading-bot`, `admin-api`, etc.) for all services. Each service directory contains an `__init__.py` file that makes it importable as a Python package.
+SpreadPilot uses **hyphenated directory names** (`trading-bot`, `admin-api`, etc.) for all services. Each service directory contains an `__init__.py` file that makes it importable as a Python package.
 
-### Importing from Hyphenated Directories
+### 📦 Importing from Hyphenated Directories
 
-When importing from hyphenated directories in Python code, you need to use the `importlib.import_module()` function since Python's standard import syntax doesn't support hyphens in module names:
+When importing from hyphenated directories in Python code, use the `importlib.import_module()` function since Python's standard import syntax doesn't support hyphens:
 
 ```python
 # Import modules using importlib
@@ -65,62 +80,63 @@ admin_app = admin_api_main.app
 
 This approach allows us to maintain a consistent naming convention across deployment and testing environments while still supporting Python imports.
 
-## Initial Setup
+## 🚀 Initial Setup
 
-### 1. Clone the Repository
+### 1️⃣ Clone the Repository
 
 ```bash
 git clone https://github.com/yourusername/spreadpilot.git
 cd spreadpilot
 ```
 
-### 2. Set Up Environment Variables
+### 2️⃣ Set Up Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
 
 ```bash
-# IBKR credentials
+# 💹 IBKR credentials
 IB_USERNAME=your_ib_username
 IB_PASSWORD=your_ib_password
 
-# Google Sheets
+# 📊 Google Sheets
 GOOGLE_SHEET_URL=your_google_sheet_url
 
-# Alerting
+# 🚨 Alerting
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 TELEGRAM_CHAT_ID=your_telegram_chat_id
 SENDGRID_API_KEY=your_sendgrid_api_key
 ADMIN_EMAIL=admin@example.com
 
-# Admin dashboard
+# 🎛️ Admin dashboard
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=bcrypt_hash_of_your_password
 JWT_SECRET=your_jwt_secret
 DASHBOARD_URL=http://localhost:8080
 
-# Grafana
+# 📊 Grafana
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=admin
 ```
 
-### 3. Create Credentials Directory
+### 3️⃣ Create Credentials Directory
 
-Create a `credentials` directory in the root of the project and add your Google Cloud service account key file:
+Create a `credentials` directory and add your Google Cloud service account key:
 
 ```bash
 mkdir -p credentials
 # Copy your service account key file to credentials/service-account.json
+cp /path/to/your/service-account.json credentials/
 ```
 
-### 4. Initialize Development Environment
+### 4️⃣ Initialize Development Environment
 
-If you have Make installed, you can use the provided Makefile to set up the development environment:
+Using Make (recommended):
 
 ```bash
 make init-dev
 ```
 
-Alternatively, you can run the following commands manually:
+Or manually:
 
 ```bash
 # Create and activate a virtual environment
@@ -137,165 +153,149 @@ pip install -e ./spreadpilot-core
 pip install -r requirements-dev.in
 ```
 
-## Running Services Locally
+## 🏃 Running Services
 
-### 1. Start All Services with Docker Compose
+### 🐳 Start All Services with Docker Compose
 
-The easiest way to run the entire SpreadPilot system locally is using Docker Compose:
+The easiest way to run the entire SpreadPilot system locally:
 
 ```bash
-# First, start the infrastructure services
+# 1. Start infrastructure services
 cd infra/
 ./compose-up.sh
 cd ..
 
-# Then start the application services
-# Using Make
+# 2. Start application services
 make up
-
-# Or directly with Docker Compose
-docker-compose up -d
+# Or directly: docker-compose up -d
 ```
 
-This will start all services defined in the `docker-compose.yml` file, including:
+This will start:
 
-- Core services (trading-bot, watchdog, admin-api, report-worker, alert-router, frontend)
-- Legacy services (firestore emulator, ib-gateway)
-- Observability services (otel-collector, prometheus, grafana)
+**Core Services:**
+- 🤖 Trading Bot
+- 👁️ Watchdog
+- 🎛️ Admin API
+- 📈 Report Worker
+- 🚨 Alert Router
+- 🖥️ Frontend
 
-The infrastructure services (PostgreSQL, Vault, MinIO, Traefik) are managed separately via `infra/docker-compose.yml`.
+**Infrastructure Services:**
+- 🗄️ PostgreSQL
+- 🔐 Vault
+- 📦 MinIO
+- 🌐 Traefik
 
-### 2. View Service Logs
+**Observability:**
+- 📊 Prometheus
+- 📈 Grafana
+- 🔍 OpenTelemetry Collector
+
+### 📋 View Service Logs
 
 ```bash
-# View logs for all application services
+# All application services
 make logs
 
-# Or directly with Docker Compose
-docker-compose logs -f
-
-# View logs for a specific application service
+# Specific application service
 docker-compose logs -f trading-bot
 
-# View logs for infrastructure services
-cd infra/ && docker-compose logs -f
+# Infrastructure services
 cd infra/ && docker-compose logs -f postgres
 ```
 
-### 3. Stop Services
+### 🛑 Stop Services
 
 ```bash
 # Stop application services
-# Using Make
 make down
-
-# Or directly with Docker Compose
-docker-compose down
 
 # Stop infrastructure services
 cd infra/ && ./compose-down.sh
 ```
 
-## Running Individual Services
+## 🧪 Running Individual Services
 
-During development, you may want to run individual services directly on your machine rather than in Docker containers. This allows for faster iteration and easier debugging.
+For faster iteration during development:
 
-### 1. Running the Trading Bot
+### 🤖 Trading Bot
 
 ```bash
-# Activate the virtual environment if not already activated
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Activate virtual environment
+source venv/bin/activate
 
 # Set environment variables
 export GOOGLE_CLOUD_PROJECT=spreadpilot-dev
 export FIRESTORE_EMULATOR_HOST=localhost:8084
 export IB_GATEWAY_HOST=localhost
 export IB_GATEWAY_PORT=4002
-# Source infrastructure environment variables
 source infra/.env.infra
-# Set other required environment variables from .env
 
-# Run the trading bot
+# Run the service
 python trading-bot/app/main.py
 ```
 
-### 2. Running the Admin API
+### 🎛️ Admin API
 
 ```bash
-# Activate the virtual environment if not already activated
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Activate virtual environment
+source venv/bin/activate
 
 # Set environment variables
 export GOOGLE_CLOUD_PROJECT=spreadpilot-dev
 export FIRESTORE_EMULATOR_HOST=localhost:8084
 export TRADING_BOT_HOST=localhost
 export TRADING_BOT_PORT=8081
-# Source infrastructure environment variables
 source infra/.env.infra
-# Set other required environment variables from .env
 
-# Run the admin API
+# Run the service
 python admin-api/main.py
 ```
 
-> **Note:** When running services directly, Python will automatically use the `__init__.py` files in the hyphenated directories to resolve imports. However, when writing code that imports from these directories, you'll need to use `importlib.import_module()` as described in the "Importing from Hyphenated Directories" section.
-
-### 3. Running the Frontend
+### 🖥️ Frontend
 
 ```bash
-# Navigate to the frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-The frontend development server will be available at http://localhost:5173.
+The frontend will be available at `http://localhost:5173`.
 
-## Testing
+## 🧪 Testing
 
-### 1. Running All Tests
+### ✅ Run All Tests
 
 ```bash
-# Using Make
 make test
-
-# Or directly with pytest
-pytest
+# Or: pytest
 ```
 
-### 2. Running Tests with Coverage
+### 📊 Run Tests with Coverage
 
 ```bash
-# Using Make
 make test-coverage
-
-# Or directly with pytest
-pytest --cov=spreadpilot_core --cov=trading-bot --cov=watchdog --cov=admin-api --cov=report-worker --cov=alert-router
+# Or: pytest --cov=spreadpilot_core --cov=trading-bot --cov=watchdog --cov=admin-api --cov=report-worker --cov=alert-router
 ```
 
-### 3. Running Tests for a Specific Component
+### 🎯 Run Specific Tests
 
 ```bash
-# Run tests for a specific service
+# Test a specific service
 pytest trading-bot/tests/
 
-# Run a specific test file
+# Test a specific file
 pytest watchdog/tests/service/test_monitor.py
 
-# Run a specific test function
+# Test a specific function
 pytest watchdog/tests/service/test_monitor.py::test_check_health
 ```
 
-### Test Import Patterns
+### 📦 Test Import Patterns
 
-The integration tests use `importlib.import_module()` to import from hyphenated directories. This pattern is used in `tests/integration/conftest.py` and other test files:
+When writing tests for hyphenated directories:
 
 ```python
-# Import modules using importlib
 import importlib
 
 # Import modules with hyphenated names
@@ -307,142 +307,108 @@ SignalProcessor = trading_bot_service.SignalProcessor
 route_alert = alert_router_service.route_alert
 ```
 
-When writing new tests, follow this pattern for importing from hyphenated directories.
-
-### 4. Running End-to-End Tests
+### 🔄 End-to-End Tests
 
 ```bash
-# Using Make
 make e2e
-
-# Or directly with pytest
-pytest -m e2e
+# Or: pytest -m e2e
 ```
 
-## Code Structure and Organization
+## 🏗️ Code Organization
 
-### SpreadPilot Core Library
+### 📦 SpreadPilot Core Library
 
-The `spreadpilot-core` package provides shared functionality used by all services:
+The shared functionality package structure:
 
-- **logging**: Structured logging with context
-  - `logger.py`: Configures structured logging with OpenTelemetry integration
+```
+spreadpilot-core/
+└── spreadpilot_core/
+    ├── 📊 logging/          # Structured logging with OpenTelemetry
+    ├── 💹 ibkr/             # Interactive Brokers async client
+    ├── 🗄️ models/           # MongoDB data models
+    │   ├── alert.py         # Alert event model
+    │   ├── follower.py      # Follower account model
+    │   ├── position.py      # Trading position model
+    │   └── trade.py         # Trade execution model
+    └── 🛠️ utils/            # Utility functions
+        ├── email.py         # SendGrid email utilities
+        ├── excel.py         # Excel report generation
+        ├── pdf.py           # PDF report generation
+        ├── telegram.py      # Telegram messaging
+        └── time.py          # Time/date handling
+```
 
-- **ibkr**: Interactive Brokers client wrapper
-  - `client.py`: Async client for interacting with IB Gateway
+### 🤖 Trading Bot Service
 
-- **models**: Database data models (MongoDB)
-  - `alert.py`: Alert event model
-  - `follower.py`: Follower account model
-  - `position.py`: Trading position model
-  - `trade.py`: Trade execution model
+```
+trading-bot/
+└── app/
+    ├── config.py            # Configuration management
+    ├── main.py              # Entry point & API server
+    ├── sheets.py            # Google Sheets integration
+    └── service/             # Business logic
+        ├── alerts.py        # Alert generation
+        ├── base.py          # Base service class
+        ├── ibkr.py          # IBKR integration
+        ├── positions.py     # Position management
+        └── signals.py       # Signal processing
+```
 
-- **utils**: Utility functions
-  - `email.py`: Email sending utilities using SendGrid
-  - `excel.py`: Excel report generation utilities
-  - `pdf.py`: PDF report generation utilities
-  - `telegram.py`: Telegram messaging utilities
-  - `time.py`: Time and date handling utilities
+### 🎛️ Admin API Service
 
-### Trading Bot Service
+```
+admin-api/
+├── main.py                  # Entry point
+└── app/
+    ├── core/                # Core modules
+    │   └── config.py        # Configuration
+    ├── api/v1/              # API version 1
+    │   ├── api.py           # API router
+    │   └── endpoints/       # API endpoints
+    │       ├── dashboard.py # Dashboard endpoints
+    │       └── followers.py # Follower management
+    ├── db/                  # Database
+    │   └── mongodb.py       # MongoDB client (Motor)
+    ├── schemas/             # Pydantic schemas
+    │   └── follower.py      # Follower schemas
+    └── services/            # Business logic
+        └── follower_service.py
+```
 
-The `trading-bot` service is responsible for executing trades based on signals from Google Sheets:
+### 🖥️ Frontend Structure
 
-- **app/config.py**: Configuration loading and validation
-- **app/main.py**: Main entry point and API server
-- **app/sheets.py**: Google Sheets integration
-- **app/service/**: Service modules
-  - **alerts.py**: Alert generation
-  - **base.py**: Base service class
-  - **ibkr.py**: IBKR integration
-  - **positions.py**: Position management
-  - **signals.py**: Signal processing
+```
+frontend/
+└── src/
+    ├── main.tsx             # Entry point
+    ├── App.tsx              # Root component
+    ├── components/          # UI components
+    │   └── layout/          # Layout components
+    ├── contexts/            # React contexts
+    │   ├── AuthContext.tsx  # Authentication
+    │   └── WebSocketContext.tsx
+    ├── hooks/               # Custom hooks
+    ├── pages/               # Page components
+    │   ├── CommandsPage.tsx # Manual commands
+    │   ├── FollowersPage.tsx
+    │   ├── LoginPage.tsx
+    │   └── LogsPage.tsx     # Log console
+    ├── services/            # API services
+    │   ├── followerService.ts
+    │   └── logService.ts
+    ├── types/               # TypeScript types
+    └── utils/               # Utilities
+```
 
-### Watchdog Service
+## 🔄 Development Workflow
 
-The `watchdog` service monitors the health of critical components:
-
-- **app/config.py**: Configuration loading and validation
-- **app/main.py**: Main entry point and scheduler
-- **app/service/**: Service modules
-  - **monitor.py**: Health monitoring and restart logic
-
-### Admin API Service
-
-The `admin-api` service provides the backend for the admin dashboard:
-
-- **main.py**: Main entry point
-- **app/core/**: Core modules
-  - **config.py**: Configuration loading and validation
-- **app/api/**: API modules
-  - **v1/api.py**: API router
-  - **v1/endpoints/**: API endpoints
-    - **dashboard.py**: Dashboard endpoints
-    - **followers.py**: Follower management endpoints
-- **app/db/**: Database modules
-  - **mongodb.py**: MongoDB client (using Motor)
-- **app/schemas/**: Pydantic schemas
-  - **follower.py**: Follower schemas
-- **app/services/**: Service modules
-  - **follower_service.py**: Follower management service
-
-### Report Worker Service
-
-The `report-worker` service generates reports for followers:
-
-- **app/config.py**: Configuration loading and validation
-- **app/main.py**: Main entry point and Pub/Sub handler
-- **app/service/**: Service modules
-  - **pnl.py**: P&L calculation
-  - **generator.py**: Report generation
-  - **notifier.py**: Email notification
-  - **report_service.py**: Report orchestration
-
-### Alert Router Service
-
-The `alert-router` service routes alerts to appropriate channels:
-
-- **app/config.py**: Configuration loading and validation
-- **app/main.py**: Main entry point and Pub/Sub handler
-- **app/service/**: Service modules
-  - **router.py**: Alert routing logic
-
-### Frontend
-
-The `frontend` is a React application for the admin dashboard:
-
-- **src/main.tsx**: Main entry point
-- **src/App.tsx**: Root component
-- **src/components/**: UI components
-  - **layout/**: Layout components
-- **src/contexts/**: React contexts
-  - **AuthContext.tsx**: Authentication context
-  - **WebSocketContext.tsx**: WebSocket context
-- **src/hooks/**: Custom React hooks
-- **src/pages/**: Page components
-  - **CommandsPage.tsx**: Manual commands page
-  - **FollowersPage.tsx**: Follower management page
-  - **LoginPage.tsx**: Login page
-  - **LogsPage.tsx**: Log console page
-- **src/services/**: API services
-  - **followerService.ts**: Follower API service
-  - **logService.ts**: Log API service
-- **src/types/**: TypeScript type definitions
-  - **follower.ts**: Follower types
-  - **logEntry.ts**: Log entry types
-- **src/utils/**: Utility functions
-
-## Development Workflow
-
-### 1. Create a Feature Branch
+### 1️⃣ Create Feature Branch
 
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
-### 2. Make Changes and Run Tests
-
-Make your changes to the codebase and run tests to ensure everything works correctly:
+### 2️⃣ Make Changes & Test
 
 ```bash
 # Run tests
@@ -452,63 +418,45 @@ make test
 make lint
 ```
 
-### 3. Format Your Code
+### 3️⃣ Format Code
 
 ```bash
-# Using Make
 make format
-
-# Or directly with black and isort
-black spreadpilot-core trading-bot watchdog admin-api report-worker alert-router
-isort spreadpilot-core trading-bot watchdog admin-api report-worker alert-router
+# Or: black . && isort .
 ```
 
-### 4. Commit Your Changes
+### 4️⃣ Commit Changes
 
 ```bash
 git add .
-git commit -m "Add your feature description"
+git commit -m "feat: add your feature description"
 ```
 
-### 5. Push Your Changes and Create a Pull Request
+### 5️⃣ Push & Create PR
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-Then create a pull request on GitHub.
+## 🐛 Debugging
 
-## Debugging
+### 🔍 Python Debugging
 
-### 1. Using pdb
-
-You can use the Python debugger (pdb) to debug Python services:
-
+Using pdb:
 ```python
 import pdb; pdb.set_trace()
 ```
 
-### 2. Using VS Code Debugger
+### 🆚 VS Code Configuration
 
-Create a `.vscode/launch.json` file with the following configuration:
+Create `.vscode/launch.json`:
 
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
-      "type": "python",
-      "request": "launch",
-      "program": "${file}",
-      "console": "integratedTerminal",
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "spreadpilot-dev",
-        "FIRESTORE_EMULATOR_HOST": "localhost:8084"
-      }
-    },
-    {
-      "name": "Python: Trading Bot",
+      "name": "Trading Bot",
       "type": "python",
       "request": "launch",
       "program": "${workspaceFolder}/trading-bot/app/main.py",
@@ -524,188 +472,164 @@ Create a `.vscode/launch.json` file with the following configuration:
 }
 ```
 
-### 3. Using React Developer Tools
+### ⚛️ React Debugging
 
-For debugging the frontend, install the React Developer Tools browser extension:
-
+Install browser extensions:
 - [React Developer Tools for Chrome](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi)
 - [React Developer Tools for Firefox](https://addons.mozilla.org/en-US/firefox/addon/react-devtools/)
 
-## Common Development Tasks
+## 🛠️ Common Tasks
 
-### 1. Adding a New Dependency
+### ➕ Adding Dependencies
 
-For Python services:
-
+**Python:**
 ```bash
-# Add to requirements.in file
 echo "new-package==1.0.0" >> requirements-dev.in
-
-# Generate requirements.txt
 make requirements-dev
-
-# Install the new dependency
 pip install -r requirements-dev.txt
 ```
 
-For the frontend:
-
+**Frontend:**
 ```bash
 cd frontend
 npm install --save new-package
 ```
 
-### 2. Adding a New Model to SpreadPilot Core
+### 🏗️ Creating New Components
 
-1. Create a new file in `spreadpilot-core/spreadpilot_core/models/`
-2. Define the model class with Pydantic
-3. Add the model to `spreadpilot-core/spreadpilot_core/models/__init__.py`
+**New Model:**
+1. Create file in `spreadpilot-core/spreadpilot_core/models/`
+2. Define Pydantic model
+3. Export in `__init__.py`
 
-### 3. Adding a New API Endpoint
+**New API Endpoint:**
+1. Create/update file in `admin-api/app/api/v1/endpoints/`
+2. Define FastAPI endpoint
+3. Add to router in `api.py`
 
-1. Create a new file in `admin-api/app/api/v1/endpoints/` or add to an existing one
-2. Define the endpoint function with FastAPI
-3. Add the endpoint to the router in `admin-api/app/api/v1/api.py`
+**New Frontend Page:**
+1. Create file in `frontend/src/pages/`
+2. Define React component
+3. Add route in `App.tsx`
 
-### 4. Adding a New Frontend Page
-
-1. Create a new file in `frontend/src/pages/`
-2. Define the page component with React
-3. Add the page to the router in `frontend/src/App.tsx`
-
-### 5. Creating a New Service
-
-When creating a new service, follow the established folder structure convention:
-
-1. Use hyphenated directory names (e.g., `new-service/`)
-2. Add `__init__.py` files to make the directory importable:
-
+**New Service:**
 ```bash
-# Create the service directory structure
+# Create structure
 mkdir -p new-service/app/service
-
-# Add __init__.py files
 touch new-service/__init__.py
 touch new-service/app/__init__.py
 touch new-service/app/service/__init__.py
-```
 
-3. When importing from this service in other parts of the codebase, use `importlib.import_module()`:
-
-```python
+# Import pattern
 import importlib
-new_service_module = importlib.import_module('new-service.app.service.main')
+new_service = importlib.import_module('new-service.app.main')
 ```
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### 1. Database Connection Issues
+### 🗄️ Database Issues
 
-#### PostgreSQL Connection (Infrastructure)
-
-If you encounter issues connecting to the PostgreSQL database:
-
+**PostgreSQL:**
 ```bash
-# Check infrastructure services
 cd infra/
 ./health-check.sh
-
-# Check PostgreSQL container logs
 docker-compose logs postgres
-
-# Restart PostgreSQL
 docker-compose restart postgres
-
-# Connect directly to database
 docker-compose exec postgres psql -U spreadpilot -d spreadpilot
 ```
 
-#### MongoDB Connection Issues (Legacy)
-
-If you encounter issues connecting to the MongoDB container defined in `docker-compose.yml`, try the following:
-
+**MongoDB (Legacy):**
 ```bash
-# Stop all services
-make down
-
-# Check Docker container status
-docker-compose ps
-
-# Check MongoDB container logs
 docker-compose logs mongo
-
-# Ensure MongoDB container is running
-docker-compose up -d mongo
-
-# Verify connection details (host: mongo, port: 27017, credentials) in service environment variables
-# (Check .env files and docker-compose.yml)
-
-# If data corruption is suspected (rarely needed for local dev):
-# Stop the container
+docker-compose restart mongo
+# Reset data (WARNING: DELETES ALL DATA)
 docker-compose stop mongo
-# Remove the volume (WARNING: DELETES ALL LOCAL MONGO DATA)
 docker volume rm spreadpilot_mongo_data
-# Restart the container
 docker-compose up -d mongo
-
-# Restart services
-make up
 ```
 
-### 2. IB Gateway Connection Issues
+### 💹 IB Gateway Issues
 
-If the trading bot cannot connect to IB Gateway, check the following:
+```bash
+# Check logs
+docker-compose logs ib-gateway
 
-- Ensure IB Gateway is running (`docker-compose logs ib-gateway`)
-- Verify the IB Gateway credentials in the `.env` file
-- Check the network connectivity between the trading bot and IB Gateway
+# Verify credentials in .env
+# Check network connectivity
+# Restart service
+docker-compose restart ib-gateway
+```
 
-### 3. Frontend Build Issues
-
-If you encounter issues building the frontend, try the following:
+### 🖥️ Frontend Issues
 
 ```bash
 cd frontend
-
-# Clear node_modules and reinstall dependencies
-rm -rf node_modules
+# Clean install
+rm -rf node_modules package-lock.json
 npm install
-
-# Clear Vite cache
+# Clear cache
 rm -rf node_modules/.vite
-
-# Restart the development server
 npm run dev
 ```
 
-## Best Practices
+## ✨ Best Practices
 
-### 1. Code Style
+### 📝 Code Style
+- ✅ Follow PEP 8 for Python
+- ✅ Use Black & isort for formatting
+- ✅ Use ESLint & Prettier for JS/TS
+- ✅ Add type hints to Python code
 
-- Follow PEP 8 for Python code
-- Use Black and isort for code formatting
-- Use ESLint and Prettier for JavaScript/TypeScript code
+### 🧪 Testing
+- ✅ Write unit tests for new features
+- ✅ Use pytest fixtures
+- ✅ Mock external dependencies
+- ✅ Maintain >80% code coverage
 
-### 2. Testing
+### 📚 Documentation
+- ✅ Add docstrings to functions/classes
+- ✅ Update README files
+- ✅ Document API endpoints
+- ✅ Include usage examples
 
-- Write unit tests for all new functionality
-- Use pytest fixtures for common test setup
-- Use mocks for external dependencies
+### ⚠️ Error Handling
+- ✅ Use structured logging
+- ✅ Handle exceptions gracefully
+- ✅ Provide meaningful error messages
+- ✅ Include error context
 
-### 3. Documentation
+### ⚙️ Configuration
+- ✅ Use environment variables
+- ✅ Provide sensible defaults
+- ✅ Validate at startup
+- ✅ Document all settings
 
-- Add docstrings to all functions and classes
-- Update README.md and other documentation when making significant changes
-- Use type hints in Python code
+## 🎯 Quick Commands Reference
 
-### 4. Error Handling
+```bash
+# Setup
+make init-dev          # Initialize development environment
 
-- Use structured logging for errors
-- Handle exceptions appropriately
-- Provide meaningful error messages
+# Running
+make up               # Start all services
+make down             # Stop all services
+make logs             # View logs
 
-### 5. Configuration
+# Testing
+make test             # Run tests
+make test-coverage    # Run with coverage
+make lint             # Run linters
+make format           # Format code
 
-- Use environment variables for configuration
-- Provide sensible defaults
-- Validate configuration at startup
+# Building
+make build-images     # Build Docker images
+make requirements-dev # Update Python dependencies
+```
+
+## 📚 Additional Resources
+
+- [System Architecture](./01-system-architecture.md)
+- [Deployment Guide](./02-deployment-guide.md)
+- [Operations Guide](./04-operations-guide.md)
+- [API Documentation](./api/)
+- [Contributing Guidelines](../CONTRIBUTING.md)

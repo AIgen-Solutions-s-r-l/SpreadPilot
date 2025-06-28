@@ -1,635 +1,711 @@
-# SpreadPilot Operations Guide
+# 🔧 SpreadPilot Operations Guide
 
-This guide provides instructions for monitoring, maintaining, and troubleshooting the SpreadPilot system in production.
+This comprehensive guide provides instructions for monitoring, maintaining, and troubleshooting the SpreadPilot system in production environments.
 
-## Monitoring
+## 📋 Table of Contents
 
-### Cloud Monitoring
+- [Monitoring](#-monitoring)
+- [Alerting](#-alerting)
+- [Routine Maintenance](#-routine-maintenance)
+- [Troubleshooting](#-troubleshooting)
+- [Performance Tuning](#-performance-tuning)
+- [Security](#-security)
+- [Disaster Recovery](#-disaster-recovery)
+- [Compliance and Auditing](#-compliance-and-auditing)
+- [Quick Reference](#-quick-reference)
 
-SpreadPilot uses Google Cloud Monitoring for observability. The system is instrumented with OpenTelemetry to collect metrics, traces, and logs.
+## 📊 Monitoring
 
-#### Accessing Cloud Monitoring
+### ☁️ Cloud Monitoring
 
-1. Go to the Google Cloud Console: https://console.cloud.google.com
+SpreadPilot uses Google Cloud Monitoring with OpenTelemetry instrumentation for comprehensive observability.
+
+#### 🔍 Accessing Cloud Monitoring
+
+1. Navigate to [Google Cloud Console](https://console.cloud.google.com)
 2. Select your project
-3. Navigate to **Monitoring** > **Overview**
+3. Go to **Monitoring** → **Overview**
 
-#### Key Dashboards
+#### 📈 Key Dashboards
 
-The following dashboards are available in Cloud Monitoring:
+| Dashboard | Description | Key Metrics |
+|-----------|-------------|-------------|
+| **SpreadPilot Overview** | System health summary | Service uptime, error rates, request counts |
+| **Trading Bot Performance** | Trading operations metrics | Order execution rate, position counts, latency |
+| **Service Health** | Individual service status | Health check results, resource usage |
+| **Error Rates** | Error tracking across services | Error counts by service and type |
 
-1. **SpreadPilot Overview**: High-level system health and key metrics
-2. **Trading Bot Performance**: Detailed metrics for the trading bot service
-3. **Service Health**: Health status of all services
-4. **Error Rates**: Error counts and rates across services
+#### 🎨 Creating Custom Dashboards
 
-#### Creating Custom Dashboards
+```bash
+# Example: Create a dashboard via API
+gcloud monitoring dashboards create --config-from-file=dashboard.yaml
+```
 
-To create a custom dashboard:
+Dashboard configuration example:
+```yaml
+displayName: "Custom Trading Metrics"
+mosaicLayout:
+  columns: 12
+  tiles:
+  - width: 6
+    height: 4
+    widget:
+      title: "Order Execution Rate"
+      xyChart:
+        dataSets:
+        - timeSeriesQuery:
+            timeSeriesFilter:
+              filter: metric.type="custom.googleapis.com/trading/orders_executed"
+```
 
-1. Go to **Monitoring** > **Dashboards**
-2. Click **Create Dashboard**
-3. Add widgets for the metrics you want to monitor
-4. Configure the widgets with appropriate filters and aggregations
-5. Save the dashboard
+### 📊 Grafana Monitoring
 
-### Grafana
+Advanced visualization platform for detailed metrics analysis.
 
-For more advanced visualization, SpreadPilot also includes Grafana dashboards.
+#### 🌐 Access Points
 
-#### Accessing Grafana
-
-- **Local Development**: http://localhost:3000
-- **Production**: https://grafana.your-domain.com (if configured)
+- **Local Development**: `http://localhost:3000`
+- **Production**: `https://grafana.your-domain.com`
 
 Default credentials:
-- Username: admin
-- Password: admin (should be changed in production)
+```
+Username: admin
+Password: admin  # ⚠️ Change in production!
+```
 
-#### Key Dashboards
+#### 📈 Available Dashboards
 
-1. **System Overview**: High-level system metrics
-2. **Trading Performance**: Trading-related metrics
-3. **Service Performance**: Detailed service performance metrics
-4. **Error Tracking**: Error rates and patterns
+1. **System Overview** - Overall health metrics
+2. **Trading Performance** - Order execution and P&L tracking
+3. **Service Performance** - Detailed service metrics
+4. **Error Tracking** - Error patterns and analysis
 
-### Logging
+### 📝 Logging
 
-SpreadPilot uses structured logging with Cloud Logging integration.
+Structured logging integrated with Cloud Logging for comprehensive system insights.
 
-#### Accessing Logs
+#### 🔍 Common Log Queries
 
-1. Go to the Google Cloud Console: https://console.cloud.google.com
-2. Select your project
-3. Navigate to **Logging** > **Logs Explorer**
-
-#### Common Log Queries
-
-**View logs for a specific service:**
-
+**Service-specific logs:**
 ```
 resource.type="cloud_run_revision"
 resource.labels.service_name="trading-bot"
+severity>=INFO
 ```
 
-**View error logs:**
-
+**Error tracking:**
 ```
 severity>=ERROR
+jsonPayload.service=~"trading-bot|admin-api"
+timestamp>="2024-01-01T00:00:00Z"
 ```
 
-**View logs for a specific follower:**
-
+**Follower operations:**
 ```
 jsonPayload.follower_id="FOLLOWER_ID"
+jsonPayload.operation=~"execute_order|update_position"
 ```
 
-**View logs for a specific operation:**
-
+**Performance analysis:**
 ```
-jsonPayload.operation="execute_order"
+jsonPayload.latency_ms>1000
+jsonPayload.operation="signal_processing"
 ```
 
-#### Log Levels
+#### 📊 Log Severity Levels
 
-SpreadPilot uses the following log levels:
+| Level | Usage | Example |
+|-------|-------|---------|
+| **DEBUG** | Detailed debugging info | Variable values, function entry/exit |
+| **INFO** | Normal operations | Order executed, position updated |
+| **WARNING** | Potential issues | High latency, retry attempts |
+| **ERROR** | Recoverable errors | API timeout, invalid data |
+| **CRITICAL** | System failures | Database connection lost |
 
-- **DEBUG**: Detailed debugging information
-- **INFO**: General operational information
-- **WARNING**: Warning events that might require attention
-- **ERROR**: Error events that might still allow the application to continue running
-- **CRITICAL**: Critical events that might cause the application to terminate
+## 🚨 Alerting
 
-## Alerting
+### 📢 Alert Configuration
 
-### Cloud Monitoring Alerts
+#### 🎯 Predefined Alert Policies
 
-SpreadPilot uses Cloud Monitoring alerting policies to notify operators of potential issues.
+| Alert | Condition | Notification |
+|-------|-----------|--------------|
+| **Service Down** | Health check fails >2 min | Email, Telegram, PagerDuty |
+| **High Error Rate** | Error rate >5% for 5 min | Email, Telegram |
+| **Trading Bot Offline** | No heartbeat >5 min | Email, Telegram, SMS |
+| **IB Gateway Disconnected** | Connection lost >1 min | All channels |
+| **Assignment Detected** | Option assignment event | All channels + Dashboard |
 
-#### Predefined Alerts
-
-1. **Service Availability**: Alerts when any service becomes unavailable
-2. **Error Rate**: Alerts when the error rate exceeds a threshold
-3. **Trading Bot Health**: Alerts when the trading bot fails health checks
-4. **IB Gateway Connection**: Alerts when the connection to IB Gateway is lost
-5. **Assignment Detection**: Alerts when an assignment is detected
-
-#### Creating Custom Alerts
-
-To create a custom alert:
-
-1. Go to **Monitoring** > **Alerting**
-2. Click **Create Policy**
-3. Select the metric to alert on
-4. Configure the condition (threshold, duration, etc.)
-5. Configure the notification channels
-6. Save the policy
-
-### Notification Channels
-
-Alerts can be sent to the following channels:
-
-1. **Email**: Sent to the configured admin email
-2. **Telegram**: Sent to the configured Telegram chat
-3. **SMS**: Sent to configured phone numbers (if set up)
-4. **PagerDuty**: Integrated with PagerDuty for on-call rotation (if set up)
-
-#### Configuring Notification Channels
-
-1. Go to **Monitoring** > **Alerting** > **Notification channels**
-2. Click **Add New** for the desired channel type
-3. Configure the channel settings
-4. Save the channel
-
-## Routine Maintenance
-
-### Backup and Restore
-
-#### MongoDB Backup
-
-Backup strategies for MongoDB depend on the deployment:
-
-*   **Local Docker (`docker-compose.yml`):** Data is stored in a Docker volume (e.g., `spreadpilot_mongo_data`). Backups can be performed by:
-    *   Stopping the container (`docker-compose stop mongo`).
-    *   Copying the volume data (`docker cp mongo:/data/db ./backup_folder`) or using volume backup tools.
-    *   Using `mongodump` from within the container or another container linked to the same network:
-        ```bash
-        # Example: Run mongodump inside the container
-        docker-compose exec mongo mongodump --out /backup/$(date +%Y-%m-%d)
-        # Then copy the backup out of the container
-        docker cp mongo:/backup ./host_backup_location
-        ```
-*   **Managed Service (e.g., MongoDB Atlas):** Use the backup features provided by the service (e.g., scheduled snapshots, point-in-time recovery). Refer to the Atlas documentation.
-*   **Self-Hosted Production:** Implement regular `mongodump` backups stored securely (e.g., to cloud storage).
-
-To restore from a backup:
+#### ➕ Creating Custom Alerts
 
 ```bash
-# Restore MongoDB data from backup
-# For mongodump backups:
-mongorestore --drop /path/to/backup/YYYY-MM-DD
-
-# For Docker volume copies, restore the volume data.
-# For managed services, use their restore procedures.
+# Create alert policy via CLI
+gcloud alpha monitoring policies create \
+    --notification-channels=CHANNEL_ID \
+    --display-name="High Memory Usage" \
+    --condition-display-name="Memory >80%" \
+    --condition="CONDITION_THRESHOLD" \
+    --if="ABOVE" \
+    --threshold-value=0.8 \
+    --duration="300s"
 ```
 
-### Service Updates
+### 📨 Notification Channels
 
-#### Updating Services
+Configure multiple notification channels for redundancy:
 
-To update a service to a new version:
+1. **📧 Email** - Primary notifications
+2. **💬 Telegram** - Real-time alerts
+3. **📱 SMS** - Critical alerts only
+4. **🚨 PagerDuty** - On-call rotation
+
+#### 🔧 Channel Configuration
 
 ```bash
-# Deploy a new version of a service
-gcloud run deploy trading-bot \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/trading-bot:NEW_VERSION \
+# Add Telegram channel
+gcloud alpha monitoring channels create \
+    --display-name="Telegram Alerts" \
+    --type=telegram \
+    --channel-labels=bot_token=YOUR_BOT_TOKEN,chat_id=YOUR_CHAT_ID
+```
+
+## 🛠️ Routine Maintenance
+
+### 💾 Backup and Restore
+
+#### 🗄️ MongoDB Backup Strategies
+
+**Local Docker Environment:**
+```bash
+# Create backup
+docker-compose exec mongo mongodump --out /backup/$(date +%Y%m%d_%H%M%S)
+docker cp mongo:/backup ./local_backups/
+
+# Automated daily backup script
+#!/bin/bash
+BACKUP_DIR="./backups/$(date +%Y%m%d)"
+mkdir -p $BACKUP_DIR
+docker-compose exec -T mongo mongodump --out /data/backup
+docker cp mongo:/data/backup $BACKUP_DIR
+find ./backups -mtime +7 -type d -exec rm -rf {} +  # Keep 7 days
+```
+
+**Production (MongoDB Atlas):**
+- Enable automated backups in Atlas console
+- Configure retention policy (recommended: 7 days continuous, 4 weekly snapshots)
+- Set up cross-region backup replication
+
+**Self-Hosted Production:**
+```bash
+# Cron job for automated backups
+0 2 * * * /usr/bin/mongodump --uri="mongodb://user:pass@host:port/db" --out=/backup/$(date +\%Y\%m\%d) && gsutil -m cp -r /backup/$(date +\%Y\%m\%d) gs://backup-bucket/
+```
+
+#### 🔄 Restore Procedures
+
+```bash
+# Restore from mongodump
+mongorestore --drop --uri="mongodb://localhost:27017" /path/to/backup/
+
+# Restore specific collections
+mongorestore --drop --uri="mongodb://localhost:27017" --nsInclude="spreadpilot.followers" /backup/
+
+# Point-in-time restore (Atlas)
+# Use Atlas UI or API for PITR within retention window
+```
+
+### 📦 Service Updates
+
+#### 🚀 Deployment Process
+
+```bash
+# Deploy new version with validation
+NEW_VERSION="v1.2.0"
+SERVICE="trading-bot"
+
+# 1. Deploy to staging
+gcloud run deploy $SERVICE-staging \
+    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/$SERVICE:$NEW_VERSION \
+    --region=us-central1 \
+    --no-traffic
+
+# 2. Run smoke tests
+./scripts/smoke-test.sh $SERVICE-staging
+
+# 3. Gradual rollout
+gcloud run services update-traffic $SERVICE \
+    --to-revisions=$SERVICE-$NEW_VERSION=10 \
+    --region=us-central1
+
+# 4. Monitor metrics, increase traffic
+gcloud run services update-traffic $SERVICE \
+    --to-revisions=$SERVICE-$NEW_VERSION=50 \
+    --region=us-central1
+
+# 5. Complete rollout
+gcloud run services update-traffic $SERVICE \
+    --to-revisions=$SERVICE-$NEW_VERSION=100 \
     --region=us-central1
 ```
 
-#### Rolling Back Services
-
-To roll back a service to a previous version:
+#### ↩️ Rollback Procedures
 
 ```bash
-# List revisions
-gcloud run revisions list --service=trading-bot --region=us-central1
-
-# Roll back to a specific revision
-gcloud run services update-traffic trading-bot \
-    --to-revisions=trading-bot-00001-abc=100 \
+# Quick rollback
+gcloud run services update-traffic $SERVICE \
+    --to-revisions=$SERVICE-previous=100 \
     --region=us-central1
+
+# List available revisions
+gcloud run revisions list --service=$SERVICE --region=us-central1
 ```
 
-### Secret Rotation
+### 🔐 Secret Rotation
 
-#### Rotating Secrets
-
-To rotate a secret in Secret Manager:
+#### 🔄 Rotating Secrets Safely
 
 ```bash
-# Add a new version of a secret
-gcloud secrets versions add ib-password --data-file=./new-ib-password.txt
+# 1. Add new secret version
+echo -n "new-secret-value" | gcloud secrets versions add $SECRET_NAME --data-file=-
+
+# 2. Update services to use new version
+gcloud run services update $SERVICE \
+    --update-secrets=$SECRET_NAME=projects/$PROJECT/secrets/$SECRET_NAME/versions/latest
+
+# 3. Verify services are using new version
+gcloud run services describe $SERVICE --region=us-central1 | grep $SECRET_NAME
+
+# 4. Disable old version
+gcloud secrets versions disable 1 --secret=$SECRET_NAME
 ```
 
-After rotating a secret, you may need to restart the affected services to pick up the new value.
+## 🔍 Troubleshooting
 
-## Troubleshooting
+### 🚫 Common Issues
 
-### Common Issues
-
-#### Trading Bot Not Executing Orders
+#### 🤖 Trading Bot Not Executing Orders
 
 **Symptoms:**
-- No new orders are being executed
-- Log messages indicate signal processing but no order execution
+- ❌ No new orders in logs
+- ⚠️ Signals processed but not executed
+- 📊 Dashboard shows stale data
 
-**Possible Causes:**
-1. Connection to IB Gateway lost
-2. Google Sheets API rate limiting
-3. Invalid trading signals
+**Diagnosis & Resolution:**
+```bash
+# 1. Check IB Gateway connection
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://trading-bot-url/health | jq '.ib_gateway'
 
-**Resolution Steps:**
-1. Check IB Gateway connection status in logs
-2. Verify Google Sheets API quota and usage
-3. Validate trading signals in the Google Sheet
-4. Restart the trading bot service if necessary
+# 2. Verify Google Sheets access
+gcloud logging read 'jsonPayload.operation="fetch_signals"' --limit=10
 
-#### Watchdog False Positives
+# 3. Check trading hours
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://trading-bot-url/api/v1/market-status
+
+# 4. Force reconnection if needed
+curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://trading-bot-url/api/v1/reconnect
+```
+
+#### 👁️ Watchdog False Positives
 
 **Symptoms:**
-- Watchdog reports services as unhealthy when they are functioning correctly
-- Unnecessary service restarts
+- 🔄 Unnecessary service restarts
+- ✅ Services actually healthy
+- 📈 High restart count in metrics
 
-**Possible Causes:**
-1. Health check timeout too short
-2. Network latency between services
-3. Temporary service overload
-
-**Resolution Steps:**
-1. Adjust health check timeout in watchdog configuration
-2. Check network latency between services
-3. Increase resources for affected services
-
-#### Report Generation Failures
-
-**Symptoms:**
-- Reports not being generated or sent
-- Error logs in report-worker service
-
-**Possible Causes:**
-1. Missing or invalid position data
-2. SendGrid API issues
-3. PDF generation errors
-
-**Resolution Steps:**
-1. Check MongoDB for position data integrity (using `mongosh` or a GUI tool)
-2. Verify SendGrid API key and quota
-3. Check report-worker logs for specific errors
-4. Manually trigger report generation for testing
-
-#### Alert Routing Failures
-
-**Symptoms:**
-- Alerts not being sent to configured channels
-- Error logs in alert-router service
-
-**Possible Causes:**
-1. Invalid Telegram bot token or chat ID
-2. SendGrid API issues
-3. Malformed alert data
-
-**Resolution Steps:**
-1. Verify Telegram bot token and chat ID
-2. Check SendGrid API key and quota
-3. Inspect alert data format in logs
-4. Manually trigger test alerts
-
-### Diagnostic Procedures
-
-#### Health Check Endpoints
-
-Each service provides a health check endpoint at `/health` that returns the service status:
-
-```bash
-# Check trading-bot health
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://trading-bot-service-url/health
+**Resolution:**
+```yaml
+# Adjust watchdog configuration
+health_check:
+  timeout: 30  # Increase from 10
+  retries: 3   # Add retries
+  interval: 60 # Reduce frequency
 ```
 
-#### Service Logs
+#### 📊 Report Generation Failures
 
-To view logs for a specific service:
-
+**Debug Checklist:**
 ```bash
-# View recent logs for trading-bot
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=trading-bot" --limit=50
+# 1. Check MongoDB connectivity
+docker-compose exec report-worker python -c "from app.db import test_connection; test_connection()"
+
+# 2. Verify SendGrid quota
+curl -H "Authorization: Bearer $SENDGRID_API_KEY" \
+    https://api.sendgrid.com/v3/stats
+
+# 3. Test report generation manually
+gcloud pubsub topics publish daily-reports \
+    --message='{"job_type": "daily", "test": true}'
+
+# 4. Check PDF generation
+docker-compose exec report-worker python -m app.utils.pdf --test
 ```
 
-#### Database Inspection
+### 🔬 Diagnostic Tools
 
-To inspect MongoDB data:
-
-1. Go to the Google Cloud Console: https://console.cloud.google.com
-2. Select your project
-3. Connect using `mongosh` or a GUI tool (like MongoDB Compass) using the appropriate connection string.
-4. Use commands like `use <database_name>`, `db.<collection_name>.find()` to browse data.
-
-#### Manual Testing
-
-To manually test the report generation:
+#### 🏥 Health Check Script
 
 ```bash
-# Publish a message to the daily-reports topic
-gcloud pubsub topics publish daily-reports --message='{"job_type": "daily"}'
+#!/bin/bash
+# comprehensive-health-check.sh
+
+SERVICES=("trading-bot" "admin-api" "watchdog" "report-worker" "alert-router")
+
+for service in "${SERVICES[@]}"; do
+    echo "Checking $service..."
+    HEALTH=$(curl -s -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+        https://$service-url/health)
+    
+    if [[ $(echo $HEALTH | jq -r '.status') == "healthy" ]]; then
+        echo "✅ $service is healthy"
+    else
+        echo "❌ $service is unhealthy: $HEALTH"
+    fi
+done
 ```
 
-To manually test the alert router:
+#### 📊 Performance Profiling
 
-```bash
-# Publish a message to the alerts topic
-gcloud pubsub topics publish alerts --message='{"type": "test", "message": "This is a test alert", "severity": "info"}'
+```python
+# Add to any service for profiling
+import cProfile
+import pstats
+
+def profile_operation():
+    profiler = cProfile.Profile()
+    profiler.enable()
+    
+    # Your operation here
+    process_signals()
+    
+    profiler.disable()
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')
+    stats.print_stats(10)  # Top 10 functions
 ```
 
-### Recovery Procedures
+## ⚡ Performance Tuning
 
-#### Service Recovery
+### 🎯 Resource Optimization
 
-If a service is unresponsive or failing:
-
-```bash
-# Restart a service by deploying the same image
-gcloud run deploy trading-bot \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/trading-bot:current-version \
-    --region=us-central1
-```
-
-#### IB Gateway Recovery
-
-If the IB Gateway is unresponsive:
+#### 📊 Service Resource Allocation
 
 ```bash
-# Restart the IB Gateway service
-gcloud run deploy ib-gateway \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/ib-gateway:current-version \
-    --region=us-central1
-```
+# Analyze current usage
+gcloud monitoring read-time-series \
+    --filter='metric.type="run.googleapis.com/container/cpu/utilizations"' \
+    --interval-start-time=2024-01-01T00:00:00Z
 
-#### Database Recovery
-
-If MongoDB data is corrupted or lost:
-
-```bash
-# Restore from the most recent backup
-gcloud firestore import gs://your-backup-bucket/backups/YYYY-MM-DD
-```
-
-## Performance Tuning
-
-### Resource Allocation
-
-#### Adjusting Service Resources
-
-To adjust the resources allocated to a service:
-
-```bash
-# Increase memory and CPU for trading-bot
+# Optimize based on usage patterns
 gcloud run services update trading-bot \
-    --memory=2Gi \
+    --memory=4Gi \
     --cpu=2 \
-    --region=us-central1
-```
-
-#### Scaling Configuration
-
-To adjust the scaling configuration for a service:
-
-```bash
-# Update min and max instances for trading-bot
-gcloud run services update trading-bot \
     --min-instances=2 \
-    --max-instances=5 \
+    --max-instances=10 \
+    --concurrency=100 \
     --region=us-central1
 ```
 
-### Performance Monitoring
+#### 🔧 Performance Best Practices
 
-#### Key Performance Metrics
+1. **Connection Pooling**
+   ```python
+   # MongoDB connection pool
+   client = AsyncIOMotorClient(
+       MONGODB_URL,
+       maxPoolSize=50,
+       minPoolSize=10,
+       maxIdleTimeMS=30000
+   )
+   ```
 
-1. **Request Latency**: Time taken to process requests
-2. **CPU Utilization**: CPU usage percentage
-3. **Memory Usage**: Memory consumption
-4. **Error Rate**: Percentage of requests resulting in errors
-5. **Instance Count**: Number of running instances
+2. **Caching Strategy**
+   ```python
+   from functools import lru_cache
+   
+   @lru_cache(maxsize=128)
+   def get_follower_config(follower_id: str):
+       # Cached for performance
+       return db.followers.find_one({"_id": follower_id})
+   ```
 
-#### Performance Dashboards
+3. **Batch Operations**
+   ```python
+   # Batch position updates
+   async def update_positions_batch(updates: List[PositionUpdate]):
+       operations = [
+           UpdateOne(
+               {"_id": u.position_id},
+               {"$set": u.dict()}
+           ) for u in updates
+       ]
+       await db.positions.bulk_write(operations)
+   ```
 
-To view performance metrics:
+## 🔒 Security
 
-1. Go to **Monitoring** > **Dashboards**
-2. Select the **Service Performance** dashboard
+### 🛡️ Access Control
 
-## Security
-
-### Access Control
-
-#### Managing Service Account Permissions
-
-To update service account permissions:
-
-```bash
-# Grant additional roles to the service account
-gcloud projects add-iam-policy-binding spreadpilot-prod \
-    --member="serviceAccount:spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com" \
-    --role="roles/logging.logWriter"
-```
-
-#### Managing User Access
-
-To manage user access to the GCP project:
-
-1. Go to **IAM & Admin** > **IAM**
-2. Add or remove users and adjust their roles
-
-### Audit Logging
-
-#### Viewing Audit Logs
-
-To view audit logs:
-
-1. Go to **Logging** > **Logs Explorer**
-2. Use the following query:
-
-```
-protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"
-```
-
-#### Configuring Audit Logging
-
-To configure audit logging:
-
-1. Go to **IAM & Admin** > **Audit Logs**
-2. Select the services you want to audit
-3. Configure the log types (Admin Activity, Data Access, etc.)
-
-## Disaster Recovery
-
-### Backup Strategy
-
-#### Automated Backups
-
-Set up automated MongoDB backups:
-*   **Managed Service:** Configure backup schedules in the service console (e.g., Atlas).
-*   **Self-Hosted:** Use `cron` or a similar scheduler to run `mongodump` regularly and upload backups to secure storage.
-*   **Local Docker:** Less critical, but can be scripted if needed.
+#### 👥 IAM Best Practices
 
 ```bash
-# Create a Cloud Scheduler job for daily backups
-gcloud scheduler jobs create http firestore-backup-daily \
-    --schedule="0 0 * * *" \
-    --uri="https://firestore.googleapis.com/v1/projects/spreadpilot-prod/databases/(default):exportDocuments" \
-    --http-method=POST \
-    --oauth-service-account-email=backup-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --message-body="{\"outputUriPrefix\": \"gs://your-backup-bucket/backups/$(date +%Y-%m-%d)\"}" \
-    --time-zone="UTC"
+# Principle of least privilege
+gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:trading-bot@$PROJECT.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor" \
+    --condition="resource.name.startsWith('projects/$PROJECT/secrets/trading-bot')"
+
+# Regular access review
+gcloud projects get-iam-policy $PROJECT --format=json | \
+    jq '.bindings[] | select(.members[] | contains("user:"))'
 ```
 
-### Recovery Plan
-
-#### Complete System Recovery
-
-In case of a catastrophic failure:
-
-1. Create a new GCP project if necessary
-2. Enable required APIs
-3. Set up MongoDB (ensure instance/cluster is running and accessible)
-4. Restore MongoDB data from backup
-5. Deploy all services from the latest stable images
-6. Configure secrets and environment variables
-7. Update DNS records if necessary
-8. Verify system functionality
-
-## Compliance and Auditing
-
-### Regulatory Compliance
-
-#### Data Retention
-
-Configure MongoDB TTL (Time to Live) Indexes for data that needs to be automatically deleted after a certain period:
+#### 🔐 Secret Management
 
 ```bash
-# Set TTL for a collection
-gcloud firestore fields ttls create \
-    --collection-group=audit-logs \
-    --field=timestamp \
-    --enable-ttl \
-    --ttl-duration=2592000s  # 30 days
+# Rotate service account keys
+gcloud iam service-accounts keys create new-key.json \
+    --iam-account=trading-bot@$PROJECT.iam.gserviceaccount.com
+
+# Update secret
+gcloud secrets versions add sa-key --data-file=new-key.json
+
+# Delete old key
+gcloud iam service-accounts keys delete $OLD_KEY_ID \
+    --iam-account=trading-bot@$PROJECT.iam.gserviceaccount.com
 ```
 
-#### Audit Trails
+### 📝 Audit Logging
 
-Ensure comprehensive audit logging is enabled for all services:
-
-1. Go to **IAM & Admin** > **Audit Logs**
-2. Enable database auditing features if required (e.g., MongoDB Enterprise auditing, Atlas audit logs) and configure appropriate logging for other critical services. GCP Audit Logs might capture API calls if using a GCP-managed MongoDB, but not internal database operations directly unless configured.
-
-### Security Auditing
-
-#### Vulnerability Scanning
-
-Set up Container Analysis for vulnerability scanning:
+#### 🔍 Security Monitoring
 
 ```bash
-# Enable Container Analysis API
-gcloud services enable containeranalysis.googleapis.com
+# Monitor admin activities
+gcloud logging read '
+    protoPayload.methodName=~".*Delete.*|.*Update.*|.*Create.*"
+    protoPayload.authenticationInfo.principalEmail!~".*gserviceaccount.com"
+' --limit=50
 
-# Configure vulnerability scanning for container images
-gcloud container analysis notes create vulnerability-note \
-    --note-id=vulnerability-note \
-    --type=VULNERABILITY
+# Detect anomalies
+gcloud logging read '
+    jsonPayload.event="login_attempt"
+    jsonPayload.success=false
+' --limit=100
 ```
 
-#### Security Monitoring
+## 🚨 Disaster Recovery
 
-Set up Security Command Center for security monitoring:
+### 💾 Backup Strategy
 
-```bash
-# Enable Security Command Center API
-gcloud services enable securitycenter.googleapis.com
+#### 🔄 Automated Backup Pipeline
 
-# Configure Security Command Center
-gcloud scc settings update \
-    --organization=ORGANIZATION_ID \
-    --enable-security-center
+```yaml
+# backup-pipeline.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: mongo:6
+            command:
+            - /bin/bash
+            - -c
+            - |
+              mongodump --uri="$MONGO_URI" --gzip --archive=/tmp/backup.gz
+              gsutil cp /tmp/backup.gz gs://$BACKUP_BUCKET/$(date +%Y%m%d_%H%M%S).gz
+              # Cleanup old backups
+              gsutil ls gs://$BACKUP_BUCKET | sort | head -n -30 | xargs -I {} gsutil rm {}
 ```
 
-## Appendix
+### 🔥 Recovery Procedures
 
-### Useful Commands
-
-#### Service Management
+#### 📋 Complete System Recovery
 
 ```bash
-# List all services
-gcloud run services list --platform=managed --region=us-central1
+#!/bin/bash
+# disaster-recovery.sh
 
-# Get service details
-gcloud run services describe trading-bot --region=us-central1
+# 1. Verify backup integrity
+gsutil cp gs://$BACKUP_BUCKET/latest.gz /tmp/
+mongorestore --gzip --archive=/tmp/latest.gz --dry-run
 
-# View service logs
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=trading-bot" --limit=50
+# 2. Create new environment
+gcloud projects create $NEW_PROJECT --name="SpreadPilot DR"
+gcloud config set project $NEW_PROJECT
+
+# 3. Enable APIs
+APIS=(
+    "run.googleapis.com"
+    "secretmanager.googleapis.com"
+    "cloudscheduler.googleapis.com"
+    "pubsub.googleapis.com"
+    "monitoring.googleapis.com"
+)
+for api in "${APIS[@]}"; do
+    gcloud services enable $api
+done
+
+# 4. Restore secrets
+./scripts/restore-secrets.sh
+
+# 5. Deploy services
+./scripts/deploy-all-services.sh
+
+# 6. Restore data
+mongorestore --uri="$NEW_MONGO_URI" --gzip --archive=/tmp/latest.gz
+
+# 7. Update DNS
+gcloud dns record-sets update spreadpilot.com \
+    --type=A --ttl=300 --rrdatas=$NEW_IP --zone=$DNS_ZONE
+
+# 8. Verify system
+./scripts/comprehensive-health-check.sh
 ```
 
-#### Pub/Sub Management
+## 📊 Compliance and Auditing
 
-```bash
-# List topics
-gcloud pubsub topics list
+### 📜 Regulatory Compliance
 
-# List subscriptions
-gcloud pubsub subscriptions list
+#### 🗄️ Data Retention Policies
 
-# Publish a message
-gcloud pubsub topics publish alerts --message='{"type": "test", "message": "Test alert", "severity": "info"}'
+```javascript
+// MongoDB TTL indexes for compliance
+db.audit_logs.createIndex(
+    { "timestamp": 1 },
+    { expireAfterSeconds: 7776000 }  // 90 days
+)
+
+db.trade_history.createIndex(
+    { "executed_at": 1 },
+    { expireAfterSeconds: 31536000 }  // 365 days
+)
 ```
 
-#### Secret Management
+#### 🔍 Audit Trail Requirements
+
+```python
+# Comprehensive audit logging
+async def log_audit_event(
+    user: str,
+    action: str,
+    resource: str,
+    details: dict,
+    ip_address: str
+):
+    await db.audit_logs.insert_one({
+        "timestamp": datetime.utcnow(),
+        "user": user,
+        "action": action,
+        "resource": resource,
+        "details": details,
+        "ip_address": ip_address,
+        "session_id": get_session_id(),
+        "request_id": get_request_id()
+    })
+```
+
+### 🛡️ Security Auditing
+
+#### 🔍 Vulnerability Management
 
 ```bash
-# List secrets
+# Container scanning
+gcloud container images scan IMAGE_URL
+
+# View vulnerabilities
+gcloud container images describe IMAGE_URL \
+    --show-package-vulnerability
+
+# Automated scanning in CI/CD
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    docker build -t IMAGE_URL .
+    gcloud container images scan IMAGE_URL
+    gcloud container images describe IMAGE_URL \
+        --show-package-vulnerability \
+        --format='value(package_vulnerability.summary.critical)' > critical_count.txt
+    if [ $(cat critical_count.txt) -gt 0 ]; then
+        echo "Critical vulnerabilities found!"
+        exit 1
+    fi
+```
+
+## 🎯 Quick Reference
+
+### 🛠️ Essential Commands
+
+```bash
+# Service Management
+gcloud run services list --region=us-central1
+gcloud run services describe SERVICE --region=us-central1
+gcloud run services update SERVICE --tag=staging --no-traffic
+
+# Monitoring
+gcloud logging read "severity>=ERROR" --limit=50 --format=json
+gcloud monitoring dashboards list
+gcloud alpha monitoring policies list
+
+# Secrets
 gcloud secrets list
+gcloud secrets versions list SECRET_NAME
+gcloud secrets versions access latest --secret=SECRET_NAME
 
-# Add a new secret version
-gcloud secrets versions add my-secret --data-file=./my-secret.txt
+# Pub/Sub
+gcloud pubsub topics list
+gcloud pubsub subscriptions list
+gcloud pubsub topics publish TOPIC --message='{"test": true}'
 
-# Access a secret
-gcloud secrets versions access latest --secret=my-secret
+# Quick Diagnostics
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" https://SERVICE_URL/health
+gcloud logging tail "resource.labels.service_name=SERVICE" --format=json
 ```
 
-### Reference Architecture
+### 📊 Service Matrix
 
-![SpreadPilot Reference Architecture](./images/reference-architecture.png)
+| Service | Port | Health | Metrics | Dependencies |
+|---------|------|--------|---------|--------------|
+| trading-bot | 8081 | `/health` | `/metrics` | IB Gateway, MongoDB, Sheets |
+| admin-api | 8082 | `/health` | `/metrics` | MongoDB, trading-bot |
+| watchdog | 8083 | `/health` | `/metrics` | All services |
+| report-worker | 8084 | `/health` | `/metrics` | MongoDB, SendGrid |
+| alert-router | 8085 | `/health` | `/metrics` | Telegram, SendGrid |
 
-### Service Dependencies
+### 🚨 Emergency Contacts
 
-| Service | Dependencies |
-|---------|---------------|
-| trading-bot | IB Gateway, MongoDB, Google Sheets |
-| watchdog | trading-bot, IB Gateway, MongoDB |
-| admin-api | trading-bot, MongoDB |
-| report-worker | MongoDB, SendGrid |
-| alert-router | MongoDB, SendGrid, Telegram |
-| frontend | admin-api |
+| Role | Contact | Escalation |
+|------|---------|------------|
+| Primary On-Call | oncall@spreadpilot.com | PagerDuty |
+| Infrastructure Lead | infra@spreadpilot.com | Slack: #infra-urgent |
+| Security Team | security@spreadpilot.com | 24/7 Hotline |
+| Database Admin | dba@spreadpilot.com | PagerDuty |
 
-### Environment Variables
+### 📈 KPI Targets
 
-| Service | Environment Variable | Description |
-|---------|----------------------|-------------|
-| trading-bot | IB_GATEWAY_HOST | Hostname of the IB Gateway service |
-| trading-bot | IB_GATEWAY_PORT | Port of the IB Gateway service |
-| trading-bot | GOOGLE_SHEET_URL | URL of the Google Sheet with trading signals |
-| watchdog | TRADING_BOT_HOST | Hostname of the trading bot service |
-| watchdog | TRADING_BOT_PORT | Port of the trading bot service |
-| watchdog | IB_GATEWAY_HOST | Hostname of the IB Gateway service |
-| watchdog | IB_GATEWAY_PORT | Port of the IB Gateway service |
-| admin-api | TRADING_BOT_HOST | Hostname of the trading bot service |
-| admin-api | TRADING_BOT_PORT | Port of the trading bot service |
-| admin-api | JWT_SECRET | Secret for JWT authentication |
-| report-worker | ADMIN_EMAIL | Email address for admin notifications |
-| alert-router | DASHBOARD_URL | URL of the admin dashboard |
-| alert-router | ADMIN_EMAIL | Email address for admin notifications |
+| Metric | Target | Alert Threshold |
+|--------|--------|-----------------|
+| Uptime | 99.9% | <99.5% |
+| API Latency (p95) | <500ms | >1000ms |
+| Error Rate | <0.1% | >1% |
+| Order Success Rate | >99% | <95% |
+| Report Delivery | 100% | Any failure |
 
-### Monitoring Metrics
+## 📚 Additional Resources
 
-| Metric | Description | Service |
-|--------|-------------|--------|
-| request_count | Number of requests | All services |
-| request_latency | Request processing time | All services |
-| error_count | Number of errors | All services |
-| cpu_utilization | CPU usage percentage | All services |
-| memory_usage | Memory consumption | All services |
-| active_connections | Number of active connections | trading-bot |
-| order_count | Number of orders executed | trading-bot |
-| position_count | Number of open positions | trading-bot |
-| follower_count | Number of active followers | trading-bot |
-| health_check_status | Health check status | watchdog |
-| report_generation_time | Time taken to generate reports | report-worker |
-| alert_count | Number of alerts processed | alert-router |
+- [System Architecture](./01-system-architecture.md)
+- [Development Guide](./03-development-guide.md)
+- [API Documentation](./api/)
+- [Runbook Repository](./runbooks/)
+- [Incident Response Plan](./incident-response.md)

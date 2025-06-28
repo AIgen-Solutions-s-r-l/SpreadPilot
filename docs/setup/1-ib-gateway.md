@@ -1,27 +1,54 @@
-# Interactive Brokers Gateway Setup Guide for SpreadPilot
+# 💹 Interactive Brokers Gateway Setup Guide for SpreadPilot
 
-This document provides detailed instructions for setting up the Interactive Brokers (IB) Gateway for the SpreadPilot trading system. It covers the configuration, startup, verification, and troubleshooting steps.
+This comprehensive guide covers the setup and configuration of the Interactive Brokers (IB) Gateway for the SpreadPilot trading system, including troubleshooting and best practices.
 
-## Prerequisites
+## 📋 Table of Contents
 
-- Docker and Docker Compose installed on your system
-- MongoDB service set up and running (see [MongoDB Setup Guide](./0-mongodb.md))
-- Interactive Brokers account (paper trading account is sufficient for development)
-- Basic understanding of Interactive Brokers concepts
+- [Prerequisites](#-prerequisites)
+- [Understanding IB Gateway](#-understanding-ib-gateway)
+- [Docker Configuration](#-docker-configuration)
+- [Environment Setup](#-environment-setup)
+- [Starting IB Gateway](#-starting-ib-gateway)
+- [Verification](#-verification)
+- [Testing Connection](#-testing-connection)
+- [Troubleshooting](#-troubleshooting)
+- [Security & Best Practices](#-security--best-practices)
+- [Monitoring](#-monitoring)
 
-## 1. Understanding the IB Gateway
+## 🔧 Prerequisites
 
-The Interactive Brokers Gateway is a standalone application that provides a programmatic interface to the Interactive Brokers trading platform. In the SpreadPilot system, it serves as the bridge between our trading bot and the actual trading platform.
+- ✅ Docker and Docker Compose installed
+- ✅ MongoDB service running ([see MongoDB Setup](./0-mongodb.md))
+- ✅ Interactive Brokers account (paper or live)
+- ✅ Two-factor authentication app (if enabled on account)
+- ✅ Basic understanding of trading concepts
 
-Key points:
-- The IB Gateway handles authentication with Interactive Brokers
-- It provides API access for placing orders, retrieving account information, and market data
-- It maintains the connection to Interactive Brokers servers
-- It can operate in paper trading mode for testing without real money
+## 🎯 Understanding IB Gateway
 
-## 2. IB Gateway Configuration in docker-compose.yml
+The Interactive Brokers Gateway is a lightweight application that provides programmatic access to IB's trading platform.
 
-The SpreadPilot system uses a containerized version of the IB Gateway, configured in the `docker-compose.yml` file. Here's the relevant section:
+### Key Features
+
+| Feature | Description | Purpose |
+|---------|-------------|---------|
+| **API Access** | RESTful/Socket interface | Programmatic trading |
+| **Authentication** | Secure login handling | Account protection |
+| **Order Management** | Order placement/modification | Trade execution |
+| **Market Data** | Real-time/historical data | Strategy decisions |
+| **Account Info** | Positions, balances, P&L | Portfolio management |
+
+### Paper vs Live Trading
+
+| Mode | Use Case | Credentials | Risk |
+|------|----------|-------------|------|
+| **Paper** | Development/Testing | Separate paper account | No real money |
+| **Live** | Production trading | Live account credentials | Real money at risk |
+
+## 🐳 Docker Configuration
+
+### Container Setup
+
+The IB Gateway runs in a Docker container defined in `docker-compose.yml`:
 
 ```yaml
 ib-gateway:
@@ -30,178 +57,479 @@ ib-gateway:
   environment:
     - TWS_USERID=${IB_USERNAME}
     - TWS_PASSWORD=${IB_PASSWORD}
-    - TRADING_MODE=paper
+    - TRADING_MODE=paper  # Change to 'live' for production
+    - TWS_ACCEPT_INCOMING=accept
+    - TWS_LOGOFF_TIME=22:00
+    - TWS_RESTART_TIME=06:00
+    - TWS_TIMEZONE=America/New_York
   ports:
-    - "4002:4002"
+    - "4002:4002"  # API port
+    - "5900:5900"  # VNC port (optional, for debugging)
+  volumes:
+    - ib_gateway_settings:/root/Jts
   restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "nc", "-z", "localhost", "4002"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 60s
 ```
 
-This configuration:
-- Uses the `ghcr.io/gnzsnz/ib-gateway` image, which is a containerized version of the IB Gateway
-- Names the container `spreadpilot-ib-gateway`
-- Sets environment variables for IB credentials (loaded from `.env` file)
-- Configures paper trading mode (for testing without real money)
-- Exposes port 4002 for the IB Gateway API
-- Configures automatic restart unless explicitly stopped
+### Configuration Parameters
 
-## 3. Environment Variables Setup
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `TWS_USERID` | IB account username | Required |
+| `TWS_PASSWORD` | IB account password | Required |
+| `TRADING_MODE` | `paper` or `live` | `paper` |
+| `TWS_ACCEPT_INCOMING` | Auto-accept connections | `accept` |
+| `TWS_LOGOFF_TIME` | Daily logout time | `22:00` |
+| `TWS_RESTART_TIME` | Daily restart time | `06:00` |
+| `TWS_TIMEZONE` | Gateway timezone | `America/New_York` |
 
-IB Gateway credentials are stored in the `.env` file at the project root. You need to add:
+## 🔐 Environment Setup
 
-```
-# Interactive Brokers Gateway
-IB_USERNAME=your_ib_username
-IB_PASSWORD=your_ib_password
-```
+### 1️⃣ Create Environment Variables
 
-Replace `your_ib_username` and `your_ib_password` with your actual Interactive Brokers credentials.
-
-### Paper Trading vs. Live Trading
-
-The `TRADING_MODE=paper` environment variable in the docker-compose.yml file configures the IB Gateway to connect to Interactive Brokers' paper trading environment instead of the live trading environment. This is crucial for development and testing.
-
-**Important Paper Trading Notes:**
-- You must use credentials for a paper trading account, not your live trading account
-- Paper trading accounts have different credentials than live accounts
-- You can create a paper trading account at the [Interactive Brokers website](https://www.interactivebrokers.com/en/trading/paper-trading.php)
-- Paper trading accounts typically have usernames that start with "paper" or "demo" followed by your account number
-- If you're getting authentication errors, verify that:
-  - You're using paper trading credentials (not live trading credentials)
-  - The account is properly set up and activated
-  - You've accepted any required agreements for the paper trading account
-  - The account hasn't been locked due to too many failed login attempts
-
-**Other Important Notes:**
-- For development and testing, always use a paper trading account
-- For production, use a dedicated trading account with appropriate risk controls
-- Never commit real credentials to version control
-- Consider using a secrets management solution for production environments
-
-## 4. Starting the IB Gateway
-
-To start the IB Gateway container:
+Add to your `.env` file:
 
 ```bash
+# Paper Trading Account
+IB_USERNAME=paperXXXXXX
+IB_PASSWORD=your_paper_password
+
+# Optional: Two-Factor Authentication
+IB_2FA_SECRET=your_2fa_secret_key  # If using TOTP
+
+# Trading Configuration
+IB_CLIENT_ID=1
+IB_GATEWAY_PORT=4002
+IB_TRADING_MODE=paper  # or 'live' for production
+```
+
+### 2️⃣ Paper Trading Account Setup
+
+1. **Create Paper Account:**
+   - Login to [IB Account Management](https://www.interactivebrokers.com/)
+   - Navigate to Settings → Paper Trading
+   - Create new paper trading account
+   - Note the paper username (usually `paperXXXXXX`)
+
+2. **Configure Paper Account:**
+   ```bash
+   # Paper account credentials format
+   IB_USERNAME=paper123456  # Note the 'paper' prefix
+   IB_PASSWORD=your_paper_password
+   ```
+
+### 3️⃣ Live Trading Account Setup
+
+⚠️ **WARNING: Use with extreme caution!**
+
+```bash
+# Live account credentials
+IB_USERNAME=U1234567
+IB_PASSWORD=your_live_password
+IB_TRADING_MODE=live
+
+# Additional security settings
+IB_READ_ONLY_API=false  # Set to true for monitoring only
+IB_MASTER_CLIENT_ID=100  # Reserve client IDs 1-99 for manual trading
+```
+
+## 🚀 Starting IB Gateway
+
+### 1️⃣ Start the Container
+
+```bash
+# Start IB Gateway
 docker-compose up -d ib-gateway
+
+# Follow logs
+docker-compose logs -f ib-gateway
 ```
 
-This command:
-- Starts the IB Gateway in detached mode (`-d`)
-- Uses the configuration from `docker-compose.yml`
-- Creates and initializes the IB Gateway container with the credentials from `.env`
+### 2️⃣ Monitor Startup
 
-## 5. Verifying the IB Gateway is Running
-
-Check if the IB Gateway container is running with:
+Watch for successful startup indicators:
 
 ```bash
-docker ps | grep ib-gateway
+# Good signs in logs:
+# ✅ "Gateway initialization completed"
+# ✅ "API socket listening on port 4002"
+# ✅ "Successfully logged in"
+
+# Warning signs:
+# ⚠️ "Login failed"
+# ⚠️ "Too many failed attempts"
+# ⚠️ "Account locked"
 ```
 
-You should see output similar to:
-
-```
-CONTAINER ID   IMAGE                          COMMAND                  CREATED          STATUS          PORTS                    NAMES
-abcdef123456   ghcr.io/gnzsnz/ib-gateway:latest   "/init"                 5 minutes ago    Up 5 minutes    0.0.0.0:4002->4002/tcp   spreadpilot-ib-gateway
-```
-
-## 6. Checking IB Gateway Logs
-
-To verify that the IB Gateway is properly connecting to Interactive Brokers:
+### 3️⃣ Wait for Readiness
 
 ```bash
-docker logs spreadpilot-ib-gateway
+# Wait for health check
+while ! docker-compose ps ib-gateway | grep -q "(healthy)"; do
+    echo "Waiting for IB Gateway to be healthy..."
+    sleep 10
+done
+echo "IB Gateway is ready!"
 ```
 
-Look for messages indicating successful connection to Interactive Brokers servers. The exact messages will depend on the specific version of the IB Gateway image, but you should see indications of:
-- Successful startup of the IB Gateway
-- Connection attempts to Interactive Brokers servers
-- Successful login (if credentials are correct)
-- No critical errors
+## ✅ Verification
 
-## 7. Testing the IB Gateway Connection
-
-The IB Gateway exposes an API on port 4002. You can test this connection using a simple telnet command:
+### 🔍 Check Container Status
 
 ```bash
+# View container status
+docker ps --filter name=ib-gateway
+
+# Expected output:
+# STATUS          PORTS                                        NAMES
+# Up 5 min (healthy)  0.0.0.0:4002->4002/tcp, 5900/tcp   spreadpilot-ib-gateway
+```
+
+### 📊 Check Logs
+
+```bash
+# View recent logs
+docker logs --tail 50 spreadpilot-ib-gateway
+
+# Check for errors
+docker logs spreadpilot-ib-gateway 2>&1 | grep -i error
+```
+
+### 🔌 Test Network Connectivity
+
+```bash
+# Test API port
+nc -zv localhost 4002
+
+# Test with telnet
 telnet localhost 4002
+
+# Test with curl (should fail but confirm port is open)
+curl -v telnet://localhost:4002
 ```
 
-If the connection is successful, you'll see a blank screen with a cursor. Press Ctrl+C to exit.
+## 🧪 Testing Connection
 
-For a more comprehensive test, you can use the trading bot's health check endpoint (if implemented) or a simple Python script using the `ib_insync` library:
+### 1️⃣ Basic Connection Test
+
+Create `test_ib_connection.py`:
 
 ```python
-from ib_insync import IB
+#!/usr/bin/env python3
+import asyncio
+from ib_insync import IB, util
 
-ib = IB()
-try:
-    ib.connect('localhost', 4002, clientId=1)
-    print("Successfully connected to IB Gateway")
-    print(f"Server Version: {ib.client.serverVersion()}")
-    print(f"Connected to TWS: {ib.isConnected()}")
-    ib.disconnect()
-except Exception as e:
-    print(f"Failed to connect: {e}")
+async def test_connection():
+    """Test IB Gateway connection"""
+    ib = IB()
+    
+    try:
+        # Connect to IB Gateway
+        await ib.connectAsync('localhost', 4002, clientId=999)
+        print("✅ Successfully connected to IB Gateway")
+        
+        # Get server info
+        print(f"Server Version: {ib.client.serverVersion()}")
+        print(f"Connection Time: {ib.client.connectionTime()}")
+        
+        # Get account info
+        account_values = await ib.accountValuesAsync()
+        if account_values:
+            print(f"✅ Account connected: {account_values[0].account}")
+            
+        # Test market data
+        contract = Stock('AAPL', 'SMART', 'USD')
+        ticker = await ib.reqTickersAsync(contract)
+        if ticker:
+            print(f"✅ Market data working: AAPL = ${ticker[0].marketPrice()}")
+        
+    except Exception as e:
+        print(f"❌ Connection failed: {e}")
+    finally:
+        if ib.isConnected():
+            ib.disconnect()
+
+if __name__ == "__main__":
+    util.startLoop()
+    asyncio.run(test_connection())
 ```
 
-Save this as `test_ib_connection.py` and run it with Python to verify the connection.
+Run the test:
 
-## 8. Troubleshooting
+```bash
+python test_ib_connection.py
+```
 
-### Authentication Issues
+### 2️⃣ Advanced Health Check
 
-If the IB Gateway fails to authenticate with Interactive Brokers:
+Create `ib_health_check.py`:
 
-1. Verify your credentials in the `.env` file
-2. Check if your account has any restrictions or requires additional verification
-3. For paper trading accounts, ensure you're using the paper trading credentials (not live trading credentials)
-4. Check if your account requires two-factor authentication, which may need special handling
-5. If you see "Too many failed login attempts" error:
-   - Wait for the specified time period (usually 59 seconds) before trying again
-   - Restart the IB Gateway container after waiting: `docker-compose restart ib-gateway`
-   - Verify that your paper trading account is active and not locked
-6. Paper trading accounts may have different login requirements:
-   - Ensure you've completed all registration steps for the paper trading account
-   - Check if you need to log in to the Interactive Brokers website first to accept any agreements
-   - Some paper trading accounts require a specific format for the username (e.g., "paper123" instead of just "123")
+```python
+#!/usr/bin/env python3
+import sys
+from ib_insync import IB
 
-### Connection Issues
+def check_ib_health():
+    """Comprehensive IB Gateway health check"""
+    ib = IB()
+    health_status = {
+        "connected": False,
+        "authenticated": False,
+        "market_data": False,
+        "account_access": False,
+        "order_capability": False
+    }
+    
+    try:
+        # Test connection
+        ib.connect('localhost', 4002, clientId=998)
+        health_status["connected"] = True
+        
+        # Check authentication
+        if ib.client.serverVersion() > 0:
+            health_status["authenticated"] = True
+        
+        # Test account access
+        accounts = ib.managedAccounts()
+        if accounts:
+            health_status["account_access"] = True
+            
+        # Test market data
+        contract = Stock('SPY', 'SMART', 'USD')
+        ticker = ib.reqTickers(contract)
+        if ticker:
+            health_status["market_data"] = True
+            
+        # Test order capability (paper only)
+        if "paper" in str(accounts[0]).lower():
+            health_status["order_capability"] = True
+            
+    except Exception as e:
+        print(f"Health check error: {e}")
+    finally:
+        if ib.isConnected():
+            ib.disconnect()
+    
+    # Report results
+    print("IB Gateway Health Check:")
+    for check, status in health_status.items():
+        icon = "✅" if status else "❌"
+        print(f"{icon} {check}: {status}")
+    
+    # Exit with appropriate code
+    if all(health_status.values()):
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
-If the IB Gateway container starts but doesn't connect to Interactive Brokers:
+if __name__ == "__main__":
+    check_ib_health()
+```
 
-1. Check the container logs: `docker logs spreadpilot-ib-gateway`
-2. Verify your internet connection
-3. Check if Interactive Brokers services are experiencing downtime
-4. Ensure port 4002 is not blocked by a firewall
+## 🔧 Troubleshooting
 
-### Container Issues
+### 🚫 Common Issues
 
-If the IB Gateway container fails to start:
+#### Authentication Failures
 
-1. Check Docker logs: `docker logs spreadpilot-ib-gateway`
-2. Verify the image exists: `docker images | grep ib-gateway`
-3. Try pulling the image explicitly: `docker pull ghcr.io/gnzsnz/ib-gateway:latest`
-4. Check system resources (CPU, memory, disk space)
+**Problem:** Login failed with paper trading credentials
 
-## 9. Security Considerations
+**Solutions:**
+```bash
+# 1. Verify paper account format
+echo $IB_USERNAME  # Should show 'paperXXXXXX'
 
-For production environments:
+# 2. Reset login attempts
+docker-compose stop ib-gateway
+sleep 60  # Wait for lockout to expire
+docker-compose up -d ib-gateway
 
-1. Use a dedicated Interactive Brokers account with appropriate risk controls
-2. Implement proper secrets management for IB credentials
-3. Consider network isolation for the IB Gateway container
-4. Implement monitoring and alerting for the IB Gateway status
-5. Regularly audit trading activities and permissions
-6. Consider using read-only API access when possible
+# 3. Check account status
+# Login to IB website and verify:
+# - Paper account is active
+# - No pending agreements
+# - Account not locked
+```
 
-## 10. Next Steps
+#### Connection Timeouts
 
-After setting up the IB Gateway, you can proceed to configure the Trading Bot, which will interact with the IB Gateway to execute trades.
+**Problem:** Can't connect to API port 4002
 
-The Trading Bot will need to be configured with:
-- The hostname of the IB Gateway container (`ib-gateway` within the Docker network)
-- The port number (4002)
-- Client ID for the connection
+**Solutions:**
+```bash
+# 1. Check port availability
+sudo lsof -i :4002
 
-These settings are typically configured in the Trading Bot's environment variables or configuration files.
+# 2. Restart with fresh state
+docker-compose down ib-gateway
+docker volume rm spreadpilot_ib_gateway_settings
+docker-compose up -d ib-gateway
+
+# 3. Check firewall
+sudo iptables -L -n | grep 4002
+```
+
+#### Two-Factor Authentication
+
+**Problem:** 2FA preventing automated login
+
+**Solutions:**
+```bash
+# Option 1: Use TOTP secret
+# Add to .env:
+IB_2FA_METHOD=TOTP
+IB_2FA_SECRET=your_totp_secret
+
+# Option 2: Use IB Key (requires mobile app)
+# Configure in IB account settings for automated systems
+
+# Option 3: Disable 2FA for paper account
+# (Only recommended for isolated development environments)
+```
+
+### 📊 Debug Mode
+
+Enable detailed logging:
+
+```yaml
+# Add to docker-compose.yml
+ib-gateway:
+  environment:
+    - LOG_LEVEL=DEBUG
+    - TWS_DEBUG=true
+  volumes:
+    - ./logs/ib-gateway:/root/Jts/logs
+```
+
+View debug logs:
+```bash
+tail -f logs/ib-gateway/*.log
+```
+
+## 🔒 Security & Best Practices
+
+### 🛡️ Production Security
+
+1. **Credential Management**
+   ```bash
+   # Use secrets manager
+   export IB_USERNAME=$(aws secretsmanager get-secret-value --secret-id ib-username --query SecretString --output text)
+   export IB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ib-password --query SecretString --output text)
+   ```
+
+2. **Network Isolation**
+   ```yaml
+   # Production docker-compose.yml
+   ib-gateway:
+     networks:
+       - internal
+     ports: []  # No external exposure
+   ```
+
+3. **API Restrictions**
+   ```python
+   # Configure read-only access
+   ib.setConnectOptions(readonly=True)
+   ```
+
+4. **Client ID Management**
+   ```python
+   # Reserve client IDs
+   # 1-99: Manual TWS
+   # 100-199: Production bots
+   # 200-299: Development
+   # 900-999: Testing
+   ```
+
+### 📈 Performance Optimization
+
+1. **Connection Pooling**
+   ```python
+   # Reuse connections
+   class IBConnectionPool:
+       def __init__(self, size=5):
+           self.connections = []
+           for i in range(size):
+               ib = IB()
+               ib.connect('ib-gateway', 4002, clientId=100+i)
+               self.connections.append(ib)
+   ```
+
+2. **Rate Limiting**
+   ```python
+   # Respect IB rate limits
+   # Max 50 requests per second
+   from ratelimit import limits, sleep_and_retry
+   
+   @sleep_and_retry
+   @limits(calls=50, period=1)
+   def make_ib_request():
+       pass
+   ```
+
+## 📊 Monitoring
+
+### 📈 Metrics Collection
+
+Create `monitor_ib_gateway.sh`:
+
+```bash
+#!/bin/bash
+
+# Collect IB Gateway metrics
+while true; do
+    # Check connection
+    if nc -z localhost 4002; then
+        echo "ib_gateway_up 1" | curl -X POST http://prometheus-pushgateway:9091/metrics/job/ib_gateway
+    else
+        echo "ib_gateway_up 0" | curl -X POST http://prometheus-pushgateway:9091/metrics/job/ib_gateway
+    fi
+    
+    # Check memory usage
+    MEMORY=$(docker stats --no-stream --format "{{.MemUsage}}" spreadpilot-ib-gateway | cut -d'/' -f1)
+    echo "ib_gateway_memory_mb $MEMORY" | curl -X POST http://prometheus-pushgateway:9091/metrics/job/ib_gateway
+    
+    sleep 30
+done
+```
+
+### 🚨 Alerting Rules
+
+```yaml
+# prometheus/alerts.yml
+groups:
+  - name: ib_gateway
+    rules:
+      - alert: IBGatewayDown
+        expr: ib_gateway_up == 0
+        for: 2m
+        annotations:
+          summary: "IB Gateway is down"
+          
+      - alert: IBGatewayHighMemory
+        expr: ib_gateway_memory_mb > 2048
+        for: 5m
+        annotations:
+          summary: "IB Gateway memory usage is high"
+```
+
+## 🎯 Next Steps
+
+After successfully setting up IB Gateway:
+
+1. ✅ Configure the [Trading Bot Service](./2-trading-bot.md)
+2. ✅ Set up the [Admin API](./3-admin-api.md)
+3. ✅ Configure monitoring with [Watchdog](./4-watchdog.md)
+4. ✅ Test order execution in paper trading
+
+## 📚 Additional Resources
+
+- [IB API Documentation](https://interactivebrokers.github.io/tws-api/)
+- [ib-insync Documentation](https://ib-insync.readthedocs.io/)
+- [IB Gateway Docker Image](https://github.com/gnzsnz/ib-gateway)
+- [Interactive Brokers Support](https://www.interactivebrokers.com/en/support/)

@@ -1,32 +1,65 @@
-# Trading Bot Setup Guide for SpreadPilot
+# 🤖 Trading Bot Setup Guide for SpreadPilot
 
-This document provides detailed instructions for setting up the Trading Bot for the SpreadPilot system. It covers the configuration, startup, verification, and troubleshooting steps.
+This comprehensive guide provides detailed instructions for setting up the Trading Bot, the core service of the SpreadPilot system that executes automated trading strategies.
 
-## Prerequisites
+## 📋 Table of Contents
 
-- Docker and Docker Compose installed on your system
-- MongoDB service set up and running (see [MongoDB Setup Guide](./0-mongodb.md))
-- IB Gateway service set up and running (see [IB Gateway Setup Guide](./1-ib-gateway.md))
-- Google Sheets API key (for accessing trading signals)
-- Google Sheet URL containing trading signals
-- Basic understanding of trading concepts and Interactive Brokers
+- [Prerequisites](#-prerequisites)
+- [Understanding the Trading Bot](#-understanding-the-trading-bot)
+- [Docker Configuration](#-docker-configuration)
+- [Environment Setup](#-environment-setup)
+- [Google Sheets Setup](#-google-sheets-setup)
+- [Starting the Trading Bot](#-starting-the-trading-bot)
+- [Verification](#-verification)
+- [API Testing](#-api-testing)
+- [Troubleshooting](#-troubleshooting)
+- [Performance Optimization](#-performance-optimization)
+- [Security Considerations](#-security-considerations)
 
-## 1. Understanding the Trading Bot
+## 🔧 Prerequisites
 
-The Trading Bot is the core service of the SpreadPilot system. It is responsible for:
+- ✅ Docker and Docker Compose installed
+- ✅ MongoDB service running ([see MongoDB Setup](./0-mongodb.md))
+- ✅ IB Gateway service running ([see IB Gateway Setup](./1-ib-gateway.md))
+- ✅ Google Cloud service account with Sheets API access
+- ✅ Google Sheet with trading signals
+- ✅ SendGrid account for email alerts (optional)
+- ✅ Telegram bot for instant notifications (optional)
 
-1. Connecting to Interactive Brokers via the IB Gateway
-2. Polling Google Sheets for trading signals
-3. Executing orders based on those signals
-4. Monitoring positions for assignments
-5. Calculating profit and loss (P&L)
-6. Generating alerts for important events
+## 🎯 Understanding the Trading Bot
 
-The Trading Bot is implemented as a FastAPI application that runs in a Docker container. It uses the `spreadpilot-core` library for common functionality such as database access, logging, and utilities.
+The Trading Bot is the heart of SpreadPilot, responsible for automated trading operations.
 
-## 2. Trading Bot Configuration in docker-compose.yml
+### Core Responsibilities
 
-The SpreadPilot system uses a containerized version of the Trading Bot, configured in the `docker-compose.yml` file. Here's the relevant section:
+| Function | Description | Frequency |
+|----------|-------------|-----------|
+| **Signal Processing** | Polls Google Sheets for trading signals | Every 1 second |
+| **Order Execution** | Places orders via IB Gateway | On signal detection |
+| **Position Monitoring** | Tracks open positions and P&L | Every 60 seconds |
+| **Assignment Detection** | Monitors for option assignments | Every 60 seconds |
+| **Alert Generation** | Creates alerts for important events | As needed |
+| **Follower Management** | Manages copy-trading accounts | Real-time |
+
+### Architecture Overview
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
+│  Google Sheets  │────▶│ Trading Bot  │────▶│ IB Gateway  │
+└─────────────────┘     └──────────────┘     └─────────────┘
+                               │
+                        ┌──────┴──────┐
+                        ▼             ▼
+                   ┌─────────┐  ┌──────────┐
+                   │ MongoDB │  │  Alerts  │
+                   └─────────┘  └──────────┘
+```
+
+## 🐳 Docker Configuration
+
+### Container Setup
+
+The Trading Bot configuration in `docker-compose.yml`:
 
 ```yaml
 trading-bot:
@@ -35,226 +68,476 @@ trading-bot:
     dockerfile: trading-bot/Dockerfile
   container_name: spreadpilot-trading-bot
   environment:
-    - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-    - FIRESTORE_EMULATOR_HOST=firestore:8080
+    # MongoDB Configuration
+    - MONGODB_URI=mongodb://spreadpilot_user:${MONGODB_PASSWORD}@mongodb:27017/spreadpilot
+    
+    # IB Gateway Configuration
     - IB_GATEWAY_HOST=ib-gateway
     - IB_GATEWAY_PORT=4002
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    - IB_CLIENT_ID=1
+    
+    # Google Sheets Configuration
+    - GOOGLE_SHEET_URL=${GOOGLE_SHEET_URL}
+    - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    
+    # Alert Configuration
     - SENDGRID_API_KEY=${SENDGRID_API_KEY}
     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-    - GOOGLE_SHEET_URL=${GOOGLE_SHEET_URL}
-    - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+    - ADMIN_EMAIL=${ADMIN_EMAIL}
+    
+    # Trading Parameters
+    - MIN_PRICE=${MIN_PRICE:-0.70}
+    - PRICE_INCREMENT=${PRICE_INCREMENT:-0.01}
+    - MAX_ATTEMPTS=${MAX_ATTEMPTS:-10}
+    - TIMEOUT_SECONDS=${TIMEOUT_SECONDS:-5}
+    - POLLING_INTERVAL_SECONDS=${POLLING_INTERVAL_SECONDS:-1.0}
+    - POSITION_CHECK_INTERVAL_SECONDS=${POSITION_CHECK_INTERVAL_SECONDS:-60.0}
+    
+    # Observability
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    - LOG_LEVEL=${LOG_LEVEL:-INFO}
   volumes:
-    - ./credentials:/app/credentials
+    - ./credentials:/app/credentials:ro
+    - ./logs/trading-bot:/app/logs
   depends_on:
-    - mongodb
-    - ib-gateway
+    mongodb:
+      condition: service_healthy
+    ib-gateway:
+      condition: service_healthy
   ports:
     - "8081:8080"
   restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 60s
 ```
 
-This configuration:
-- Builds the Trading Bot from the Dockerfile in the `trading-bot` directory
-- Names the container `spreadpilot-trading-bot`
-- Sets environment variables for various services and APIs
-- Mounts the `credentials` directory for Google API authentication
-- Specifies dependencies on MongoDB and IB Gateway
-- Exposes port 8081 on the host, mapping to port 8080 in the container
-- Configures automatic restart unless explicitly stopped
+## 🔐 Environment Setup
 
-## 3. Environment Variables Setup
+### 1️⃣ Core Configuration
 
-The Trading Bot requires several environment variables to be set in the `.env` file at the project root. Here are the key variables:
-
-```
-# Google Sheets (Required for trading signals)
-GOOGLE_SHEET_URL=your_google_sheet_url
-GOOGLE_SHEETS_API_KEY=your_google_sheets_api_key
-
-# Interactive Brokers (Already set up for IB Gateway)
-IB_USERNAME=your_ib_username
-IB_PASSWORD=your_ib_password
-
-# Notifications (Optional but recommended)
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-TELEGRAM_CHAT_ID=your_telegram_chat_id
-SENDGRID_API_KEY=your_sendgrid_api_key
-ADMIN_EMAIL=your_admin_email
-
-# Trading Parameters (Optional - defaults shown)
-MIN_PRICE=0.70
-PRICE_INCREMENT=0.01
-MAX_ATTEMPTS=10
-TIMEOUT_SECONDS=5
-POLLING_INTERVAL_SECONDS=1.0
-POSITION_CHECK_INTERVAL_SECONDS=60.0
-```
-
-Replace the placeholder values with your actual credentials and settings.
-
-**Important Notes:**
-- The `GOOGLE_SHEET_URL` is required and should point to a Google Sheet containing trading signals
-- The `GOOGLE_SHEETS_API_KEY` is required for accessing the Google Sheets API
-- The IB Gateway credentials (`IB_USERNAME` and `IB_PASSWORD`) should already be set up from the IB Gateway setup
-- Notification settings are optional but highly recommended for monitoring trading activity
-- Trading parameters can be adjusted based on your specific trading strategy and risk tolerance
-
-## 4. Google Sheets Setup
-
-The Trading Bot polls a Google Sheet for trading signals. The sheet should be structured with the following columns:
-
-1. Strategy name
-2. Quantity per leg
-3. Strike price for long option
-4. Strike price for short option
-
-You'll need to:
-1. Create a Google Sheet with the appropriate structure
-2. Make the sheet publicly accessible or share it with the service account
-3. Get the sheet URL and add it to the `.env` file as `GOOGLE_SHEET_URL`
-4. Create a Google Sheets API key and add it to the `.env` file as `GOOGLE_SHEETS_API_KEY`
-
-## 5. Starting the Trading Bot
-
-To start the Trading Bot container:
+Add to your `.env` file:
 
 ```bash
+# Google Sheets Configuration
+GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+GOOGLE_SHEET_NAME="Trading Signals"  # Optional, defaults to first sheet
+
+# MongoDB (from previous setup)
+MONGODB_PASSWORD=your_mongodb_password
+
+# Alert Configuration
+SENDGRID_API_KEY=SG.your_sendgrid_api_key
+ADMIN_EMAIL=alerts@yourdomain.com
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=-1001234567890
+```
+
+### 2️⃣ Trading Parameters
+
+Configure trading behavior:
+
+```bash
+# Price Limits
+MIN_PRICE=0.70              # Minimum option price
+MAX_PRICE=5.00              # Maximum option price
+PRICE_INCREMENT=0.01        # Price adjustment increment
+
+# Execution Settings
+MAX_ATTEMPTS=10             # Max order attempts
+TIMEOUT_SECONDS=5           # Order timeout
+ORDER_DELAY_MS=100          # Delay between orders
+
+# Monitoring Intervals
+POLLING_INTERVAL_SECONDS=1.0           # Sheet polling frequency
+POSITION_CHECK_INTERVAL_SECONDS=60.0   # Position check frequency
+ASSIGNMENT_CHECK_HOUR=16               # Daily assignment check time (EST)
+```
+
+### 3️⃣ Google Cloud Credentials
+
+1. **Create Service Account:**
+   ```bash
+   # Using Google Cloud Console
+   gcloud iam service-accounts create spreadpilot-trading \
+       --display-name="SpreadPilot Trading Bot"
+   
+   # Grant necessary permissions
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+       --member="serviceAccount:spreadpilot-trading@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+       --role="roles/sheets.viewer"
+   ```
+
+2. **Generate Key File:**
+   ```bash
+   # Create credentials directory
+   mkdir -p credentials
+   
+   # Generate key
+   gcloud iam service-accounts keys create \
+       credentials/service-account.json \
+       --iam-account=spreadpilot-trading@YOUR_PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+3. **Share Google Sheet:**
+   - Open your Google Sheet
+   - Click "Share"
+   - Add the service account email
+   - Grant "Viewer" access
+
+## 📊 Google Sheets Setup
+
+### 1️⃣ Sheet Structure
+
+Create a Google Sheet with the following columns:
+
+| Column | Name | Type | Example | Description |
+|--------|------|------|---------|-------------|
+| A | Strategy | Text | "BearCallSpread" | Strategy identifier |
+| B | Quantity | Number | 2 | Contracts per leg |
+| C | Long Strike | Number | 440 | Long option strike |
+| D | Short Strike | Number | 445 | Short option strike |
+| E | Expiry | Date | "2024-01-19" | Option expiration |
+| F | Status | Text | "PENDING" | Signal status |
+| G | Timestamp | DateTime | Auto | Signal timestamp |
+
+### 2️⃣ Example Sheet Setup
+
+```
+| Strategy | Quantity | Long Strike | Short Strike | Expiry | Status | Timestamp |
+|----------|----------|-------------|--------------|--------|--------|-----------|
+| QQQ_BCS  | 2        | 440         | 445          | 2024-01-19 | PENDING | 2024-01-15 09:30:00 |
+| SPY_BCS  | 1        | 485         | 490          | 2024-01-19 | PENDING | 2024-01-15 09:31:00 |
+```
+
+### 3️⃣ Sheet Permissions
+
+```bash
+# Make sheet accessible to service account
+# In Google Sheets: Share → Add service account email → Viewer access
+```
+
+## 🚀 Starting the Trading Bot
+
+### 1️⃣ Pre-flight Checks
+
+```bash
+# Verify dependencies are running
+docker-compose ps | grep -E "(mongodb|ib-gateway)"
+
+# Check credentials
+ls -la credentials/service-account.json
+
+# Validate environment
+docker-compose config | grep -A20 trading-bot
+```
+
+### 2️⃣ Start the Service
+
+```bash
+# Start Trading Bot
 docker-compose up -d trading-bot
+
+# Monitor startup logs
+docker-compose logs -f trading-bot --tail 100
 ```
 
-This command:
-- Starts the Trading Bot in detached mode (`-d`)
-- Uses the configuration from `docker-compose.yml`
-- Creates and initializes the Trading Bot container with the environment variables from `.env`
-- Automatically starts the required dependencies (MongoDB and IB Gateway) if they're not already running
+### 3️⃣ Verify Startup
 
-## 6. Verifying the Trading Bot is Running
+Look for these success indicators:
 
-Check if the Trading Bot container is running with:
+```
+INFO: Starting Trading Bot v1.0.0
+INFO: Connected to MongoDB at mongodb:27017
+INFO: Connected to IB Gateway at ib-gateway:4002
+INFO: Authenticated with Google Sheets API
+INFO: Loaded 3 active followers
+INFO: Starting signal polling (interval: 1.0s)
+INFO: Trading Bot ready for operations
+```
+
+## ✅ Verification
+
+### 🔍 Container Health
 
 ```bash
-docker ps | grep trading-bot
+# Check container status
+docker ps --filter name=trading-bot --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# Verify health endpoint
+curl -s http://localhost:8081/health | jq
 ```
 
-You should see output similar to:
-
-```
-CONTAINER ID   IMAGE                    COMMAND                  CREATED          STATUS          PORTS                    NAMES
-abcdef123456   spreadpilot-trading-bot  "uvicorn app.main:ap…"   5 minutes ago    Up 5 minutes    0.0.0.0:8081->8080/tcp   spreadpilot-trading-bot
-```
-
-## 7. Checking Trading Bot Logs
-
-To verify that the Trading Bot is properly connecting to Interactive Brokers and Google Sheets:
-
-```bash
-docker logs spreadpilot-trading-bot
-```
-
-Look for messages indicating successful connections:
-- "Trading bot started"
-- "Connected to IB Gateway"
-- "Connected to Google Sheets"
-- "Loaded active followers"
-
-## 8. Testing the Trading Bot API
-
-The Trading Bot exposes several API endpoints that you can use to check its status and trigger actions:
-
-### Health Check
-
-```bash
-curl http://localhost:8081/health
-```
-
-Expected response if healthy:
+Expected response:
 ```json
-{"status": "healthy"}
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "uptime_seconds": 120,
+  "components": {
+    "mongodb": "connected",
+    "ib_gateway": "connected",
+    "google_sheets": "connected"
+  }
+}
 ```
 
-### Status Check
+### 📊 Service Status
 
 ```bash
-curl http://localhost:8081/status
+# Get detailed status
+curl -s http://localhost:8081/status | jq
 ```
 
 Expected response:
 ```json
 {
   "status": "running",
-  "ibkr_connected": true,
-  "sheets_connected": true,
-  "active_followers": 3
+  "timestamp": "2024-01-15T14:30:00Z",
+  "services": {
+    "ibkr_connected": true,
+    "sheets_connected": true,
+    "mongodb_connected": true
+  },
+  "metrics": {
+    "active_followers": 3,
+    "open_positions": 5,
+    "signals_processed_today": 12,
+    "orders_executed_today": 10
+  },
+  "last_signal_check": "2024-01-15T14:29:59Z",
+  "last_position_check": "2024-01-15T14:29:00Z"
 }
 ```
 
-### Manual Signal Processing (for testing)
+## 🧪 API Testing
+
+### 1️⃣ Test Signal Processing
 
 ```bash
-curl -X POST http://localhost:8081/trade/signal \
+# Manually trigger signal processing
+curl -X POST http://localhost:8081/api/v1/signals/process \
   -H "Content-Type: application/json" \
-  -d '{"strategy": "test", "qty_per_leg": 1, "strike_long": 100, "strike_short": 105}'
+  -d '{
+    "strategy": "TEST_STRATEGY",
+    "quantity": 1,
+    "long_strike": 440,
+    "short_strike": 445,
+    "expiry": "2024-01-19"
+  }'
 ```
 
-This will trigger the Trading Bot to process a signal manually, which is useful for testing.
+### 2️⃣ Test Order Execution
 
-## 9. Troubleshooting
+```bash
+# Test order placement (paper trading only)
+curl -X POST http://localhost:8081/api/v1/orders/test \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "QQQ",
+    "quantity": 1,
+    "order_type": "LMT",
+    "limit_price": 1.50,
+    "action": "BUY"
+  }'
+```
 
-### Connection Issues with IB Gateway
+### 3️⃣ Get Active Positions
 
-If the Trading Bot fails to connect to the IB Gateway:
+```bash
+# List all positions
+curl -s http://localhost:8081/api/v1/positions | jq
 
-1. Verify that the IB Gateway container is running: `docker ps | grep ib-gateway`
-2. Check the IB Gateway logs for authentication issues: `docker logs spreadpilot-ib-gateway`
-3. Ensure the `IB_GATEWAY_HOST` and `IB_GATEWAY_PORT` environment variables are set correctly
-4. Verify that the IB Gateway is properly authenticated with Interactive Brokers
+# Get positions for specific follower
+curl -s http://localhost:8081/api/v1/positions?follower_id=FOLLOWER001 | jq
+```
 
-### Google Sheets Connection Issues
+## 🔧 Troubleshooting
 
-If the Trading Bot fails to connect to Google Sheets:
+### 🚫 Common Issues
 
-1. Verify that the `GOOGLE_SHEET_URL` and `GOOGLE_SHEETS_API_KEY` environment variables are set correctly
-2. Check that the Google Sheet is accessible (try opening it in a browser)
-3. Verify that the Google Sheets API key has the necessary permissions
-4. Check the Trading Bot logs for specific error messages related to Google Sheets
+#### Google Sheets Connection Failed
 
-### MongoDB Connection Issues
+**Symptoms:** 
+- Error: "Failed to connect to Google Sheets"
+- No signals being detected
 
-If the Trading Bot fails to connect to MongoDB:
+**Solutions:**
+```bash
+# 1. Verify credentials
+docker exec spreadpilot-trading-bot ls -la /app/credentials/
 
-1. Verify that the MongoDB container is running: `docker ps | grep mongodb`
-2. Check that the MongoDB credentials are correct
-3. Ensure that the MongoDB database and collections are properly set up
-4. Check the Trading Bot logs for specific error messages related to MongoDB
+# 2. Test Google Sheets API
+docker exec spreadpilot-trading-bot python -c "
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import json
 
-### Container Startup Issues
+creds = service_account.Credentials.from_service_account_file(
+    '/app/credentials/service-account.json',
+    scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
+)
+service = build('sheets', 'v4', credentials=creds)
+print('✅ Google Sheets API connected')
+"
 
-If the Trading Bot container fails to start:
+# 3. Check sheet permissions
+# Ensure service account email has access to the sheet
+```
 
-1. Check Docker logs: `docker logs spreadpilot-trading-bot`
-2. Verify that all required environment variables are set in the `.env` file
-3. Ensure that the dependencies (MongoDB and IB Gateway) are running
-4. Check system resources (CPU, memory, disk space)
+#### IB Gateway Connection Lost
 
-## 10. Security Considerations
+**Symptoms:**
+- Error: "Lost connection to IB Gateway"
+- Orders not being executed
 
-For production environments:
+**Solutions:**
+```bash
+# 1. Check IB Gateway health
+curl http://localhost:4002/health
 
-1. Use strong, unique API keys and credentials
-2. Implement proper secrets management for all credentials
-3. Restrict access to the Trading Bot API (e.g., using a reverse proxy with authentication)
-4. Consider network isolation for the Trading Bot container
-5. Implement monitoring and alerting for the Trading Bot status
-6. Regularly audit trading activities and permissions
-7. Use paper trading mode for testing before switching to live trading
+# 2. Restart connection
+curl -X POST http://localhost:8081/api/v1/ibkr/reconnect
 
-## 11. Next Steps
+# 3. Check for account locks
+docker logs spreadpilot-ib-gateway --tail 50 | grep -i "lock\|fail"
+```
 
-After setting up the Trading Bot, you can proceed to configure the Admin API, which provides an administrative interface for managing followers and monitoring the system.
+#### High Memory Usage
 
-The Admin API will interact with the Trading Bot to:
-- Manage followers (users/accounts that replicate trades)
-- Monitor trading activity
-- Trigger manual commands (e.g., closing positions)
+**Symptoms:**
+- Container using >1GB RAM
+- Slow response times
+
+**Solutions:**
+```python
+# Add to trading bot configuration
+MEMORY_LIMIT=1g
+MEMORY_RESERVATION=512m
+
+# Enable garbage collection tuning
+PYTHON_GC_THRESHOLD="700,10,10"
+```
+
+### 📊 Debug Mode
+
+Enable detailed logging:
+
+```bash
+# Set debug environment
+echo "LOG_LEVEL=DEBUG" >> .env
+echo "DEBUG_MODE=true" >> .env
+
+# Restart with debug logging
+docker-compose up -d trading-bot
+docker-compose logs -f trading-bot
+```
+
+## ⚡ Performance Optimization
+
+### 1️⃣ Database Optimization
+
+```python
+# Add connection pooling
+MONGODB_MIN_POOL_SIZE=10
+MONGODB_MAX_POOL_SIZE=50
+MONGODB_MAX_IDLE_TIME_MS=30000
+
+# Enable compression
+MONGODB_COMPRESSORS=snappy,zlib
+```
+
+### 2️⃣ Caching Strategy
+
+```python
+# Cache follower data
+FOLLOWER_CACHE_TTL=300  # 5 minutes
+
+# Cache position data
+POSITION_CACHE_TTL=60   # 1 minute
+
+# Cache market hours
+MARKET_HOURS_CACHE_TTL=3600  # 1 hour
+```
+
+### 3️⃣ Rate Limiting
+
+```python
+# Configure rate limits
+SHEETS_API_RATE_LIMIT=100  # requests per minute
+IB_API_RATE_LIMIT=50       # requests per second
+ORDER_RATE_LIMIT=10        # orders per second
+```
+
+## 🔒 Security Considerations
+
+### 🛡️ Production Hardening
+
+1. **API Security**
+   ```yaml
+   # Add API authentication
+   environment:
+     - API_KEY_REQUIRED=true
+     - API_KEY=${TRADING_BOT_API_KEY}
+   ```
+
+2. **Network Isolation**
+   ```yaml
+   networks:
+     - internal
+   ports: []  # No external exposure in production
+   ```
+
+3. **Secret Management**
+   ```bash
+   # Use Google Secret Manager
+   gcloud secrets create trading-bot-config --data-file=.env.production
+   ```
+
+4. **Audit Logging**
+   ```python
+   # Enable comprehensive audit logs
+   AUDIT_LOG_ENABLED=true
+   AUDIT_LOG_LEVEL=INFO
+   AUDIT_LOG_RETENTION_DAYS=90
+   ```
+
+### 📊 Monitoring Setup
+
+```yaml
+# prometheus/alerts.yml
+groups:
+  - name: trading_bot
+    rules:
+      - alert: TradingBotDown
+        expr: up{job="trading-bot"} == 0
+        for: 2m
+        
+      - alert: NoSignalsProcessed
+        expr: rate(signals_processed_total[5m]) == 0
+        for: 10m
+        
+      - alert: HighErrorRate
+        expr: rate(trading_errors_total[5m]) > 0.1
+        for: 5m
+```
+
+## 🎯 Next Steps
+
+After successfully setting up the Trading Bot:
+
+1. ✅ Configure the [Admin API](./3-admin-api.md) for management interface
+2. ✅ Set up [Watchdog Service](./4-watchdog.md) for monitoring
+3. ✅ Configure [Alert Router](./5-alert-router.md) for notifications
+4. ✅ Set up [Report Worker](./6-report-worker.md) for P&L reports
+
+## 📚 Additional Resources
+
+- [Trading Bot API Documentation](../api/trading-bot.md)
+- [Google Sheets API Guide](https://developers.google.com/sheets/api)
+- [IB API Reference](https://interactivebrokers.github.io/tws-api/)
+- [SpreadPilot Architecture](../01-system-architecture.md)
