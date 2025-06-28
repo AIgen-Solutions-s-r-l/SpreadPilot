@@ -13,7 +13,7 @@ WORKDIR /app
 RUN pip install pip-tools
 
 # Copy the requirements files into the container at /app
-COPY requirements.in /app/
+COPY requirements.in ./
 
 # Compile requirements.in to requirements.txt and install dependencies
 # This step leverages Docker layer caching. If requirements.in hasn't changed,
@@ -22,7 +22,16 @@ RUN pip-compile requirements.in -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code into the container at /app
-COPY . /app/
+COPY . .
+
+# Create a non-root user to run the application
+RUN groupadd -r watchdog && useradd -r -g watchdog -u 1000 watchdog
+
+# Change ownership of the app directory
+RUN chown -R watchdog:watchdog /app
+
+# Switch to the non-root user
+USER watchdog
 
 # Make port 80 available to the world outside this container (if needed for health checks, etc.)
 # Adjust if the watchdog exposes an API or status endpoint.
