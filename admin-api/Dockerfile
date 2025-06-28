@@ -15,8 +15,14 @@ COPY spreadpilot-core/ /app/spreadpilot-core/
 # Install the core library in development mode
 RUN pip install -e /app/spreadpilot-core
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Expose the port
-EXPOSE 8080
+EXPOSE 8080 8002
+
+# Default to running main.py, but allow override via ADMIN_API_MODULE env var
+ENV ADMIN_API_MODULE=main:app
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uvicorn ${ADMIN_API_MODULE} --host 0.0.0.0 --port ${ADMIN_API_PORT:-8080}"]

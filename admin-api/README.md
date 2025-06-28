@@ -32,6 +32,33 @@ The Admin API serves as the central management hub for SpreadPilot, offering com
 
 ---
 
+## 🌐 Production Deployment with Traefik
+
+The Admin API includes a dedicated `admin_api.py` module optimized for production deployment with Traefik reverse proxy:
+
+### 🔧 **Features**
+- 🔐 **JWT Authentication**: Full JWT security implementation
+- 🏥 **Health Checks**: Multiple health endpoints for monitoring
+- 🌐 **CORS Support**: Pre-configured for cross-origin requests
+- 📊 **OpenAPI Docs**: Available at `/docs` and `/redoc`
+
+### 🚀 **Deployment**
+```bash
+# Using docker-compose with Traefik
+docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+
+# Or use the helper script
+./scripts/start-with-traefik.sh
+```
+
+### 🔗 **Traefik Configuration**
+- **Host Rule**: `Host(\`dashboard.${DOMAIN}\`)`
+- **Port**: 8002 (configurable via `ADMIN_API_PORT`)
+- **Health Check**: `/health` endpoint
+- **Load Balancer**: Automatic with health monitoring
+
+---
+
 ## 🚀 API Endpoints
 
 ### 🔐 **Authentication**

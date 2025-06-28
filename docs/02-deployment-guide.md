@@ -887,3 +887,68 @@ gcloud run services update-traffic trading-bot \
 # Update a secret
 gcloud secrets versions add ib-password --data-file=./new-ib-password.txt
 ```
+
+
+---
+
+## 🌐 Alternative Deployment: Self-Hosted with Traefik
+
+For self-hosted deployments or hybrid cloud setups, SpreadPilot includes Traefik reverse proxy configuration:
+
+### 🎯 **Benefits**
+- 🔒 **Automatic HTTPS** - Let's Encrypt integration
+- 🌐 **Domain Routing** - Clean URLs for all services
+- ⚡ **Load Balancing** - Built-in health checks
+- 📊 **Dashboard** - Real-time monitoring interface
+
+### 🚀 **Quick Setup**
+
+```bash
+# 1️⃣ Configure environment
+cp .env.traefik .env
+# Edit .env and set:
+# - DOMAIN=yourdomain.com
+# - ACME_EMAIL=your@email.com
+# - JWT_SECRET=<secure-random-key>
+# - ADMIN_PASSWORD_HASH=<bcrypt-hash>
+
+# 2️⃣ Create external network
+docker network create web
+
+# 3️⃣ Start services with Traefik
+./scripts/start-with-traefik.sh
+```
+
+### 🔗 **Service URLs**
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| 🔐 **Admin API** | `https://dashboard.${DOMAIN}` | JWT-secured API |
+| 📱 **Admin Dashboard** | `https://app.${DOMAIN}` | Mobile-responsive UI |
+| 🎛️ **Traefik Dashboard** | `https://traefik.${DOMAIN}` | Proxy monitoring |
+
+### 🔧 **Configuration Files**
+
+- **docker-compose.traefik.yml** - Traefik service definitions
+- **.env.traefik** - Environment template
+- **scripts/start-with-traefik.sh** - Startup helper
+
+### 🛡️ **Security Considerations**
+
+1. **SSL Certificates**: Automatic via Let's Encrypt
+2. **Basic Auth**: Traefik dashboard protection
+3. **CORS**: Pre-configured for API security
+4. **Health Checks**: Automatic service monitoring
+
+### 📊 **Monitoring**
+
+```bash
+# View service logs
+docker-compose -f docker-compose.yml -f docker-compose.traefik.yml logs -f
+
+# Check Traefik routing
+curl -H "Host: dashboard.yourdomain.com" http://localhost/health
+
+# Monitor certificates
+docker exec spreadpilot-traefik cat /letsencrypt/acme.json | jq .
+```
