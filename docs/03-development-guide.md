@@ -633,3 +633,140 @@ make requirements-dev # Update Python dependencies
 - [Operations Guide](./04-operations-guide.md)
 - [API Documentation](./api/)
 - [Contributing Guidelines](../CONTRIBUTING.md)
+
+## 🔒 Security Development Practices
+
+### 🛡️ Security-First Development
+
+When developing for SpreadPilot, always follow these security practices:
+
+#### 1. **Pre-commit Security Checks**
+
+```bash
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+
+# Run security checks manually
+./trivy_scan.sh --severity HIGH,CRITICAL
+./scripts/security-utils.py audit
+```
+
+#### 2. **PIN-Protected Endpoints**
+
+When adding dangerous operations, ensure PIN protection:
+
+```python
+from app.core.security import verify_dangerous_operation
+
+@router.delete("/followers/{follower_id}")
+async def delete_follower(
+    follower_id: str,
+    _: None = Depends(verify_dangerous_operation)  # Requires PIN
+):
+    # Dangerous operation code
+```
+
+#### 3. **Security Headers**
+
+Always include security headers in responses:
+
+```python
+from app.core.security import get_security_headers
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    headers = get_security_headers()
+    for key, value in headers.items():
+        response.headers[key] = value
+    return response
+```
+
+#### 4. **Database Connections**
+
+Always use TLS/SSL for database connections:
+
+```python
+# MongoDB with TLS
+MONGO_URI = "mongodb://user:pass@host:port/db?tls=true&tlsCAFile=/certs/ca.pem"
+
+# PostgreSQL with SSL
+POSTGRES_URI = "postgresql://user:pass@host:port/db?sslmode=require"
+```
+
+#### 5. **Container Security**
+
+Ensure all Dockerfiles run as non-root:
+
+```dockerfile
+# Create non-root user
+RUN adduser -D -u 1000 appuser
+
+# Switch to non-root user
+USER appuser
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:8080/health || exit 1
+```
+
+#### 6. **Secret Management**
+
+Never hardcode secrets. Use environment variables or Secret Manager:
+
+```python
+import os
+from app.core.config import get_settings
+
+# Bad
+API_KEY = "sk_live_abc123"  # NEVER DO THIS
+
+# Good
+API_KEY = os.environ.get("API_KEY")
+# or
+settings = get_settings()
+API_KEY = settings.api_key
+```
+
+### 🔍 Security Testing
+
+Include security tests in your development:
+
+```python
+# Test PIN verification
+def test_pin_verification_required():
+    response = client.delete("/api/v1/followers/123")
+    assert response.status_code == 400
+    assert "X-PIN header required" in response.json()["detail"]
+
+# Test security headers
+def test_security_headers():
+    response = client.get("/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+```
+
+### 📋 Security Checklist for PRs
+
+Before submitting a PR, verify:
+
+- [ ] No secrets or credentials in code
+- [ ] Database connections use TLS/SSL
+- [ ] Dangerous endpoints require PIN verification
+- [ ] Containers run as non-root user
+- [ ] Security headers are implemented
+- [ ] No HIGH/CRITICAL vulnerabilities in dependencies
+- [ ] Unit tests cover security features
+- [ ] Documentation updated for security changes
+
+### 🚨 Reporting Security Issues
+
+If you discover a security vulnerability:
+
+1. **DO NOT** create a public GitHub issue
+2. Email security@spreadpilot.com with details
+3. Include steps to reproduce if possible
+4. Wait for confirmation before disclosure
+
+For more security information, see [Security Checklist](../security_checklist.md).

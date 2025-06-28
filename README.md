@@ -278,6 +278,38 @@ Base URL: `/api/v1`
 
 ---
 
+## 🔒 Security
+
+SpreadPilot implements comprehensive security best practices:
+
+### 🛡️ Security Features
+
+- **🔍 Vulnerability Scanning**: Automated Trivy scans for dependencies and containers
+- **🐳 Container Security**: All services run as non-root users
+- **🌐 Security Headers**: CSP, HSTS, X-Frame-Options configured
+- **🔐 Database TLS**: Encrypted connections for MongoDB and PostgreSQL
+- **👤 Least Privilege**: IAM policies follow principle of least privilege
+- **🔑 PIN Verification**: 0312 PIN required for dangerous operations
+
+### 🚀 Security Tools
+
+```bash
+# Run security scan
+./trivy_scan.sh
+
+# Generate secure PIN
+./scripts/security-utils.py generate-pin
+
+# Check security compliance
+./scripts/security-utils.py audit
+```
+
+### 📋 Security Checklist
+
+Review `security_checklist.md` before each deployment to ensure all security requirements are met.
+
+---
+
 ## ☁️ Deployment
 
 ### 🚀 Google Cloud Platform

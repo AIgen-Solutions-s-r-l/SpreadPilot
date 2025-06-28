@@ -521,6 +521,61 @@ gcloud run services update trading-bot \
 
 ## 🔒 Security
 
+### 🛡️ Security Operations
+
+#### 🔍 Daily Security Tasks
+
+1. **Run vulnerability scan**:
+   ```bash
+   ./trivy_scan.sh --severity CRITICAL,HIGH
+   ```
+
+2. **Review security alerts**:
+   ```bash
+   docker-compose logs alert-router | grep SECURITY_AUDIT
+   ```
+
+3. **Check PIN verification logs**:
+   ```bash
+   docker-compose logs admin-api | grep "PIN verified\|locked out"
+   ```
+
+#### 📋 Security Checklist Verification
+
+Run through the security checklist before deployments:
+
+```bash
+# Automated security audit
+./scripts/security-utils.py audit
+
+# Manual checklist review
+cat security_checklist.md | grep -E "^\- \[ \]"
+```
+
+#### 🔑 PIN Management
+
+**Generate new PIN**:
+```bash
+# Generate secure PIN
+./scripts/security-utils.py generate-pin --length 6
+
+# Update PIN in production
+export NEW_PIN_HASH=$(./scripts/security-utils.py hash-pin YOUR_NEW_PIN)
+gcloud secrets versions add security-pin-hash --data-text="$NEW_PIN_HASH"
+```
+
+**Monitor PIN usage**:
+```bash
+# Check failed PIN attempts
+docker-compose logs admin-api | grep "Invalid PIN" | tail -20
+
+# View locked out users
+docker-compose exec admin-api python -c "
+from app.core.security import locked_users
+print(f'Locked users: {locked_users}')
+"
+```
+
 ### 🛡️ Access Control
 
 #### 👥 IAM Best Practices
