@@ -1,0 +1,236 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scan daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  TRIVY_VERSION: 0.48.0
+
+jobs:
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      security-events: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install Trivy
+      run: |
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install -y trivy
+
+    - name: Run Trivy vulnerability scanner
+      run: |
+        ./trivy_scan.sh --severity CRITICAL,HIGH --exit-code 0
+      
+    - name: Upload Trivy scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: trivy-security-reports
+        path: security-reports/
+
+    - name: Run Python security audit
+      run: |
+        pip install pip-audit safety bandit
+        
+        # Run pip-audit
+        pip-audit --desc --format json > security-reports/pip-audit.json || true
+        
+        # Run safety check
+        safety check --json > security-reports/safety-check.json || true
+        
+        # Run bandit
+        bandit -r . -f json -o security-reports/bandit-report.json || true
+
+    - name: Run Node.js security audit
+      run: |
+        # Audit frontend
+        cd frontend && npm audit --json > ../security-reports/frontend-npm-audit.json || true
+        cd ..
+        
+        # Audit admin-dashboard
+        cd admin-dashboard && npm audit --json > ../security-reports/admin-dashboard-npm-audit.json || true
+        cd ..
+
+    - name: Check for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+
+    - name: Run security checklist verification
+      run: |
+        # Check if all Dockerfiles have USER instruction
+        echo "Checking for non-root containers..."
+        for dockerfile in $(find . -name "Dockerfile*" -not -path "./venv/*" -not -path "./node_modules/*"); do
+          if ! grep -q "^USER" "$dockerfile"; then
+            echo "WARNING: $dockerfile does not specify a USER (runs as root)"
+          fi
+        done
+        
+        # Check for HEALTHCHECK in Dockerfiles
+        echo "Checking for health checks..."
+        for dockerfile in $(find . -name "Dockerfile*" -not -path "./venv/*" -not -path "./node_modules/*"); do
+          if ! grep -q "^HEALTHCHECK" "$dockerfile"; then
+            echo "WARNING: $dockerfile does not have a HEALTHCHECK"
+          fi
+        done
+
+    - name: Generate security summary
+      if: always()
+      run: |
+        echo "# Security Scan Summary" > security-reports/SUMMARY.md
+        echo "" >> security-reports/SUMMARY.md
+        echo "## Scan Date: $(date)" >> security-reports/SUMMARY.md
+        echo "" >> security-reports/SUMMARY.md
+        
+        # Count vulnerabilities
+        if [ -f security-reports/security_summary_*.md ]; then
+          cat security-reports/security_summary_*.md >> security-reports/SUMMARY.md
+        fi
+        
+        echo "" >> security-reports/SUMMARY.md
+        echo "## Action Items" >> security-reports/SUMMARY.md
+        echo "- [ ] Review all HIGH and CRITICAL vulnerabilities" >> security-reports/SUMMARY.md
+        echo "- [ ] Update vulnerable dependencies" >> security-reports/SUMMARY.md
+        echo "- [ ] Ensure all containers run as non-root" >> security-reports/SUMMARY.md
+        echo "- [ ] Verify security headers are implemented" >> security-reports/SUMMARY.md
+
+    - name: Comment PR with security summary
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-reports/SUMMARY.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [trading-bot, admin-api, report-worker, alert-router, watchdog, frontend, admin-dashboard]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: |
+        case "${{ matrix.service }}" in
+          frontend|admin-dashboard)
+            docker build -t spreadpilot-${{ matrix.service }}:${{ github.sha }} \
+              -f ${{ matrix.service }}/Dockerfile ${{ matrix.service }}/
+            ;;
+          *)
+            docker build -t spreadpilot-${{ matrix.service }}:${{ github.sha }} \
+              -f ${{ matrix.service }}/Dockerfile .
+            ;;
+        esac
+
+    - name: Run Trivy container scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: spreadpilot-${{ matrix.service }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-${{ matrix.service }}.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-${{ matrix.service }}.sarif'
+
+  security-policy-check:
+    name: Security Policy Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check security headers implementation
+      run: |
+        echo "Checking for security headers implementation..."
+        
+        # Check for CSP headers
+        if ! grep -r "Content-Security-Policy" --include="*.py" --include="*.js" --include="*.ts" .; then
+          echo "WARNING: Content-Security-Policy headers not found"
+        fi
+        
+        # Check for security module
+        if [ ! -f "admin-api/app/core/security.py" ]; then
+          echo "ERROR: Security module not found"
+          exit 1
+        fi
+
+    - name: Verify PIN verification implementation
+      run: |
+        echo "Checking PIN verification for dangerous endpoints..."
+        
+        # Check for PIN verification in security module
+        if ! grep -q "DANGEROUS_ENDPOINTS" admin-api/app/core/security.py; then
+          echo "ERROR: Dangerous endpoints not defined"
+          exit 1
+        fi
+        
+        if ! grep -q "verify_pin" admin-api/app/core/security.py; then
+          echo "ERROR: PIN verification not implemented"
+          exit 1
+        fi
+
+    - name: Check database TLS configuration
+      run: |
+        echo "Checking database TLS configuration..."
+        
+        # Check for TLS in connection strings
+        if grep -r "mongodb://" --include="*.py" --include="*.env*" . | grep -v "tls=true"; then
+          echo "WARNING: MongoDB connections without TLS found"
+        fi
+        
+        if grep -r "postgresql://" --include="*.py" --include="*.env*" . | grep -v "sslmode="; then
+          echo "WARNING: PostgreSQL connections without SSL found"
+        fi
+
+    - name: Validate security checklist
+      run: |
+        if [ ! -f "security_checklist.md" ]; then
+          echo "ERROR: security_checklist.md not found"
+          exit 1
+        fi
+        
+        echo "✅ Security checklist found"
