@@ -43,8 +43,10 @@ The P&L Service provides comprehensive profit and loss tracking and monitoring:
 - Trade fill recording and quote feed subscription
 - Daily rollup at 16:30 ET with performance metrics
 - Monthly rollup at 00:10 ET with win/loss statistics
+- Automated commission calculation on positive monthly P&L
 - Time value monitoring with automatic liquidation when TV < $0.10
 - PostgreSQL storage for historical P&L data and analytics
+- IBAN tracking and payment management for commissions
 
 **Technology:** Python with SQLAlchemy, PostgreSQL, asyncio
 

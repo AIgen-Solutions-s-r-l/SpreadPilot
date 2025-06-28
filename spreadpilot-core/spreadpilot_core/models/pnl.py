@@ -216,3 +216,46 @@ class PnLMonthly(Base):
         Index('ix_pnl_monthly_follower_period', 'follower_id', 'year', 'month'),
         Index('ix_pnl_monthly_period', 'year', 'month'),
     )
+
+
+class CommissionMonthly(Base):
+    """Monthly commission calculations based on positive P&L."""
+    __tablename__ = "commission_monthly"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    follower_id = Column(String(50), nullable=False, index=True)
+    
+    # Time period
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    
+    # P&L and commission calculation
+    monthly_pnl = Column(Numeric(12, 4), nullable=False)
+    commission_pct = Column(Numeric(5, 4), nullable=False)  # Percentage as decimal (0.20 = 20%)
+    commission_amount = Column(Numeric(12, 4), nullable=False, default=0)
+    
+    # Currency for commission calculation
+    commission_currency = Column(String(3), nullable=False, default='EUR')  # ISO currency code
+    
+    # Follower banking details
+    follower_iban = Column(String(34), nullable=False)  # Standard IBAN length
+    follower_email = Column(String(255), nullable=False)
+    
+    # Commission status
+    is_payable = Column(Boolean, nullable=False, default=False)  # True if pnl > 0
+    is_paid = Column(Boolean, nullable=False, default=False)
+    payment_date = Column(Date, nullable=True)
+    payment_reference = Column(String(100), nullable=True)
+    
+    # Timestamps
+    calculated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Indexes
+    __table_args__ = (
+        Index('ix_commission_monthly_follower_period', 'follower_id', 'year', 'month'),
+        Index('ix_commission_monthly_period', 'year', 'month'),
+        Index('ix_commission_monthly_payable', 'is_payable'),
+        Index('ix_commission_monthly_paid', 'is_paid'),
+    )
