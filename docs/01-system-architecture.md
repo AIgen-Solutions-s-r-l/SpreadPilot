@@ -404,6 +404,46 @@ sequenceDiagram
     end
 ```
 
+### 4️⃣ **Traefik Reverse Proxy Architecture**
+
+```mermaid
+graph TB
+    subgraph "🌐 Internet"
+        U[👤 Users]
+        LE[🔒 Let's Encrypt]
+    end
+    
+    subgraph "🚪 Edge Layer"
+        T[🌐 Traefik]
+    end
+    
+    subgraph "🎯 Application Layer"
+        API[🔐 Admin API]
+        DASH[📱 Admin Dashboard]
+        TD[🎛️ Traefik Dashboard]
+    end
+    
+    subgraph "📡 Networks"
+        WEB[🌐 Web Network]
+        INT[🔒 Internal Network]
+    end
+    
+    U -->|HTTPS| T
+    T <-->|ACME| LE
+    T -->|dashboard.domain| API
+    T -->|app.domain| DASH
+    T -->|traefik.domain| TD
+    
+    T -.->|Port 8002| API
+    T -.->|Port 80| DASH
+    T -.->|Port 8080| TD
+    
+    API --> INT
+    DASH --> INT
+    T --> WEB
+    WEB --> INT
+```
+
 ---
 
 ## 🛡️ Security Architecture

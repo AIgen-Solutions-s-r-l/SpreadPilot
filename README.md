@@ -78,6 +78,24 @@ cd infra/ && ./health-check.sh
 - 🗄️ **PostgreSQL**: localhost:5432
 - 🍃 **MongoDB**: localhost:27017
 
+### 🌐 Production Setup with Traefik
+
+For production deployment with HTTPS and domain routing:
+
+```bash
+# 1️⃣ Configure your domain in .env
+cp .env.traefik .env
+# Edit .env and set DOMAIN=yourdomain.com
+
+# 2️⃣ Start with Traefik
+./scripts/start-with-traefik.sh
+```
+
+**Production URLs:**
+- 🔐 **Admin API**: https://dashboard.yourdomain.com
+- 📱 **Admin Dashboard**: https://app.yourdomain.com
+- 🎛️ **Traefik Dashboard**: https://traefik.yourdomain.com
+
 ---
 
 ## ⚙️ Configuration
