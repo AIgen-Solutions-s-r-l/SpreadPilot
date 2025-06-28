@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.db.postgresql import get_postgres_session
 from spreadpilot_core.models.pnl import (
-    Trade, Quote, PnLIntraday, PnLDaily, PnLMonthly, TradeType
+    Trade, Quote, PnLIntraday, PnLDaily, PnLMonthly, CommissionMonthly, TradeType
 )
 from spreadpilot_core.models import Position  # MongoDB position model
 from spreadpilot_core.db.mongodb import get_mongo_db
@@ -569,12 +569,123 @@ class PnLService:
                 session.add(monthly_pnl)
                 await session.commit()
                 
+                # Calculate monthly commission after P&L rollup
+                await self._calculate_monthly_commission(session, follower_id, year, month, total_pnl)
+                
                 logger.info(f"Completed monthly rollup for follower {follower_id} {year}-{month:02d}: "
                            f"total_pnl=${monthly_pnl.total_pnl:.2f}, "
                            f"winning_days={winning_days}, losing_days={losing_days}")
                 
         except Exception as e:
             logger.error(f"Error in monthly rollup for {follower_id}: {e}")
+
+    async def _calculate_monthly_commission(self, session: AsyncSession, follower_id: str, 
+                                          year: int, month: int, monthly_pnl: Decimal):
+        """Calculate monthly commission based on positive P&L.
+        
+        Rule: if pnl_month > 0 => commission = pct * pnl_month, else 0
+        
+        Args:
+            session: Database session
+            follower_id: Follower ID
+            year: Year of the month
+            month: Month number
+            monthly_pnl: Total P&L for the month
+        """
+        try:
+            # Get follower details from MongoDB (IBAN, email, commission percentage)
+            follower_data = await self._get_follower_data(follower_id)
+            if not follower_data:
+                logger.error(f"Could not retrieve follower data for {follower_id}")
+                return
+
+            # Calculate commission only if P&L is positive
+            is_payable = monthly_pnl > 0
+            commission_pct = Decimal(str(follower_data["commission_pct"])) / 100  # Convert percentage to decimal
+            commission_amount = commission_pct * monthly_pnl if is_payable else Decimal("0")
+
+            # Check if commission entry already exists
+            existing_result = await session.execute(
+                select(CommissionMonthly)
+                .where(
+                    and_(
+                        CommissionMonthly.follower_id == follower_id,
+                        CommissionMonthly.year == year,
+                        CommissionMonthly.month == month
+                    )
+                )
+            )
+            existing_commission = existing_result.scalar()
+
+            if existing_commission:
+                # Update existing commission entry
+                existing_commission.monthly_pnl = monthly_pnl
+                existing_commission.commission_pct = commission_pct
+                existing_commission.commission_amount = commission_amount
+                existing_commission.is_payable = is_payable
+                existing_commission.follower_iban = follower_data["iban"]
+                existing_commission.follower_email = follower_data["email"]
+                existing_commission.calculated_at = datetime.datetime.utcnow()
+                existing_commission.updated_at = datetime.datetime.utcnow()
+                
+                logger.info(f"Updated commission for follower {follower_id} {year}-{month:02d}: "
+                           f"pnl=${monthly_pnl:.2f}, commission=${commission_amount:.2f}")
+            else:
+                # Create new commission entry
+                commission_entry = CommissionMonthly(
+                    follower_id=follower_id,
+                    year=year,
+                    month=month,
+                    monthly_pnl=monthly_pnl,
+                    commission_pct=commission_pct,
+                    commission_amount=commission_amount,
+                    commission_currency="EUR",
+                    follower_iban=follower_data["iban"],
+                    follower_email=follower_data["email"],
+                    is_payable=is_payable,
+                    is_paid=False
+                )
+                
+                session.add(commission_entry)
+                
+                logger.info(f"Calculated commission for follower {follower_id} {year}-{month:02d}: "
+                           f"pnl=${monthly_pnl:.2f}, commission_pct={commission_pct*100:.1f}%, "
+                           f"commission=${commission_amount:.2f}, payable={is_payable}")
+
+            await session.commit()
+
+        except Exception as e:
+            logger.error(f"Error calculating monthly commission for {follower_id}: {e}")
+            await session.rollback()
+
+    async def _get_follower_data(self, follower_id: str) -> Optional[dict]:
+        """Get follower data from MongoDB including IBAN and commission percentage.
+        
+        Args:
+            follower_id: Follower ID
+            
+        Returns:
+            Dictionary with follower data or None if not found
+        """
+        try:
+            mongo_db = await get_mongo_db()
+            followers_collection = mongo_db["followers"]
+            
+            follower_doc = await followers_collection.find_one({"_id": follower_id})
+            
+            if follower_doc:
+                return {
+                    "iban": follower_doc.get("iban", ""),
+                    "email": follower_doc.get("email", ""),
+                    "commission_pct": follower_doc.get("commission_pct", 0.0)
+                }
+            else:
+                logger.warning(f"Follower {follower_id} not found in MongoDB")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving follower data for {follower_id}: {e}")
+            return None
 
     async def record_trade_fill(self, follower_id: str, trade_data: dict):
         """Record a trade fill in the P&L database.
@@ -638,6 +749,109 @@ class PnLService:
         except Exception as e:
             logger.error(f"Error getting real-time P&L for {follower_id}: {e}")
             return None
+
+    async def get_monthly_commissions(self, year: Optional[int] = None, 
+                                     month: Optional[int] = None,
+                                     follower_id: Optional[str] = None,
+                                     is_payable: Optional[bool] = None) -> List[dict]:
+        """Get monthly commission data with optional filters.
+        
+        Args:
+            year: Filter by year
+            month: Filter by month
+            follower_id: Filter by follower ID
+            is_payable: Filter by payable status
+            
+        Returns:
+            List of commission records
+        """
+        try:
+            async with get_postgres_session() as session:
+                query = select(CommissionMonthly)
+                
+                # Apply filters
+                filters = []
+                if year is not None:
+                    filters.append(CommissionMonthly.year == year)
+                if month is not None:
+                    filters.append(CommissionMonthly.month == month)
+                if follower_id is not None:
+                    filters.append(CommissionMonthly.follower_id == follower_id)
+                if is_payable is not None:
+                    filters.append(CommissionMonthly.is_payable == is_payable)
+                
+                if filters:
+                    query = query.where(and_(*filters))
+                
+                query = query.order_by(desc(CommissionMonthly.year), 
+                                     desc(CommissionMonthly.month),
+                                     CommissionMonthly.follower_id)
+                
+                result = await session.execute(query)
+                commissions = result.scalars().all()
+                
+                return [
+                    {
+                        "id": str(commission.id),
+                        "follower_id": commission.follower_id,
+                        "year": commission.year,
+                        "month": commission.month,
+                        "monthly_pnl": float(commission.monthly_pnl),
+                        "commission_pct": float(commission.commission_pct * 100),  # Convert to percentage
+                        "commission_amount": float(commission.commission_amount),
+                        "commission_currency": commission.commission_currency,
+                        "follower_iban": commission.follower_iban,
+                        "follower_email": commission.follower_email,
+                        "is_payable": commission.is_payable,
+                        "is_paid": commission.is_paid,
+                        "payment_date": commission.payment_date.isoformat() if commission.payment_date else None,
+                        "payment_reference": commission.payment_reference,
+                        "calculated_at": commission.calculated_at.isoformat(),
+                        "created_at": commission.created_at.isoformat(),
+                        "updated_at": commission.updated_at.isoformat()
+                    }
+                    for commission in commissions
+                ]
+                
+        except Exception as e:
+            logger.error(f"Error getting monthly commissions: {e}")
+            return []
+
+    async def mark_commission_paid(self, commission_id: str, payment_reference: str) -> bool:
+        """Mark a commission as paid.
+        
+        Args:
+            commission_id: Commission record ID
+            payment_reference: Payment reference number
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            async with get_postgres_session() as session:
+                result = await session.execute(
+                    select(CommissionMonthly)
+                    .where(CommissionMonthly.id == commission_id)
+                )
+                commission = result.scalar()
+                
+                if commission:
+                    commission.is_paid = True
+                    commission.payment_date = date.today()
+                    commission.payment_reference = payment_reference
+                    commission.updated_at = datetime.datetime.utcnow()
+                    
+                    await session.commit()
+                    
+                    logger.info(f"Marked commission {commission_id} as paid with reference {payment_reference}")
+                    return True
+                else:
+                    logger.warning(f"Commission {commission_id} not found")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error marking commission as paid: {e}")
+            return False
 
     async def stop_monitoring(self):
         """Stop P&L monitoring."""
