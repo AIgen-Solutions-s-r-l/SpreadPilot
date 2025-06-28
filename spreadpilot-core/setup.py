@@ -28,6 +28,7 @@ setup(
         "apscheduler>=3.10.0", # Advanced Python Scheduler
         "redis>=5.0.0",       # Redis client
         "gspread>=5.11.0",    # Google Sheets API wrapper
+        "google-cloud-storage>=2.10.0",  # GCS for file storage
     ],
     python_requires=">=3.11",
     author="SpreadPilot Team",

@@ -14,6 +14,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pip-tools for compiling requirements
@@ -33,6 +34,13 @@ RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
 
 # Copy the application code into the container
 COPY ./report-worker/app /app/app
+
+# Copy crontab file
+COPY ./report-worker/crontab /etc/cron.d/commission-reports
+RUN chmod 0644 /etc/cron.d/commission-reports
+
+# Create log directory for cron jobs
+RUN mkdir -p /var/log && touch /var/log/commission_reports.log
 
 # Set environment variables
 ENV PYTHONPATH=/app

@@ -20,5 +20,8 @@ pytz>=2023.3,<2024.0
 openpyxl>=3.1.0,<4.0.0
 reportlab>=4.0.0,<5.0.0
 
+# Email
+sendgrid>=6.10.0,<7.0.0
+
 # Core library will be installed separately
 # -e ./spreadpilot-core
