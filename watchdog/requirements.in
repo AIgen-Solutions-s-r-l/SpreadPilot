@@ -1,3 +1,6 @@
 # Basic dependencies for the watchdog service
-# Add specific client libraries for monitored services (e.g., google-cloud-firestore)
-# or HTTP libraries (e.g., requests) as needed.
+httpx>=0.24.0
+motor>=3.0.0
+asyncio
+# SpreadPilot core for alert models
+-e ../spreadpilot-core

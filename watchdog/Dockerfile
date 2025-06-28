@@ -1,5 +1,10 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim
+FROM python:3.11-slim
+
+# Install Docker CLI (needed for restart functionality)
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app
@@ -26,5 +31,5 @@ COPY . /app/
 # Define environment variables (if any)
 # ENV NAME="Watchdog"
 
-# Run main.py when the container launches
-CMD ["python", "main.py"]
+# Run watchdog.py when the container launches
+CMD ["python", "watchdog.py"]

@@ -30,29 +30,26 @@ services:
 
   watchdog:
     build:
-      context: ./watchdog # Note: Watchdog Dockerfile might be missing
+      context: ./watchdog
       dockerfile: Dockerfile
     container_name: spreadpilot-watchdog
     environment:
-      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
-      - TRADING_BOT_HOST=trading-bot
-      - TRADING_BOT_PORT=8080
-      - IB_GATEWAY_HOST=ib-gateway
-      - IB_GATEWAY_PORT=4002
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+      - CHECK_INTERVAL_SECONDS=15
+      - HEALTH_CHECK_TIMEOUT=5
+      - MAX_CONSECUTIVE_FAILURES=3
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
     volumes:
-      - ./credentials:/app/credentials
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
+      - ./spreadpilot-core:/app/spreadpilot-core    # Core library for alerts
     depends_on:
-      # - firestore # Removed Firestore dependency
-      - mongodb # Added MongoDB dependency
+      - mongodb
       - trading-bot
-      - ib-gateway
-    ports:
-      - "8082:8080"
+      - admin-api
+      - report-worker
+      - frontend
+    networks:
+      - spreadpilot-network
     restart: unless-stopped
 
   admin-api:
