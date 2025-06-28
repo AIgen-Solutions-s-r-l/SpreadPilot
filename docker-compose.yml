@@ -26,6 +26,8 @@ services:
       - ib-gateway
     ports:
       - "8081:8080"
+    networks:
+      - spreadpilot-network
     restart: unless-stopped
 
   watchdog:
@@ -48,6 +50,7 @@ services:
       - admin-api
       - report-worker
       - frontend
+      - admin-dashboard
     networks:
       - spreadpilot-network
     restart: unless-stopped
@@ -77,6 +80,8 @@ services:
       - trading-bot
     ports:
       - "8083:8080"
+    networks:
+      - spreadpilot-network
     restart: unless-stopped
 
   report-worker:
@@ -96,6 +101,8 @@ services:
     volumes:
       - ./credentials:/app/credentials
       - ./reports:/app/reports
+    networks:
+      - spreadpilot-network
     depends_on:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
@@ -120,6 +127,8 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials
+    networks:
+      - spreadpilot-network
     depends_on:
       # - firestore # Removed Firestore dependency
       - mongodb # Added MongoDB dependency
@@ -135,6 +144,21 @@ services:
     depends_on:
       - admin-api
     restart: unless-stopped
+    networks:
+      - spreadpilot-network
+
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+    container_name: spreadpilot-admin-dashboard
+    ports:
+      - "3001:80"
+    depends_on:
+      - admin-api
+    restart: unless-stopped
+    networks:
+      - spreadpilot-network
 
   # Infrastructure services
   # Removed Firestore service definition
@@ -148,6 +172,8 @@ services:
       - TRADING_MODE=paper
     ports:
       - "4002:4002"
+    networks:
+      - spreadpilot-network
     restart: unless-stopped
 
   mongodb:
@@ -167,6 +193,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
+    networks:
+      - spreadpilot-network
 
   # Observability services
 
@@ -174,3 +202,7 @@ volumes:
   prometheus-data:
   grafana-data:
   mongo_data:
+
+networks:
+  spreadpilot-network:
+    driver: bridge

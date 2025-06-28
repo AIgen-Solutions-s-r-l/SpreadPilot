@@ -34,6 +34,7 @@ graph TB
     
     subgraph "🌐 Client Layer"
         G[🖥️ Frontend Dashboard]
+        G2[📱 Admin Dashboard]
     end
     
     subgraph "🗄️ Data Layer"
@@ -60,6 +61,7 @@ graph TB
     B --> J
     C --> H
     C --> G
+    C --> G2
     D --> I
     D --> M
     E --> N
@@ -235,6 +237,31 @@ Modern React-based dashboard for system management and monitoring.
 - ⚡ **Vite** for fast development and build processes
 - 🔌 **WebSocket** for real-time data updates
 - 🎯 **React Query** for efficient data fetching and caching
+
+### 📱 **Admin Dashboard** - *Mobile-First Management Interface*
+
+Vue 3-based mobile-responsive SPA for on-the-go system management.
+
+**🎯 Primary Responsibilities:**
+- 📱 **Mobile-First Design** - Optimized for mobile device management
+- 🔐 **JWT Authentication** - Secure token-based access control
+- 👥 **Follower Overview** - Quick access to follower status and metrics
+- 🚦 **Time Value Monitoring** - Real-time risk indicators (SAFE/RISK/CRITICAL)
+- 📊 **System Logs** - Filtered log viewing with real-time updates
+
+**🏗️ Architecture Components:**
+- 🧭 **Vue Router** - Client-side routing for SPA navigation
+- 📡 **API Service** - Axios-based API communication layer
+- 🎨 **Responsive Layout** - Mobile drawer and desktop sidebar navigation
+- 🔄 **Composables** - Reusable logic for real-time data polling
+- 🏷️ **Risk Badges** - Color-coded time value indicators
+
+**🔧 Technology Stack:**
+- 🖼️ **Vue 3** with Composition API and `<script setup>`
+- 🎨 **Tailwind CSS** with Forms plugin for mobile UI
+- ⚡ **Vite** for instant HMR and optimized builds
+- 🔌 **Axios** for REST API integration
+- 📱 **Mobile-First** responsive design patterns
 
 ---
 
