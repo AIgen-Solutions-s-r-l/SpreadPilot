@@ -1,22 +1,73 @@
-# SpreadPilot Deployment Guide
+# 🚀 SpreadPilot Deployment Guide
 
-This guide provides step-by-step instructions for deploying the SpreadPilot system to Google Cloud Platform (GCP).
+> ☁️ **Complete production deployment guide** for deploying SpreadPilot to Google Cloud Platform - secure, scalable, and enterprise-ready automated trading platform
 
-## Prerequisites
+This comprehensive guide walks you through deploying the entire SpreadPilot microservices architecture to Google Cloud Platform, including all v1.1.7.0 features with PostgreSQL P&L system, advanced report generation, and cloud-native observability.
 
-Before you begin, ensure you have the following:
+---
 
-- Google Cloud Platform account with billing enabled
-- Google Cloud SDK installed and configured
-- Docker installed locally
-- Git repository access
-- Interactive Brokers account and credentials
-- SendGrid account for email notifications
-- Telegram bot token and chat ID for alerts
+## 📋 Prerequisites
 
-## Initial Setup
+### 🔧 **Required Tools & Accounts**
 
-### 1. Create a GCP Project
+#### ☁️ **Google Cloud Platform**
+- ✅ **GCP Account** - Active account with billing enabled
+- 🎯 **Billing Account** - Linked and verified payment method
+- 💰 **Budget Alerts** - Recommended cost monitoring setup
+- 🔐 **IAM Permissions** - Admin or Editor role for deployment
+
+#### 🛠️ **Development Tools**
+- 📦 **Google Cloud SDK** - Latest version (gcloud CLI)
+- 🐳 **Docker** - Version 20.10+ for container builds
+- 🔧 **Git** - Repository access and deployment scripts
+- 🐍 **Python 3.11+** - For local testing and development
+
+#### 🏦 **Trading Infrastructure**
+- 🏦 **Interactive Brokers Account** - Paper or live trading account
+- 🔑 **IBKR Credentials** - Username, password, and API access
+- 📊 **Google Sheets** - Master strategy sheet with API access
+- 🔐 **Google Sheets API Key** - Service account credentials
+
+#### 📧 **Communication Services**
+- 📮 **SendGrid Account** - Email delivery service with API key
+- 🤖 **Telegram Bot** - Bot token and chat ID for alerts
+- 📞 **SMS Service** *(Optional)* - For critical alert delivery
+
+### 💾 **Infrastructure Estimates**
+
+| 🎯 Component | 💰 Monthly Cost | 📊 Resources | 🔄 Scaling |
+|-------------|----------------|---------------|-------------|
+| 🤖 **Trading Bot** | $15-30 | 1GB RAM, 1 CPU | Auto-scale 1-3 |
+| 🎛️ **Admin API** | $10-20 | 512MB RAM, 0.5 CPU | Auto-scale 1-3 |
+| 📊 **Report Worker** | $5-15 | 512MB RAM, 0.5 CPU | On-demand |
+| 🔔 **Alert Router** | $5-10 | 512MB RAM, 0.5 CPU | On-demand |
+| 🍃 **MongoDB Atlas** | $25-50 | M10 cluster | Managed |
+| 🐘 **PostgreSQL** | $20-40 | 2GB RAM, 1 CPU | Managed |
+| 📮 **Pub/Sub** | $5-10 | Message volume | Pay-per-use |
+| ☁️ **Storage** | $5-15 | Reports, logs | As needed |
+| **📊 Total** | **$90-190** | - | Scales with usage |
+
+### 🔐 **Security Preparation**
+
+#### 🔑 **Required Secrets**
+- ✅ **IB Username/Password** - Interactive Brokers credentials
+- ✅ **JWT Secret** - 256-bit random key for authentication
+- ✅ **Admin Password Hash** - Bcrypt hashed admin password
+- ✅ **SendGrid API Key** - Email service authentication
+- ✅ **Telegram Bot Token** - Alert delivery service
+- ✅ **Google Sheets API** - Service account JSON or API key
+
+#### 🛡️ **Network Security**
+- 🌐 **Domain Name** - Custom domain for dashboard access
+- 🔒 **SSL Certificate** - Automatic via Cloud Run
+- 🔥 **Firewall Rules** - Restricted admin access
+- 🎯 **Load Balancer** - Health checks and failover
+
+---
+
+## 🏗️ Initial GCP Setup
+
+### 1️⃣ **Create GCP Project**
 
 ```bash
 # Create a new GCP project
@@ -29,34 +80,104 @@ gcloud config set project spreadpilot-prod
 gcloud billing projects link spreadpilot-prod --billing-account=YOUR_BILLING_ACCOUNT_ID
 ```
 
-### 2. Enable Required APIs
+### 2️⃣ **Enable Required APIs**
 
 ```bash
-# Enable required GCP services
+# 🚀 Enable core Cloud Run services
 gcloud services enable cloudbuild.googleapis.com \
     run.googleapis.com \
     artifactregistry.googleapis.com \
-    firestore.googleapis.com \
-    secretmanager.googleapis.com \
-    cloudscheduler.googleapis.com \
-    pubsub.googleapis.com \
+    cloudscheduler.googleapis.com
+
+# 🗄️ Enable database and storage services  
+gcloud services enable sql.googleapis.com \
+    storage.googleapis.com \
+    firestore.googleapis.com
+
+# 🔐 Enable security and secrets management
+gcloud services enable secretmanager.googleapis.com \
+    iam.googleapis.com \
+    cloudresourcemanager.googleapis.com
+
+# 📮 Enable messaging and monitoring
+gcloud services enable pubsub.googleapis.com \
     logging.googleapis.com \
-    monitoring.googleapis.com
+    monitoring.googleapis.com \
+    cloudtrace.googleapis.com
 ```
 
-### 3. Set Up Firestore
+### 3️⃣ **Set Up Database Infrastructure**
+
+#### 🍃 **MongoDB Setup (Recommended: MongoDB Atlas)**
 
 ```bash
-# Create Firestore database in Native mode
-gcloud firestore databases create --region=us-central
+# For production, use MongoDB Atlas (managed service)
+# Create cluster at https://cloud.mongodb.com/
 
-# Set up Firestore indexes (if needed)
-gcloud firestore indexes composite create --collection-group=positions \
-    --field-config field-path=follower_id,order=ascending \
-    --field-config field-path=date,order=descending
+# 🔐 Create database user
+# In Atlas Console: Database Access > Add New User
+# Username: spreadpilot_admin
+# Password: [Generate secure password]
+# Role: Atlas Admin
+
+# 🌐 Configure network access
+# In Atlas Console: Network Access > Add IP Address
+# Add GCP region IP ranges or 0.0.0.0/0 for testing
 ```
 
-### 4. Create Artifact Registry Repository
+#### 🐘 **PostgreSQL Setup**
+
+```bash
+# 🐘 Create PostgreSQL instance for P&L system
+gcloud sql instances create spreadpilot-postgres \
+    --database-version=POSTGRES_15 \
+    --tier=db-g1-small \
+    --region=us-central1 \
+    --availability-type=zonal \
+    --backup-start-time=02:00 \
+    --enable-bin-log \
+    --storage-type=SSD \
+    --storage-size=20GB
+
+# 🔐 Create database user
+gcloud sql users create spreadpilot_user \
+    --instance=spreadpilot-postgres \
+    --password=[SECURE_PASSWORD]
+
+# 📊 Create P&L database
+gcloud sql databases create spreadpilot_pnl \
+    --instance=spreadpilot-postgres
+
+# 🔗 Create connection name for Cloud Run
+gcloud sql instances describe spreadpilot-postgres \
+    --format="value(connectionName)"
+```
+
+#### ☁️ **GCS Storage Setup**
+
+```bash
+# 📁 Create bucket for report storage
+gsutil mb -p $PROJECT_ID -c STANDARD -l us-central1 gs://spreadpilot-reports-$PROJECT_ID
+
+# 🔐 Set bucket permissions
+gsutil iam ch serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com:objectAdmin gs://spreadpilot-reports-$PROJECT_ID
+
+# ⏰ Set lifecycle policy for automatic cleanup
+echo '{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "Delete"},
+        "condition": {"age": 90}
+      }
+    ]
+  }
+}' > lifecycle.json
+
+gsutil lifecycle set lifecycle.json gs://spreadpilot-reports-$PROJECT_ID
+```
+
+### 4️⃣ **Create Artifact Registry Repository**
 
 ```bash
 # Create Docker repository
@@ -69,253 +190,502 @@ gcloud artifacts repositories create spreadpilot \
 gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
 
-## Secret Management
+---
 
-### 1. Create Secrets in Secret Manager
+## 🔐 Secret Management
+
+### 1️⃣ **Create Secrets in Secret Manager**
+
+#### 🏦 **Trading Credentials**
 
 ```bash
-# Create secrets for sensitive configuration
-gcloud secrets create ib-username --data-file=./ib-username.txt
-gcloud secrets create ib-password --data-file=./ib-password.txt
-gcloud secrets create sendgrid-api-key --data-file=./sendgrid-api-key.txt
-gcloud secrets create telegram-bot-token --data-file=./telegram-bot-token.txt
-gcloud secrets create telegram-chat-id --data-file=./telegram-chat-id.txt
-gcloud secrets create google-sheet-url --data-file=./google-sheet-url.txt
-gcloud secrets create admin-username --data-file=./admin-username.txt
-gcloud secrets create admin-password-hash --data-file=./admin-password-hash.txt
-gcloud secrets create jwt-secret --data-file=./jwt-secret.txt
-gcloud secrets create admin-email --data-file=./admin-email.txt
+# 🏦 Interactive Brokers credentials
+echo "your_ib_username" | gcloud secrets create ib-username --data-file=-
+echo "your_ib_password" | gcloud secrets create ib-password --data-file=-
+
+# 📊 Google Sheets integration
+echo "https://docs.google.com/spreadsheets/d/your_sheet_id" | gcloud secrets create google-sheet-url --data-file=-
+echo '{"type": "service_account", ...}' | gcloud secrets create google-sheets-credentials --data-file=-
 ```
 
-### 2. Create Service Account for Accessing Secrets
+#### 🔐 **Authentication & Security**
 
 ```bash
-# Create service account
-gcloud iam service-accounts create spreadpilot-sa \
-    --display-name="SpreadPilot Service Account"
+# 🔑 Generate and store JWT secret (256-bit)
+echo "$(openssl rand -base64 32)" | gcloud secrets create jwt-secret --data-file=-
 
-# Grant Secret Manager access
-gcloud projects add-iam-policy-binding spreadpilot-prod \
-    --member="serviceAccount:spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com" \
+# 👤 Admin credentials
+echo "admin" | gcloud secrets create admin-username --data-file=-
+echo "$(python3 -c 'import bcrypt; print(bcrypt.hashpw(b"your_admin_password", bcrypt.gensalt()).decode())')" | gcloud secrets create admin-password-hash --data-file=-
+```
+
+#### 📧 **Communication Services**
+
+```bash
+# 📮 SendGrid email service
+echo "your_sendgrid_api_key" | gcloud secrets create sendgrid-api-key --data-file=-
+echo "admin@spreadpilot.com" | gcloud secrets create admin-email --data-file=-
+
+# 🤖 Telegram notifications
+echo "your_telegram_bot_token" | gcloud secrets create telegram-bot-token --data-file=-
+echo "your_telegram_chat_id" | gcloud secrets create telegram-chat-id --data-file=-
+```
+
+#### 🗄️ **Database Connections**
+
+```bash
+# 🍃 MongoDB connection (if using Atlas)
+echo "mongodb+srv://user:password@cluster.mongodb.net/spreadpilot_admin" | gcloud secrets create mongo-uri --data-file=-
+
+# 🐘 PostgreSQL connection
+echo "postgresql+asyncpg://spreadpilot_user:password@/spreadpilot_pnl?host=/cloudsql/PROJECT_ID:us-central1:spreadpilot-postgres" | gcloud secrets create postgres-uri --data-file=-
+
+# ☁️ GCS bucket name
+echo "spreadpilot-reports-$PROJECT_ID" | gcloud secrets create gcs-bucket-name --data-file=-
+```
+
+### 2️⃣ **Create Service Accounts**
+
+#### 🤖 **Main Application Service Account**
+
+```bash
+# 🤖 Create main application service account
+gcloud iam service-accounts create spreadpilot-sa \
+    --display-name="SpreadPilot Main Service Account" \
+    --description="Primary service account for SpreadPilot microservices"
+
+# 🔐 Grant Secret Manager access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 
-# Grant MongoDB Access (Managed via Connection String)
-# Access to MongoDB is typically controlled via connection strings containing usernames/passwords
-# and network access rules (e.g., firewall settings, VPC peering, Atlas IP Access List).
-# Ensure the service accounts or runtime environments for your services have the necessary
-# credentials (usually via environment variables or secrets management) and network access
-# to connect to the MongoDB instance.
-# No specific IAM role binding like the one for Firestore is directly applicable here.
+# 📮 Grant Pub/Sub access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/pubsub.publisher"
 
-# Grant Pub/Sub access
-gcloud projects add-iam-policy-binding spreadpilot-prod \
-    --member="serviceAccount:spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/pubsub.subscriber"
+
+# 🐘 Grant Cloud SQL access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/cloudsql.client"
+
+# ☁️ Grant Storage access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.objectAdmin"
+
+# 📊 Grant monitoring access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/monitoring.metricWriter"
+
+# 📄 Grant logging access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/logging.logWriter"
+```
+
+#### ⏰ **Scheduler Service Account**
+
+```bash
+# ⏰ Create dedicated scheduler service account
+gcloud iam service-accounts create scheduler-sa \
+    --display-name="Cloud Scheduler Service Account" \
+    --description="Service account for Cloud Scheduler jobs"
+
+# 📮 Grant Pub/Sub publisher role for scheduler
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/pubsub.publisher"
 ```
 
-## Pub/Sub Setup
+---
 
-### 1. Create Pub/Sub Topics
+## 📮 Pub/Sub Messaging Setup
+
+### 1️⃣ **Create Pub/Sub Topics**
 
 ```bash
-# Create topics for event-driven communication
+# 🚨 Alert system topics
 gcloud pubsub topics create alerts
+gcloud pubsub topics create critical-alerts
+
+# 📊 Report generation topics
 gcloud pubsub topics create daily-reports
 gcloud pubsub topics create monthly-reports
+gcloud pubsub topics create commission-reports
+
+# 💰 P&L system topics
+gcloud pubsub topics create pnl-updates
+gcloud pubsub topics create commission-calculations
+
+# 🔧 System monitoring topics
+gcloud pubsub topics create system-health
+gcloud pubsub topics create service-status
 ```
 
-### 2. Create Pub/Sub Subscriptions
+### 2️⃣ **Create Pub/Sub Subscriptions**
 
 ```bash
-# Create push subscriptions for services
+# 🔔 Alert Router subscriptions
 gcloud pubsub subscriptions create alert-router-sub \
     --topic=alerts \
-    --push-endpoint=https://alert-router-service-url/
+    --push-endpoint=https://alert-router-[SERVICE-URL]/api/v1/alerts \
+    --ack-deadline=60
 
+gcloud pubsub subscriptions create critical-alert-router-sub \
+    --topic=critical-alerts \
+    --push-endpoint=https://alert-router-[SERVICE-URL]/api/v1/critical-alerts \
+    --ack-deadline=30
+
+# 📊 Report Worker subscriptions
 gcloud pubsub subscriptions create report-worker-daily-sub \
     --topic=daily-reports \
-    --push-endpoint=https://report-worker-service-url/
+    --push-endpoint=https://report-worker-[SERVICE-URL]/api/v1/jobs/daily \
+    --ack-deadline=600
 
 gcloud pubsub subscriptions create report-worker-monthly-sub \
     --topic=monthly-reports \
-    --push-endpoint=https://report-worker-service-url/
+    --push-endpoint=https://report-worker-[SERVICE-URL]/api/v1/jobs/monthly \
+    --ack-deadline=1200
+
+gcloud pubsub subscriptions create commission-report-sub \
+    --topic=commission-reports \
+    --push-endpoint=https://report-worker-[SERVICE-URL]/api/v1/jobs/commission \
+    --ack-deadline=900
+
+# 💰 P&L system subscriptions
+gcloud pubsub subscriptions create pnl-processor-sub \
+    --topic=pnl-updates \
+    --push-endpoint=https://trading-bot-[SERVICE-URL]/api/v1/pnl/process \
+    --ack-deadline=120
+
+# Note: Replace [SERVICE-URL] with actual Cloud Run service URLs after deployment
 ```
 
-## Cloud Run Deployment
+---
 
-### 1. Deploy Trading Bot Service
+## 🚀 Cloud Run Deployment
+
+### 🛠️ **Pre-deployment Configuration**
 
 ```bash
-# Build and deploy trading-bot
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/trading-bot:latest
+# 📋 Set project variables
+export PROJECT_ID=$(gcloud config get-value project)
+export REGION=us-central1
+export SA_EMAIL=spreadpilot-sa@$PROJECT_ID.iam.gserviceaccount.com
 
+# 🔗 Get Cloud SQL connection name
+export SQL_CONNECTION=$(gcloud sql instances describe spreadpilot-postgres --format="value(connectionName)")
+
+# ☁️ Set GCS bucket name
+export GCS_BUCKET=spreadpilot-reports-$PROJECT_ID
+
+echo "Project ID: $PROJECT_ID"
+echo "Service Account: $SA_EMAIL"
+echo "SQL Connection: $SQL_CONNECTION"
+echo "GCS Bucket: $GCS_BUCKET"
+```
+
+### 1️⃣ **Deploy Trading Bot Service**
+
+```bash
+# 🏗️ Build trading-bot container
+cd trading-bot/
+gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/trading-bot:latest
+
+# 🤖 Deploy trading-bot service
 gcloud run deploy trading-bot \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/trading-bot:latest \
-    --region=us-central1 \
+    --image=$REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/trading-bot:latest \
+    --region=$REGION \
     --platform=managed \
-    --service-account=spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --set-secrets=IB_USERNAME=ib-username:latest,IB_PASSWORD=ib-password:latest,SENDGRID_API_KEY=sendgrid-api-key:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SHEET_URL=google-sheet-url:latest \
-    --set-env-vars=GOOGLE_CLOUD_PROJECT=spreadpilot-prod,IB_GATEWAY_HOST=ib-gateway-service-url,IB_GATEWAY_PORT=4002 \
-    --memory=1Gi \
-    --cpu=1 \
+    --service-account=$SA_EMAIL \
+    --set-secrets=IB_USERNAME=ib-username:latest,IB_PASSWORD=ib-password:latest,MONGO_URI=mongo-uri:latest,POSTGRES_URI=postgres-uri:latest,SENDGRID_API_KEY=sendgrid-api-key:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SHEET_URL=google-sheet-url:latest,GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest \
+    --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,IB_GATEWAY_PORT=4002,LOG_LEVEL=INFO,ENVIRONMENT=production \
+    --add-cloudsql-instances=$SQL_CONNECTION \
+    --memory=2Gi \
+    --cpu=2 \
+    --concurrency=1000 \
+    --timeout=3600 \
     --min-instances=1 \
-    --max-instances=3 \
-    --port=8080
+    --max-instances=5 \
+    --port=8001 \
+    --allow-unauthenticated
+
+# 🔗 Get service URL
+export TRADING_BOT_URL=$(gcloud run services describe trading-bot --region=$REGION --format="value(status.url)")
+echo "Trading Bot URL: $TRADING_BOT_URL"
 ```
 
-### 2. Deploy Watchdog Service
+### 2️⃣ **Deploy Admin API Service**
 
 ```bash
-# Build and deploy watchdog
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/watchdog:latest
+# 🏗️ Build admin-api container
+cd ../admin-api/
+gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/admin-api:latest
 
-gcloud run deploy watchdog \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/watchdog:latest \
-    --region=us-central1 \
-    --platform=managed \
-    --service-account=spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --set-secrets=TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest \
-    --set-env-vars=GOOGLE_CLOUD_PROJECT=spreadpilot-prod,TRADING_BOT_HOST=trading-bot-service-url,TRADING_BOT_PORT=8080,IB_GATEWAY_HOST=ib-gateway-service-url,IB_GATEWAY_PORT=4002 \
-    --memory=512Mi \
-    --cpu=0.5 \
-    --min-instances=1 \
-    --max-instances=1 \
-    --port=8080
-```
-
-### 3. Deploy Admin API Service
-
-```bash
-# Build and deploy admin-api
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/admin-api:latest
-
+# 🎛️ Deploy admin-api service
 gcloud run deploy admin-api \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/admin-api:latest \
-    --region=us-central1 \
+    --image=$REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/admin-api:latest \
+    --region=$REGION \
     --platform=managed \
-    --service-account=spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --set-secrets=ADMIN_USERNAME=admin-username:latest,ADMIN_PASSWORD_HASH=admin-password-hash:latest,JWT_SECRET=jwt-secret:latest \
-    --set-env-vars=GOOGLE_CLOUD_PROJECT=spreadpilot-prod,TRADING_BOT_HOST=trading-bot-service-url,TRADING_BOT_PORT=8080 \
-    --memory=512Mi \
-    --cpu=0.5 \
-    --min-instances=1 \
-    --max-instances=3 \
-    --port=8080
-```
-
-### 4. Deploy Report Worker Service
-
-```bash
-# Build and deploy report-worker
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/report-worker:latest
-
-gcloud run deploy report-worker \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/report-worker:latest \
-    --region=us-central1 \
-    --platform=managed \
-    --service-account=spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --set-secrets=SENDGRID_API_KEY=sendgrid-api-key:latest,ADMIN_EMAIL=admin-email:latest \
-    --set-env-vars=GOOGLE_CLOUD_PROJECT=spreadpilot-prod \
-    --memory=512Mi \
-    --cpu=0.5 \
-    --min-instances=0 \
-    --max-instances=3 \
-    --port=8080 \
-    --no-allow-unauthenticated
-```
-
-### 5. Deploy Alert Router Service
-
-```bash
-# Build and deploy alert-router
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/alert-router:latest
-
-gcloud run deploy alert-router \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/alert-router:latest \
-    --region=us-central1 \
-    --platform=managed \
-    --service-account=spreadpilot-sa@spreadpilot-prod.iam.gserviceaccount.com \
-    --set-secrets=SENDGRID_API_KEY=sendgrid-api-key:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,ADMIN_EMAIL=admin-email:latest \
-    --set-env-vars=GOOGLE_CLOUD_PROJECT=spreadpilot-prod,DASHBOARD_URL=https://dashboard.spreadpilot.com \
-    --memory=512Mi \
-    --cpu=0.5 \
-    --min-instances=0 \
-    --max-instances=3 \
-    --port=8080 \
-    --no-allow-unauthenticated
-```
-
-### 6. Deploy Frontend
-
-```bash
-# Build and deploy frontend
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/frontend:latest
-
-gcloud run deploy frontend \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/frontend:latest \
-    --region=us-central1 \
-    --platform=managed \
-    --memory=256Mi \
-    --cpu=0.5 \
-    --min-instances=1 \
-    --max-instances=3 \
-    --port=80
-```
-
-### 7. Deploy IB Gateway
-
-```bash
-# Build and deploy IB Gateway
-gcloud builds submit --tag us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/ib-gateway:latest
-
-gcloud run deploy ib-gateway \
-    --image=us-central1-docker.pkg.dev/spreadpilot-prod/spreadpilot/ib-gateway:latest \
-    --region=us-central1 \
-    --platform=managed \
-    --set-secrets=TWS_USERID=ib-username:latest,TWS_PASSWORD=ib-password:latest \
-    --set-env-vars=TRADING_MODE=paper \
+    --service-account=$SA_EMAIL \
+    --set-secrets=MONGO_URI=mongo-uri:latest,ADMIN_USERNAME=admin-username:latest,ADMIN_PASSWORD_HASH=admin-password-hash:latest,JWT_SECRET=jwt-secret:latest \
+    --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,LOG_LEVEL=INFO,ENVIRONMENT=production,CORS_ORIGINS=https://dashboard.spreadpilot.com \
     --memory=1Gi \
     --cpu=1 \
+    --concurrency=1000 \
+    --timeout=3600 \
     --min-instances=1 \
-    --max-instances=1 \
-    --port=4002
+    --max-instances=5 \
+    --port=8002 \
+    --allow-unauthenticated
+
+# 🔗 Get service URL
+export ADMIN_API_URL=$(gcloud run services describe admin-api --region=$REGION --format="value(status.url)")
+echo "Admin API URL: $ADMIN_API_URL"
 ```
 
-## Cloud Scheduler Setup
-
-### 1. Set Up Daily Report Scheduler
+### 3️⃣ **Deploy Report Worker Service**
 
 ```bash
-# Create service account for scheduler
-gcloud iam service-accounts create scheduler-sa \
-    --display-name="Scheduler Service Account"
+# 🏗️ Build report-worker container
+cd ../report-worker/
+gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/report-worker:latest
 
-# Grant Pub/Sub publisher role
-gcloud projects add-iam-policy-binding spreadpilot-prod \
-    --member="serviceAccount:scheduler-sa@spreadpilot-prod.iam.gserviceaccount.com" \
-    --role="roles/pubsub.publisher"
+# 📊 Deploy report-worker service
+gcloud run deploy report-worker \
+    --image=$REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/report-worker:latest \
+    --region=$REGION \
+    --platform=managed \
+    --service-account=$SA_EMAIL \
+    --set-secrets=POSTGRES_URI=postgres-uri:latest,SENDGRID_API_KEY=sendgrid-api-key:latest,ADMIN_EMAIL=admin-email:latest,GCS_BUCKET_NAME=gcs-bucket-name:latest \
+    --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,LOG_LEVEL=INFO,ENVIRONMENT=production \
+    --add-cloudsql-instances=$SQL_CONNECTION \
+    --memory=2Gi \
+    --cpu=2 \
+    --concurrency=10 \
+    --timeout=3600 \
+    --min-instances=0 \
+    --max-instances=10 \
+    --port=8080 \
+    --no-allow-unauthenticated
 
-# Create daily report scheduler (runs at 00:05 UTC)
-gcloud scheduler jobs create pubsub daily-report-job \
-    --schedule="5 0 * * *" \
+# 🔗 Get service URL
+export REPORT_WORKER_URL=$(gcloud run services describe report-worker --region=$REGION --format="value(status.url)")
+echo "Report Worker URL: $REPORT_WORKER_URL"
+```
+
+### 4️⃣ **Deploy Alert Router Service**
+
+```bash
+# 🏗️ Build alert-router container
+cd ../alert-router/
+gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/alert-router:latest
+
+# 🔔 Deploy alert-router service
+gcloud run deploy alert-router \
+    --image=$REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/alert-router:latest \
+    --region=$REGION \
+    --platform=managed \
+    --service-account=$SA_EMAIL \
+    --set-secrets=SENDGRID_API_KEY=sendgrid-api-key:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,ADMIN_EMAIL=admin-email:latest \
+    --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,LOG_LEVEL=INFO,ENVIRONMENT=production,DASHBOARD_URL=https://dashboard.spreadpilot.com \
+    --memory=1Gi \
+    --cpu=1 \
+    --concurrency=1000 \
+    --timeout=600 \
+    --min-instances=0 \
+    --max-instances=5 \
+    --port=8080 \
+    --no-allow-unauthenticated
+
+# 🔗 Get service URL
+export ALERT_ROUTER_URL=$(gcloud run services describe alert-router --region=$REGION --format="value(status.url)")
+echo "Alert Router URL: $ALERT_ROUTER_URL"
+```
+
+### 5️⃣ **Deploy Frontend Service**
+
+```bash
+# 🏗️ Build frontend container
+cd ../frontend/
+gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/frontend:latest
+
+# 🖥️ Deploy frontend service
+gcloud run deploy frontend \
+    --image=$REGION-docker.pkg.dev/$PROJECT_ID/spreadpilot/frontend:latest \
+    --region=$REGION \
+    --platform=managed \
+    --set-env-vars=REACT_APP_API_URL=$ADMIN_API_URL,REACT_APP_WS_URL=${ADMIN_API_URL/https/wss} \
+    --memory=512Mi \
+    --cpu=1 \
+    --concurrency=1000 \
+    --timeout=300 \
+    --min-instances=1 \
+    --max-instances=3 \
+    --port=80 \
+    --allow-unauthenticated
+
+# 🔗 Get service URL
+export FRONTEND_URL=$(gcloud run services describe frontend --region=$REGION --format="value(status.url)")
+echo "Frontend URL: $FRONTEND_URL"
+```
+
+### 6️⃣ **Update Pub/Sub Subscriptions with Service URLs**
+
+```bash
+# 🔄 Update Pub/Sub subscriptions with actual service URLs
+echo "Updating Pub/Sub subscriptions with service URLs..."
+
+# 🔔 Update alert router subscriptions
+gcloud pubsub subscriptions modify-push-config alert-router-sub \
+    --push-endpoint="$ALERT_ROUTER_URL/api/v1/alerts"
+
+gcloud pubsub subscriptions modify-push-config critical-alert-router-sub \
+    --push-endpoint="$ALERT_ROUTER_URL/api/v1/critical-alerts"
+
+# 📊 Update report worker subscriptions
+gcloud pubsub subscriptions modify-push-config report-worker-daily-sub \
+    --push-endpoint="$REPORT_WORKER_URL/api/v1/jobs/daily"
+
+gcloud pubsub subscriptions modify-push-config report-worker-monthly-sub \
+    --push-endpoint="$REPORT_WORKER_URL/api/v1/jobs/monthly"
+
+gcloud pubsub subscriptions modify-push-config commission-report-sub \
+    --push-endpoint="$REPORT_WORKER_URL/api/v1/jobs/commission"
+
+# 💰 Update P&L subscriptions
+gcloud pubsub subscriptions modify-push-config pnl-processor-sub \
+    --push-endpoint="$TRADING_BOT_URL/api/v1/pnl/process"
+
+echo "✅ Pub/Sub subscriptions updated successfully"
+```
+
+### 7️⃣ **Deploy IB Gateway (Optional for Cloud)**
+
+> **⚠️ Note**: IB Gateway requires VNC/X11 for the login process. For production, consider running IB Gateway on a dedicated VM or using IB Cloud services.
+
+#### 🖥️ **VM-based IB Gateway Deployment**
+
+```bash
+# 🖥️ Create VM for IB Gateway (recommended approach)
+gcloud compute instances create ib-gateway-vm \
+    --zone=us-central1-a \
+    --machine-type=e2-medium \
+    --subnet=default \
+    --network-tier=PREMIUM \
+    --image-family=ubuntu-2004-lts \
+    --image-project=ubuntu-os-cloud \
+    --boot-disk-size=20GB \
+    --boot-disk-type=pd-standard \
+    --service-account=$SA_EMAIL \
+    --scopes=https://www.googleapis.com/auth/cloud-platform \
+    --tags=ib-gateway,allow-trading
+
+# 🔥 Create firewall rule for IB Gateway
+gcloud compute firewall-rules create allow-ib-gateway \
+    --direction=INGRESS \
+    --priority=1000 \
+    --network=default \
+    --action=ALLOW \
+    --rules=tcp:4002,tcp:7497 \
+    --source-ranges=10.0.0.0/8 \
+    --target-tags=ib-gateway
+
+# 📋 Get VM IP for configuration
+export IB_GATEWAY_IP=$(gcloud compute instances describe ib-gateway-vm --zone=us-central1-a --format="get(networkInterfaces[0].networkIP)")
+echo "IB Gateway VM IP: $IB_GATEWAY_IP"
+
+# 🔄 Update Trading Bot with IB Gateway IP
+gcloud run services update trading-bot \
+    --region=$REGION \
+    --update-env-vars=IB_GATEWAY_HOST=$IB_GATEWAY_IP
+```
+
+---
+
+## ⏰ Cloud Scheduler Setup
+
+### 1️⃣ **Set Up Report Scheduling**
+
+#### 📊 **Daily P&L Reports**
+
+```bash
+# 📊 Daily P&L report (16:35 ET = 20:35 UTC in winter, 21:35 UTC in summer)
+gcloud scheduler jobs create pubsub daily-pnl-report \
+    --schedule="35 21 * * MON-FRI" \
     --topic=daily-reports \
-    --message-body="{\"job_type\": \"daily\"}" \
-    --time-zone="UTC" \
-    --location=us-central1 \
-    --service-account=scheduler-sa@spreadpilot-prod.iam.gserviceaccount.com
+    --message-body='{"job_type": "daily_pnl", "report_date": "today"}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+# 📈 Daily position summary (09:35 ET = 13:35 UTC in winter, 14:35 UTC in summer)
+gcloud scheduler jobs create pubsub daily-position-summary \
+    --schedule="35 9 * * MON-FRI" \
+    --topic=daily-reports \
+    --message-body='{"job_type": "position_summary", "report_date": "today"}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
 ```
 
-### 2. Set Up Monthly Report Scheduler
+#### 📅 **Monthly Reports & Commission Calculation**
 
 ```bash
-# Create monthly report scheduler (runs at 01:00 UTC on the 1st of each month)
-gcloud scheduler jobs create pubsub monthly-report-job \
-    --schedule="0 1 1 * *" \
+# 📊 Monthly P&L reports (00:15 ET on 1st of month)
+gcloud scheduler jobs create pubsub monthly-pnl-report \
+    --schedule="15 0 1 * *" \
     --topic=monthly-reports \
-    --message-body="{\"job_type\": \"monthly\"}" \
-    --time-zone="UTC" \
-    --location=us-central1 \
-    --service-account=scheduler-sa@spreadpilot-prod.iam.gserviceaccount.com
+    --message-body='{"job_type": "monthly_pnl", "target_month": "previous"}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+# 💳 Commission calculation (00:45 ET on 1st of month)
+gcloud scheduler jobs create pubsub commission-calculation \
+    --schedule="45 0 1 * *" \
+    --topic=commission-reports \
+    --message-body='{"job_type": "commission_calculation", "target_month": "previous"}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+# 📧 Monthly report distribution (08:00 ET on 1st of month)
+gcloud scheduler jobs create pubsub monthly-report-distribution \
+    --schedule="0 8 1 * *" \
+    --topic=monthly-reports \
+    --message-body='{"job_type": "distribute_monthly_reports", "target_month": "previous"}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
+```
+
+### 2️⃣ **Set Up Database Maintenance Scheduling**
+
+```bash
+# 🧹 Daily database cleanup (02:00 ET)
+gcloud scheduler jobs create pubsub db-maintenance \
+    --schedule="0 2 * * *" \
+    --topic=system-health \
+    --message-body='{"job_type": "db_cleanup", "retention_days": 90}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+# 📊 Weekly P&L rollup verification (Sundays at 03:00 ET)
+gcloud scheduler jobs create pubsub weekly-pnl-verification \
+    --schedule="0 3 * * SUN" \
+    --topic=system-health \
+    --message-body='{"job_type": "pnl_verification", "weeks_back": 4}' \
+    --time-zone="America/New_York" \
+    --location=$REGION \
+    --service-account=scheduler-sa@$PROJECT_ID.iam.gserviceaccount.com
 ```
 
 ## CI/CD Setup

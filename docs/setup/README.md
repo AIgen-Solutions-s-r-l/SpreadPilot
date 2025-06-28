@@ -1,104 +1,367 @@
-# SpreadPilot Setup Documentation
+# 🛠️ SpreadPilot Setup Documentation
 
-This directory contains detailed setup guides for the SpreadPilot trading system. Each component has its own setup guide with step-by-step instructions.
+> 🚀 **Complete setup guide** for deploying the SpreadPilot automated trading platform - step-by-step instructions for all system components
 
-## System Overview
+This comprehensive setup documentation will guide you through deploying SpreadPilot's microservices architecture, from basic infrastructure to advanced trading features.
 
-SpreadPilot is an automated trading system that executes vertical spread option trades based on signals from Google Sheets. It consists of several components:
+---
 
-1. **MongoDB**: The central database for storing follower information, positions, trades, and alerts.
-2. **IB Gateway**: The connection to Interactive Brokers for executing trades.
-3. **Trading Bot**: The core service that polls for signals, executes trades, and monitors positions.
-4. **Admin API**: The backend service that provides administrative functionality.
-5. **Alert Router**: A service that routes alerts to administrators via Telegram and email.
-6. **Report Worker**: A service that generates and sends reports to followers.
-7. **Frontend**: The web-based user interface for monitoring and managing the system.
-8. **Watchdog**: A monitoring service that checks the health of other components.
+## 🎯 System Overview
 
-## Recent Architectural Improvements
+SpreadPilot is a **sophisticated automated trading platform** that executes QQQ options strategies based on signals from Google Sheets. The system comprises multiple interconnected services designed for reliability, scalability, and performance.
 
-To improve maintainability and reduce duplication, the following services have been consolidated:
+### 🏗️ **Architecture Components**
 
-1. **Admin API**: Consolidated three different implementations (`admin_api/`, `admin-api/`, and `simple-admin-api/`) into a single, unified version in `admin-api/`.
-2. **Alert Router**: Consolidated two different implementations (`alert_router/` and `alert-router/`) into a single, unified version in `alert-router/`.
-3. **Report Worker**: Consolidated two different implementations (`report_worker/` and `report-worker/`) into a single, unified version in `report-worker/`.
+| 🔢 Order | 🎯 Component | 📋 Purpose | ⏱️ Setup Time |
+|-----------|-------------|------------|----------------|
+| 1️⃣ | 🗄️ **MongoDB** | Central database for trading data and configuration | 15 min |
+| 2️⃣ | 🏦 **IB Gateway** | Interactive Brokers connection for trade execution | 30 min |
+| 3️⃣ | 🤖 **Trading Bot** | Core trading engine with signal processing | 20 min |
+| 4️⃣ | 🎛️ **Admin API** | Backend service for system management | 15 min |
+| 5️⃣ | 🖥️ **Frontend** | React dashboard for monitoring and control | 10 min |
+| 6️⃣ | 🔔 **Alert Router** | Multi-channel notification system | 10 min |
+| 7️⃣ | 📊 **Report Worker** | Professional PDF/Excel report generation | 15 min |
 
-These consolidations have improved maintainability, reduced duplication, established a consistent naming convention, and enhanced documentation across all services.
+### 🎯 **Additional Components** *(Optional)*
+- 👀 **Watchdog** - System health monitoring and auto-recovery
+- 🐘 **PostgreSQL** - Analytics database for P&L and commission data
+- 🔴 **Redis** - High-performance caching and Pub/Sub messaging
+- ☁️ **GCS Storage** - Cloud storage for reports and files
 
-## Setup Guides
+---
 
-Follow these guides in order to set up the complete SpreadPilot system:
+## 📋 Setup Sequence
 
-1. [MongoDB Setup Guide](./0-mongodb.md)
-2. [IB Gateway Setup Guide](./1-ib-gateway.md)
-3. [Trading Bot Setup Guide](./2-trading-bot.md)
-4. [Admin API Setup Guide](./3-admin-api.md)
-5. [Frontend Setup Guide](./4-frontend.md)
-6. [Alert Router Setup Guide](./5-alert-router.md)
-7. [Report Worker Setup Guide](./6-report-worker.md)
+### 🚀 **Quick Start (Recommended)**
 
-## Environment Variables
+For first-time setup, follow this sequence:
 
-The SpreadPilot system uses environment variables for configuration. These are defined in the `.env` file at the project root. See each component's setup guide for details on the required environment variables.
-
-## Docker Compose
-
-The SpreadPilot system is containerized using Docker and orchestrated using Docker Compose. The `docker-compose.yml` file at the project root defines all the services and their configurations.
-
-To start the entire system:
-
-```bash
-docker-compose up -d
+```mermaid
+graph LR
+    A[🗄️ MongoDB] --> B[🏦 IB Gateway]
+    B --> C[🤖 Trading Bot]
+    C --> D[🎛️ Admin API]
+    D --> E[🖥️ Frontend]
+    E --> F[🔔 Alert Router]
+    F --> G[📊 Report Worker]
 ```
 
-To start individual components:
+### 📋 **Detailed Setup Guides**
+
+| 📄 Guide | 🎯 Component | 🔧 Complexity | 📋 Prerequisites |
+|----------|-------------|----------------|-------------------|
+| 🗄️ [**MongoDB Setup**](./0-mongodb.md) | Database Foundation | 🟢 Basic | Docker, Environment Variables |
+| 🏦 [**IB Gateway Setup**](./1-ib-gateway.md) | Trading Infrastructure | 🟡 Moderate | IBKR Account, Credentials |
+| 🤖 [**Trading Bot Setup**](./2-trading-bot.md) | Core Engine | 🟡 Moderate | MongoDB, IB Gateway |
+| 🎛️ [**Admin API Setup**](./3-admin-api.md) | Management Backend | 🟢 Basic | MongoDB, JWT Secrets |
+| 🖥️ [**Frontend Setup**](./4-frontend.md) | User Interface | 🟢 Basic | Admin API, Node.js |
+| 🔔 [**Alert Router Setup**](./5-alert-router.md) | Notifications | 🟢 Basic | Telegram Bot, SendGrid |
+| 📊 [**Report Worker Setup**](./6-report-worker.md) | Report Generation | 🟡 Moderate | PostgreSQL, GCS Bucket |
+
+---
+
+## ⚙️ Environment Configuration
+
+### 📝 **Environment Variables Structure**
+
+SpreadPilot uses a comprehensive `.env` file for configuration. Here's the structure:
 
 ```bash
-docker-compose up -d [component-name]
+# 🏗️ Core Infrastructure
+MONGO_URI=mongodb://admin:password@localhost:27017
+POSTGRES_URI=postgresql+asyncpg://user:password@localhost:5432/spreadpilot_pnl
+REDIS_URL=redis://localhost:6379
+
+# 🏦 Interactive Brokers
+IB_GATEWAY_HOST=127.0.0.1
+IB_GATEWAY_PORT=4002
+IB_USERNAME=your_ib_username
+IB_PASSWORD=your_ib_password
+
+# 📊 Google Sheets Integration
+GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/...
+GOOGLE_SHEETS_API_KEY=your_api_key
+
+# 🔐 Authentication & Security
+JWT_SECRET=your_jwt_secret_key
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=your_bcrypt_hash
+
+# 🔔 Communications
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+SENDGRID_API_KEY=your_sendgrid_key
+
+# ☁️ Cloud Services
+GCS_BUCKET_NAME=spreadpilot-reports
+GOOGLE_CLOUD_PROJECT=your-project-id
 ```
 
-For example:
+### 🔧 **Configuration Management**
+
+- 📄 **Development** - Use `.env` file in project root
+- 🚀 **Production** - Use GCP Secret Manager or HashiCorp Vault
+- 🧪 **Testing** - Use separate test environment variables
+- 🔐 **Security** - Never commit secrets to version control
+
+---
+
+## 🐳 Docker Deployment
+
+### 🚀 **Complete System Deployment**
 
 ```bash
-docker-compose up -d mongodb
+# 1️⃣ Clone and configure
+git clone https://github.com/your-org/spreadpilot.git
+cd spreadpilot
+cp .env.template .env
+# Edit .env with your configuration
+
+# 2️⃣ Start infrastructure
+docker-compose up -d mongodb redis postgres
+
+# 3️⃣ Start core services
+docker-compose up -d ib-gateway trading-bot
+
+# 4️⃣ Start management services
+docker-compose up -d admin-api frontend
+
+# 5️⃣ Start auxiliary services
+docker-compose up -d alert-router report-worker watchdog
+
+# 6️⃣ Verify deployment
+docker-compose ps
+```
+
+### 🎯 **Individual Service Deployment**
+
+```bash
+# 🗄️ Database services
+docker-compose up -d mongodb postgres redis
+
+# 🏦 Trading infrastructure
 docker-compose up -d ib-gateway
+
+# 🤖 Core trading services
 docker-compose up -d trading-bot
-docker-compose up -d admin-api
+
+# 🎛️ Management services
+docker-compose up -d admin-api frontend
+
+# 🔔 Notification services
 docker-compose up -d alert-router
+
+# 📊 Reporting services
 docker-compose up -d report-worker
-docker-compose up -d frontend
+
+# 👀 Monitoring services
+docker-compose up -d watchdog
 ```
 
-## Troubleshooting
+### 📋 **Service Health Verification**
 
-Each setup guide includes a troubleshooting section specific to that component. For general troubleshooting:
+```bash
+# ✅ Check all services
+docker-compose ps
 
-1. Check the logs of the relevant container:
-   ```bash
-   docker logs [container-name]
-   ```
+# 🔍 Check specific service logs
+docker-compose logs trading-bot
+docker-compose logs admin-api
 
-2. Verify that all required environment variables are set in the `.env` file.
+# 🌐 Test service endpoints
+curl http://localhost:8001/health  # Trading Bot
+curl http://localhost:8002/health  # Admin API
+curl http://localhost:8080         # Frontend
+```
 
-3. Ensure that dependencies are running before starting dependent services.
+---
 
-4. Check system resources (CPU, memory, disk space).
+## 🎯 Feature-Specific Setup
 
-5. For services that use Google Cloud (Pub/Sub, etc.), verify that the credentials are correctly set up.
+### 💰 **P&L System Setup** *(v1.1.7.0)*
 
-## Security Considerations
+**📋 Prerequisites:**
+- 🐘 PostgreSQL database
+- 🔄 Alembic migrations
+- 🤖 Trading Bot integration
 
-For production environments:
+**🚀 Setup Steps:**
+1. Configure PostgreSQL connection in `.env`
+2. Run database migrations: `alembic upgrade head`
+3. Enable P&L service in Trading Bot configuration
+4. Verify 30-second MTM calculations are running
 
-1. Use strong, unique passwords and API keys.
-2. Implement proper secrets management.
-3. Use HTTPS for all web interfaces.
-4. Restrict access to administrative interfaces.
-5. Regularly update dependencies to patch security vulnerabilities.
-6. Implement monitoring and alerting for system health.
-7. Regularly back up the MongoDB database.
-8. Ensure that sensitive information is properly handled in all services.
+### 📊 **Report Generation Setup** *(v1.1.7.0)*
 
-## Next Steps
+**📋 Prerequisites:**
+- ☁️ Google Cloud Storage bucket
+- 📧 SendGrid API key
+- 🐘 PostgreSQL with P&L data
 
-After setting up the SpreadPilot system, refer to the [Operations Guide](../04-operations-guide.md) for information on day-to-day operations, maintenance, and troubleshooting.
+**🚀 Setup Steps:**
+1. Create GCS bucket for report storage
+2. Configure GCS service account credentials
+3. Set up SendGrid for email delivery
+4. Configure monthly report schedules
+
+### ⚠️ **Time Value Monitoring** *(v1.1.7.0)*
+
+**📋 Prerequisites:**
+- 🤖 Trading Bot with live market data
+- 🔴 Redis for status tracking
+- 🚨 Alert Router for notifications
+
+**🚀 Setup Steps:**
+1. Enable time value monitoring in Trading Bot
+2. Configure liquidation threshold (default: $0.10)
+3. Set up risk management alerts
+4. Test automatic liquidation workflow
+
+---
+
+## 🔐 Security Configuration
+
+### 🛡️ **Production Security Checklist**
+
+#### 🔑 **Authentication & Secrets**
+- ✅ Generate strong JWT secrets (256-bit minimum)
+- ✅ Use bcrypt for password hashing
+- ✅ Implement API key rotation schedule
+- ✅ Configure HashiCorp Vault for secrets management
+- ✅ Enable two-factor authentication where possible
+
+#### 🌐 **Network Security**
+- ✅ Configure private VPC for service communication
+- ✅ Implement firewall rules for port restrictions
+- ✅ Enable TLS/SSL for all HTTP communications
+- ✅ Use load balancers with health checks
+- ✅ Restrict admin interface access by IP
+
+#### 🗄️ **Database Security**
+- ✅ Use dedicated database users with minimal privileges
+- ✅ Enable database encryption at rest
+- ✅ Configure automated backups with encryption
+- ✅ Implement database connection pooling
+- ✅ Regular security patch updates
+
+#### 📊 **Application Security**
+- ✅ Input validation and sanitization
+- ✅ Rate limiting on API endpoints
+- ✅ Error handling without information disclosure
+- ✅ Secure file upload and storage
+- ✅ Regular dependency security scans
+
+---
+
+## 🔧 Advanced Configuration
+
+### 🏗️ **High Availability Setup**
+
+```bash
+# 🔄 Load-balanced services
+docker-compose -f docker-compose.yml -f docker-compose.ha.yml up -d
+
+# 🗄️ Database clustering
+docker-compose -f docker-compose.yml -f docker-compose.db-cluster.yml up -d
+
+# 📊 Monitoring stack
+docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+### 📈 **Performance Optimization**
+
+- ⚡ **Connection Pooling** - Configure optimal pool sizes for databases
+- 💾 **Caching Strategy** - Implement Redis caching for frequently accessed data
+- 📊 **Query Optimization** - Add database indexes for P&L analytics
+- 🔄 **Async Processing** - Use async patterns for non-blocking operations
+
+### 🔍 **Monitoring & Observability**
+
+- 📈 **Metrics Collection** - Prometheus for service metrics
+- 📊 **Visualization** - Grafana dashboards for system health
+- 📄 **Centralized Logging** - ELK stack for log aggregation
+- 🔍 **Distributed Tracing** - OpenTelemetry for request tracing
+
+---
+
+## 🚨 Troubleshooting Guide
+
+### 🔧 **Common Issues & Solutions**
+
+#### 🏦 **IB Gateway Connection Issues**
+```bash
+# Check IB Gateway status
+curl http://localhost:5000/v1/api/portal/sso/validate
+
+# Verify credentials
+docker logs ib-gateway
+
+# Test connectivity
+telnet localhost 4002
+```
+
+#### 🗄️ **Database Connection Problems**
+```bash
+# MongoDB connection test
+mongosh mongodb://admin:password@localhost:27017
+
+# PostgreSQL connection test
+psql postgresql://user:password@localhost:5432/spreadpilot_pnl
+
+# Redis connection test
+redis-cli -h localhost -p 6379 ping
+```
+
+#### 🤖 **Service Health Issues**
+```bash
+# Check service logs
+docker-compose logs [service-name]
+
+# Restart specific service
+docker-compose restart [service-name]
+
+# Full system restart
+docker-compose down && docker-compose up -d
+```
+
+### 📞 **Getting Help**
+
+1. 📋 **Check Prerequisites** - Verify all dependencies are properly configured
+2. 📄 **Review Logs** - Examine service logs for error messages
+3. 🔍 **Validate Configuration** - Ensure environment variables are correct
+4. 🧪 **Test Connections** - Verify database and external service connectivity
+5. 📖 **Consult Documentation** - Review specific component setup guides
+
+---
+
+## 🎯 Next Steps
+
+### 📚 **Post-Setup Documentation**
+
+After completing the setup, refer to these guides:
+
+- 🔧 [**Operations Guide**](../04-operations-guide.md) - Daily operations and maintenance
+- 🚀 [**Deployment Guide**](../02-deployment-guide.md) - Production deployment strategies
+- 🛠️ [**Development Guide**](../03-development-guide.md) - Local development environment
+
+### 🔄 **System Validation**
+
+1. ✅ **Verify all services are running** - Check `docker-compose ps`
+2. 🌐 **Test web interfaces** - Access Frontend at http://localhost:8080
+3. 📊 **Check system health** - Monitor service endpoints
+4. 🧪 **Run integration tests** - Validate end-to-end workflows
+5. 📋 **Review monitoring** - Ensure alerts and logging are working
+
+---
+
+<div align="center">
+
+**🛠️ Your complete SpreadPilot setup companion**
+
+[🏗️ Architecture Overview](../01-system-architecture.md) • [🚀 Deployment Guide](../02-deployment-guide.md) • [🔧 Operations Guide](../04-operations-guide.md)
+
+---
+
+**📈 SpreadPilot v1.1.7.0** - *Professional Trading Platform Setup*
+
+</div>
