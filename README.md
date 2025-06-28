@@ -27,6 +27,9 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 
 *   **Automated Trading:** Replicate QQQ options strategies directly from Google Sheets to IBKR.
 *   **Advanced Order Execution:** Limit-ladder execution strategy with pre-trade margin checks and dynamic pricing.
+*   **Real-time P&L Monitoring:** Comprehensive P&L tracking with 30-second MTM calculations and PostgreSQL storage.
+*   **Automated Risk Management:** Time value monitoring with automatic liquidation when TV < $0.10.
+*   **Daily & Monthly Rollups:** Automated P&L aggregation at 16:30 ET daily and 00:10 ET monthly.
 *   **Microservice Architecture:** Scalable and maintainable design with dedicated services for trading, monitoring, administration, reporting, and alerting.
 *   **Multi-Follower Support:** Automatic IBGateway container management for each enabled follower with isolated connections.
 *   **Real-time Monitoring:** Admin dashboard with real-time logs and system status updates.
@@ -41,6 +44,8 @@ SpreadPilot is a sophisticated copy-trading platform designed to automate the ex
 
 *   Docker and Docker Compose
 *   Python 3.9+
+*   PostgreSQL 13+ (for P&L data storage)
+*   MongoDB (for trading data and configuration)
 *   `make` (optional, for using the Makefile)
 *   An Interactive Brokers (IBKR) account and credentials
 *   Google Cloud Platform (GCP) account and credentials (for cloud deployment)
