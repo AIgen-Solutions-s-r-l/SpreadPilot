@@ -33,10 +33,10 @@ class TestServiceWatchdog:
         watchdog.http_client = mock_client
         
         # Test health check
-        result = await watchdog.check_service_health("gateway_manager")
+        result = await watchdog.check_service_health("trading_bot")
         
         assert result is True
-        mock_client.get.assert_called_once_with(SERVICES["gateway_manager"]["health_url"])
+        mock_client.get.assert_called_once_with(SERVICES["trading_bot"]["health_url"])
 
     @pytest.mark.asyncio
     async def test_check_service_health_failure_status(self, watchdog):
@@ -50,7 +50,7 @@ class TestServiceWatchdog:
         watchdog.http_client = mock_client
         
         # Test health check
-        result = await watchdog.check_service_health("executor")
+        result = await watchdog.check_service_health("admin_api")
         
         assert result is False
 
@@ -63,7 +63,7 @@ class TestServiceWatchdog:
         watchdog.http_client = mock_client
         
         # Test health check
-        result = await watchdog.check_service_health("monitor")
+        result = await watchdog.check_service_health("report_worker")
         
         assert result is False
 
@@ -76,11 +76,11 @@ class TestServiceWatchdog:
         mock_run.return_value = mock_result
         
         # Test restart
-        result = watchdog.restart_service("gateway_manager")
+        result = watchdog.restart_service("trading_bot")
         
         assert result is True
         mock_run.assert_called_once_with(
-            ["docker", "restart", "spreadpilot-gateway-manager"],
+            ["docker", "restart", "spreadpilot-trading-bot"],
             capture_output=True,
             text=True,
             timeout=30,
@@ -96,7 +96,7 @@ class TestServiceWatchdog:
         mock_run.return_value = mock_result
         
         # Test restart
-        result = watchdog.restart_service("executor")
+        result = watchdog.restart_service("admin_api")
         
         assert result is False
 
@@ -108,15 +108,15 @@ class TestServiceWatchdog:
         watchdog.publish_alert = AsyncMock()
         
         # Set initial failure count
-        watchdog.failure_counts["gateway_manager"] = 2
+        watchdog.failure_counts["trading_bot"] = 2
         
         # Monitor service
-        await watchdog.monitor_service("gateway_manager")
+        await watchdog.monitor_service("trading_bot")
         
         # Verify failure count reset
-        assert watchdog.failure_counts["gateway_manager"] == 0
+        assert watchdog.failure_counts["trading_bot"] == 0
         # Verify recovery alert published
-        watchdog.publish_alert.assert_called_once_with("gateway_manager", "recovery", True)
+        watchdog.publish_alert.assert_called_once_with("trading_bot", "recovery", True)
 
     @pytest.mark.asyncio
     async def test_monitor_service_unhealthy_below_threshold(self, watchdog):
@@ -127,10 +127,10 @@ class TestServiceWatchdog:
         watchdog.restart_service = Mock()
         
         # Monitor service
-        await watchdog.monitor_service("executor")
+        await watchdog.monitor_service("admin_api")
         
         # Verify failure count incremented
-        assert watchdog.failure_counts["executor"] == 1
+        assert watchdog.failure_counts["admin_api"] == 1
         # Verify no restart attempted
         watchdog.restart_service.assert_not_called()
         watchdog.publish_alert.assert_not_called()
@@ -144,17 +144,17 @@ class TestServiceWatchdog:
         watchdog.restart_service = Mock(return_value=True)
         
         # Set failure count to threshold - 1
-        watchdog.failure_counts["monitor"] = MAX_CONSECUTIVE_FAILURES - 1
+        watchdog.failure_counts["report_worker"] = MAX_CONSECUTIVE_FAILURES - 1
         
         # Monitor service
-        await watchdog.monitor_service("monitor")
+        await watchdog.monitor_service("report_worker")
         
         # Verify restart attempted
-        watchdog.restart_service.assert_called_once_with("monitor")
+        watchdog.restart_service.assert_called_once_with("report_worker")
         # Verify alert published
-        watchdog.publish_alert.assert_called_once_with("monitor", "restart", True)
+        watchdog.publish_alert.assert_called_once_with("report_worker", "restart", True)
         # Verify failure count reset
-        assert watchdog.failure_counts["monitor"] == 0
+        assert watchdog.failure_counts["report_worker"] == 0
 
     @pytest.mark.asyncio
     async def test_monitor_service_restart_failure(self, watchdog):
@@ -165,27 +165,27 @@ class TestServiceWatchdog:
         watchdog.restart_service = Mock(return_value=False)
         
         # Set failure count to threshold - 1
-        watchdog.failure_counts["dashboard"] = MAX_CONSECUTIVE_FAILURES - 1
+        watchdog.failure_counts["frontend"] = MAX_CONSECUTIVE_FAILURES - 1
         
         # Monitor service
-        await watchdog.monitor_service("dashboard")
+        await watchdog.monitor_service("frontend")
         
         # Verify restart attempted
-        watchdog.restart_service.assert_called_once_with("dashboard")
+        watchdog.restart_service.assert_called_once_with("frontend")
         # Verify alert published with failure
-        watchdog.publish_alert.assert_called_once_with("dashboard", "restart", False)
+        watchdog.publish_alert.assert_called_once_with("frontend", "restart", False)
 
     @pytest.mark.asyncio
     async def test_publish_alert_component_down(self, watchdog):
         """Test alert publishing for component down"""
         # Mock the alert publishing (in real implementation, this would use Pub/Sub)
         with patch("watchdog.logger") as mock_logger:
-            await watchdog.publish_alert("gateway_manager", "restart", False)
+            await watchdog.publish_alert("trading_bot", "restart", False)
             
             # Verify alert logged
             mock_logger.info.assert_called_once()
             call_args = mock_logger.info.call_args[0][0]
-            assert "Gateway Manager restart failed" in call_args
+            assert "Trading Bot restart failed" in call_args
 
     @pytest.mark.asyncio
     async def test_context_manager(self):

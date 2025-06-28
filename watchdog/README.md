@@ -14,10 +14,10 @@ A self-hosted health monitoring service that monitors critical SpreadPilot compo
 
 The watchdog monitors the following services:
 
-- **Gateway Manager** (`gateway-manager:8080/health`)
-- **Executor** (`executor:8080/health`)
-- **Monitor** (`monitor:8080/health`)
-- **Dashboard** (`dashboard:3000/api/health`)
+- **Trading Bot** (`trading-bot:8080/health`)
+- **Admin API** (`admin-api:8080/health`)
+- **Report Worker** (`report-worker:8080/health`)
+- **Frontend Dashboard** (`frontend:3000/api/health`)
 
 ## Configuration
 

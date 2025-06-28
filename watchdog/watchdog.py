@@ -23,25 +23,25 @@ logger = logging.getLogger(__name__)
 
 # Service configuration
 SERVICES = {
-    "gateway_manager": {
-        "container_name": "spreadpilot-gateway-manager",
-        "health_url": "http://gateway-manager:8080/health",
-        "display_name": "Gateway Manager",
+    "trading_bot": {
+        "container_name": "spreadpilot-trading-bot",
+        "health_url": "http://trading-bot:8080/health",
+        "display_name": "Trading Bot",
     },
-    "executor": {
-        "container_name": "spreadpilot-executor",
-        "health_url": "http://executor:8080/health",
-        "display_name": "Executor",
+    "admin_api": {
+        "container_name": "spreadpilot-admin-api",
+        "health_url": "http://admin-api:8080/health",
+        "display_name": "Admin API",
     },
-    "monitor": {
-        "container_name": "spreadpilot-monitor",
-        "health_url": "http://monitor:8080/health",
-        "display_name": "Monitor",
+    "report_worker": {
+        "container_name": "spreadpilot-report-worker",
+        "health_url": "http://report-worker:8080/health",
+        "display_name": "Report Worker",
     },
-    "dashboard": {
-        "container_name": "spreadpilot-dashboard",
-        "health_url": "http://dashboard:3000/api/health",
-        "display_name": "Dashboard",
+    "frontend": {
+        "container_name": "spreadpilot-frontend",
+        "health_url": "http://frontend:3000/api/health",
+        "display_name": "Frontend Dashboard",
     },
 }
 
