@@ -5,6 +5,23 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.7.0] - 2025-06-28
+
+### Added
+- **Automated Email Reports**: Weekly commission report emails via SendGrid with PDF attachments
+- **Email Tracking**: Added sent status tracking fields to commission_monthly table
+- **Cron Job Integration**: Weekly Monday 9AM UTC scheduled job for commission report distribution
+- **PDF Generation**: Commission-specific PDF reports with payment details and IBAN information
+- **GCS Integration**: Signed URL generation for secure Excel report downloads
+- **Retry Logic**: 3-attempt exponential backoff for reliable email delivery
+- **Enhanced Report Generation**: Professional PDF/Excel reports with GCS storage integration
+
+### Enhanced
+- **Documentation**: Comprehensive emoji-enhanced documentation across all README files
+- **Email Service**: SendGrid integration with HTML templates and attachment support
+- **Testing**: Full test coverage for mailer service with mocking
+- **Operations Guide**: Added scheduled jobs monitoring section
+
 ## [v1.1.6.0] - 2025-06-28
 
 ### Added
