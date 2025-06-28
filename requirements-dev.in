@@ -57,5 +57,7 @@ ipdb>=0.13.13
 
 # GCP
 # google-cloud-sdk>=430.0.0 - This is a system package, not a Python package
+google-cloud-storage>=2.10.0  # For GCS bucket integration
+hvac>=1.0.0  # HashiCorp Vault client
 pytest-asyncio
 websockets

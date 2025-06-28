@@ -1,53 +1,143 @@
+"""Configuration module for the report worker."""
+
 import os
-import logging
-from dotenv import load_dotenv
-from spreadpilot_core.logging.logger import get_logger
+from functools import lru_cache
+from typing import Optional
 
-# Load environment variables from .env file if it exists (useful for local dev)
-load_dotenv()
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
-# Initialize logger early
+from spreadpilot_core.logging import get_logger
+
 logger = get_logger(__name__)
 
-# --- Core Settings ---
-GCP_PROJECT_ID: str = os.environ.get("GCP_PROJECT_ID")
-if not GCP_PROJECT_ID:
-    logger.warning("GCP_PROJECT_ID environment variable not set.")
 
-# MongoDB Settings
-MONGO_URI: str = os.environ.get("MONGO_URI")
-MONGO_DB_NAME: str = os.environ.get("MONGO_DB_NAME", "spreadpilot_admin")
-MONGO_DB_NAME_SECRETS: str = os.environ.get("MONGO_DB_NAME_SECRETS", "spreadpilot_secrets")
+class Settings(BaseSettings):
+    """Application settings for the report worker.
+    
+    Loads settings from environment variables.
+    """
 
-# --- Report Settings ---
-DEFAULT_COMMISSION_PERCENTAGE: float = float(os.environ.get("DEFAULT_COMMISSION_PERCENTAGE", "20.0"))  # Default to 20%
-REPORT_SENDER_EMAIL: str = os.environ.get("REPORT_SENDER_EMAIL", "capital@tradeautomation.it")
-ADMIN_EMAIL: str = os.environ.get("ADMIN_EMAIL")  # Admin email for CC
-if not ADMIN_EMAIL:
-    logger.warning("ADMIN_EMAIL environment variable not set. Reports will not be CC'd.")
+    # Google Cloud Project
+    project_id: str = Field(
+        default="spreadpilot-dev",
+        env="GOOGLE_CLOUD_PROJECT",
+        description="Google Cloud Project ID",
+    )
+    
+    # MongoDB Settings
+    mongo_uri: Optional[str] = Field(
+        None,
+        env="MONGO_URI",
+        description="MongoDB connection URI",
+    )
+    mongo_db_name: str = Field(
+        default="spreadpilot_admin",
+        env="MONGO_DB_NAME",
+        description="MongoDB database name",
+    )
+    mongo_db_name_secrets: str = Field(
+        default="spreadpilot_secrets",
+        env="MONGO_DB_NAME_SECRETS",
+        description="MongoDB secrets database name",
+    )
+    
+    # PostgreSQL Settings for P&L data
+    postgres_uri: Optional[str] = Field(
+        None,
+        env="POSTGRES_URI",
+        description="PostgreSQL connection URI for P&L data",
+    )
 
-# --- Timing Settings (for daily P&L calculation trigger reference) ---
-# Although triggered by Cloud Scheduler, these might be useful for date calculations
-MARKET_CLOSE_TIMEZONE: str = os.environ.get("MARKET_CLOSE_TIMEZONE", "America/New_York")
-MARKET_CLOSE_HOUR: int = int(os.environ.get("MARKET_CLOSE_HOUR", "16"))
-MARKET_CLOSE_MINUTE: int = int(os.environ.get("MARKET_CLOSE_MINUTE", "10"))
+    # Report Settings
+    default_commission_percentage: float = Field(
+        default=20.0,
+        env="DEFAULT_COMMISSION_PERCENTAGE",
+        description="Default commission percentage",
+    )
+    report_sender_email: str = Field(
+        default="capital@tradeautomation.it",
+        env="REPORT_SENDER_EMAIL",
+        description="Email address for sending reports",
+    )
+    admin_email: Optional[str] = Field(
+        None,
+        env="ADMIN_EMAIL",
+        description="Admin email address for CC",
+    )
 
-# --- Email Settings ---
-SMTP_HOST: str = os.environ.get("SMTP_HOST")
-SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER: str = os.environ.get("SMTP_USER")
-SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD")
-SMTP_TLS: bool = os.environ.get("SMTP_TLS", "true").lower() == "true"
+    # Timing Settings
+    market_close_timezone: str = Field(
+        default="America/New_York",
+        env="MARKET_CLOSE_TIMEZONE",
+        description="Market close timezone",
+    )
+    market_close_hour: int = Field(
+        default=16,
+        env="MARKET_CLOSE_HOUR",
+        description="Market close hour",
+    )
+    market_close_minute: int = Field(
+        default=10,
+        env="MARKET_CLOSE_MINUTE",
+        description="Market close minute",
+    )
 
-# Log loaded configuration (optional, consider redacting sensitive info if any)
-logger.info("Configuration loaded:")
-logger.info(f"  GCP_PROJECT_ID: {GCP_PROJECT_ID}")
-logger.info(f"  MONGO_URI: {'Set' if MONGO_URI else 'Not Set'}")
-logger.info(f"  MONGO_DB_NAME: {MONGO_DB_NAME}")
-logger.info(f"  DEFAULT_COMMISSION_PERCENTAGE: {DEFAULT_COMMISSION_PERCENTAGE}")
-logger.info(f"  REPORT_SENDER_EMAIL: {REPORT_SENDER_EMAIL}")
-logger.info(f"  ADMIN_EMAIL: {'Set' if ADMIN_EMAIL else 'Not Set'}")
-logger.info(f"  MARKET_CLOSE_TIMEZONE: {MARKET_CLOSE_TIMEZONE}")
-logger.info(f"  MARKET_CLOSE_HOUR: {MARKET_CLOSE_HOUR}")
-logger.info(f"  MARKET_CLOSE_MINUTE: {MARKET_CLOSE_MINUTE}")
-logger.info(f"  SMTP_HOST: {'Set' if SMTP_HOST else 'Not Set'}")
+    # Email Settings
+    smtp_host: Optional[str] = Field(
+        None,
+        env="SMTP_HOST",
+        description="SMTP server host",
+    )
+    smtp_port: int = Field(
+        default=587,
+        env="SMTP_PORT",
+        description="SMTP server port",
+    )
+    smtp_user: Optional[str] = Field(
+        None,
+        env="SMTP_USER",
+        description="SMTP username",
+    )
+    smtp_password: Optional[str] = Field(
+        None,
+        env="SMTP_PASSWORD",
+        description="SMTP password",
+    )
+    smtp_tls: bool = Field(
+        default=True,
+        env="SMTP_TLS",
+        description="Enable SMTP TLS",
+    )
+
+    # GCS Settings
+    gcs_bucket_name: Optional[str] = Field(
+        None,
+        env="GCS_BUCKET_NAME",
+        description="Google Cloud Storage bucket name for report files",
+    )
+    gcs_service_account_key_path: Optional[str] = Field(
+        None,
+        env="GCS_SERVICE_ACCOUNT_KEY_PATH",
+        description="Path to GCS service account key file",
+    )
+
+    class Config:
+        """Pydantic config."""
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings."""
+    settings = Settings()
+    logger.info(
+        "Loaded report worker settings",
+        project_id=settings.project_id,
+        mongo_db_name=settings.mongo_db_name,
+        gcs_bucket_configured=bool(settings.gcs_bucket_name),
+        smtp_configured=bool(settings.smtp_host),
+    )
+    return settings

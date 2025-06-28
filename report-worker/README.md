@@ -5,8 +5,12 @@ This service is responsible for generating and sending monthly reports to follow
 ## Features
 
 - Receives job requests via Google Cloud Pub/Sub
-- Calculates daily P&L
-- Generates monthly reports for followers
+- Calculates daily P&L using PostgreSQL data
+- Generates monthly reports for followers (PDF and Excel formats)
+- Stores reports in Google Cloud Storage
+- Generates signed URLs for secure report access
+- Integrates commission calculation with P&L data
+- Includes IBAN information for payment processing
 - Sends reports via email
 - Securely loads secrets from MongoDB
 - Provides health check endpoint
@@ -17,6 +21,8 @@ This service is responsible for generating and sending monthly reports to follow
 
 - Python 3.11+
 - MongoDB (for data storage and secret management)
+- PostgreSQL (for P&L and commission data)
+- Google Cloud Storage (for report file storage)
 - Google Cloud Pub/Sub subscription
 - SMTP server for sending emails
 
@@ -47,6 +53,13 @@ SMTP_PORT=587
 SMTP_USER=user
 SMTP_PASSWORD=password
 SMTP_TLS=true
+
+# GCS Settings (for report file storage)
+GCS_BUCKET_NAME=spreadpilot-reports
+GCS_SERVICE_ACCOUNT_KEY_PATH=/path/to/service-account.json
+
+# PostgreSQL Settings (for P&L data)
+POSTGRES_URI=postgresql+asyncpg://user:password@localhost:5432/spreadpilot_pnl
 
 # Logging
 LOG_LEVEL=INFO
@@ -89,7 +102,12 @@ docker run -p 8084:8084 --env-file .env spreadpilot-report-worker
 The service supports two types of jobs:
 
 1. **Daily P&L Calculation** (`job_type: "daily"`): Calculates and stores daily P&L for the current date.
-2. **Monthly Report Generation** (`job_type: "monthly"`): Generates and sends monthly reports for all active followers for the previous month.
+2. **Monthly Report Generation** (`job_type: "monthly"`): Generates and sends monthly reports for all active followers for the previous month, including:
+   - Daily P&L table for the month
+   - Total P&L and commission calculations  
+   - PDF and Excel report formats
+   - GCS storage with signed URL access
+   - IBAN information for payment processing
 
 ## Development
 
