@@ -3,4 +3,4 @@ httpx>=0.24.0
 motor>=3.0.0
 asyncio
 # SpreadPilot core for alert models
--e ../spreadpilot-core
+# -e ../spreadpilot-core
