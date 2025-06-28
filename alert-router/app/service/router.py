@@ -69,48 +69,10 @@ def _format_alert_message(event: AlertEvent) -> Tuple[str, str]:
 async def route_alert(event: AlertEvent):
     """
     Routes the alert event to configured notification channels
-    (Telegram, Email).
+    (Telegram with Email fallback).
     """
-    logger.info(f"Routing alert for event: {event.event_type.value}")
-    subject, body = _format_alert_message(event)
-
-    # Send to Telegram
-    if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ADMIN_IDS:
-        logger.info(f"Sending alert to Telegram admins: {settings.TELEGRAM_ADMIN_IDS}")
-        # Loop through admin IDs and send individually
-        for chat_id in settings.TELEGRAM_ADMIN_IDS:
-            try:
-                logger.debug(f"Sending Telegram alert to chat_id: {chat_id}")
-                await send_telegram_message(
-                    bot_token=settings.TELEGRAM_BOT_TOKEN,
-                    chat_id=chat_id,
-                    message=body,
-                )
-                logger.info(f"Alert sent successfully via Telegram to {chat_id}.")
-            except Exception as e:
-                logger.error(f"Failed to send alert via Telegram to {chat_id}: {e}", exc_info=True)
-    else:
-        logger.warning("Telegram is not configured. Skipping Telegram notification.")
-
-    # Send to Email
-    if (
-        settings.EMAIL_SENDER
-        and settings.EMAIL_ADMIN_RECIPIENTS
-        and settings.SMTP_HOST
-    ):
-        logger.info(f"Sending alert to email admins: {settings.EMAIL_ADMIN_RECIPIENTS}")
-        # Loop through admin recipients and send individually
-        for recipient_email in settings.EMAIL_ADMIN_RECIPIENTS:
-            try:
-                logger.debug(f"Sending Email alert to recipient: {recipient_email}")
-                send_email(
-                    from_email=settings.EMAIL_SENDER,
-                    to_email=recipient_email,
-                    subject=subject,
-                    html_content=body,
-                )
-                logger.info(f"Alert sent successfully via Email to {recipient_email}.")
-            except Exception as e:
-                logger.error(f"Failed to send alert via Email to {recipient_email}: {e}", exc_info=True)
-    else:
-        logger.warning("Email is not configured. Skipping Email notification.")
+    # Import here to avoid circular imports
+    from .alert_router import AlertRouter
+    
+    async with AlertRouter() as router:
+        await router.route_alert(event)

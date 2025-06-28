@@ -160,28 +160,31 @@ Advanced report generation service with cloud storage integration.
 
 ### 🔔 **Alert Router** - *Intelligent Notification System*
 
-Centralized alert management and multi-channel notification delivery.
+Centralized alert management with Telegram-first, email-fallback notification strategy.
 
 **🎯 Primary Responsibilities:**
 - 📮 **Alert Processing** - Pub/Sub event consumption and message formatting
-- 🤖 **Telegram Integration** - Real-time notifications with deep links
-- 📧 **Email Notifications** - Professional alert emails via SendGrid
-- 🎯 **Smart Routing** - Channel selection based on alert severity and type
-- 🔗 **Deep Linking** - Dashboard integration for alert context
+- 🤖 **Telegram Priority** - Instant notifications with Markdown formatting and deep links
+- 📧 **Email Fallback** - Automatic failover to email when Telegram delivery fails
+- 🎯 **Smart Routing** - Telegram-first strategy with intelligent fallback logic
+- 🔗 **Deep Linking** - Dashboard integration for immediate alert context
+- 🔄 **Concurrent Delivery** - Parallel message sending to multiple recipients
 
 **🏗️ Architecture Components:**
 - 📮 **AlertProcessor** - Pub/Sub message handling and event processing
-- 🤖 **TelegramService** - Bot integration and message formatting
-- 📧 **EmailService** - SendGrid integration with template management
-- 🎯 **RoutingEngine** - Alert channel selection and delivery logic
+- 🤖 **AlertRouter** - Core routing engine with Telegram priority and email fallback
+- 🌐 **HttpxClient** - Async HTTP client for Telegram Bot API integration
+- 📧 **EmailService** - SMTP-based email delivery with HTML formatting
+- 🎯 **RoutingStrategy** - Implements Telegram-first, email-fallback logic
 - 🔗 **LinkGenerator** - Deep link creation for dashboard integration
 
 **🔧 Technology Stack:**
 - 🐍 **Python 3.11+** with FastAPI framework
 - 📮 **Google Cloud Pub/Sub** for event processing
-- 🤖 **Telegram Bot API** for instant notifications
-- 📧 **SendGrid** for professional email delivery
+- 🌐 **httpx** for async Telegram Bot API requests
+- 📧 **SMTP/Email** for fallback notifications
 - 🔐 **MongoDB** for configuration and secrets management
+- ✅ **pytest + httpx mocking** for comprehensive testing
 
 ### 👀 **Watchdog** - *System Health Monitor*
 
@@ -364,8 +367,14 @@ sequenceDiagram
     
     SRV->>PS: Publish alert events
     PS->>AR: Route alert messages
-    AR->>TG: Send instant notifications
-    AR->>EM: Send formatted emails
+    AR->>TG: Send instant notifications (Primary)
+    alt Telegram Success
+        Note over AR: At least one Telegram message delivered
+        Note over EM: Email not sent (Telegram succeeded)
+    else Telegram Failure
+        Note over TG: All Telegram attempts failed
+        AR->>EM: Send formatted emails (Fallback)
+    end
 ```
 
 ---

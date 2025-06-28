@@ -6,9 +6,12 @@ This service is responsible for routing alerts from the SpreadPilot trading syst
 
 - Receives alerts via Google Cloud Pub/Sub
 - Routes alerts to configured notification channels:
-  - Telegram
-  - Email
+  - Telegram (primary channel with Markdown formatting)
+  - Email (automatic fallback if Telegram fails)
+- Implements intelligent retry logic with fallback strategy
 - Generates deep links to the dashboard for easy access
+- Formats messages with rich content (emojis, formatting, structured data)
+- Concurrent message delivery for multiple recipients
 - Securely loads secrets from MongoDB
 - Provides health check endpoint
 
@@ -95,9 +98,51 @@ Alerts are expected to be in the following format (after base64 decoding):
 }
 ```
 
+## Alert Routing Strategy
+
+The Alert Router implements a smart notification strategy:
+
+1. **Primary Channel (Telegram)**:
+   - Attempts to send to all configured Telegram admin IDs
+   - Uses Markdown formatting for rich message display
+   - Includes deep links for quick dashboard access
+   - If at least one Telegram message succeeds, email is not used
+
+2. **Fallback Channel (Email)**:
+   - Automatically activated if ALL Telegram attempts fail
+   - Sends HTML-formatted emails with styled content
+   - Includes the same information as Telegram messages
+   - Ensures alerts are never lost due to single channel failure
+
 ## Development
 
-To run tests:
+### Running Tests
 
+Run all tests:
 ```bash
 pytest
+```
+
+Run with coverage:
+```bash
+pytest --cov=app --cov-report=html
+```
+
+Run specific test file:
+```bash
+pytest tests/unit/service/test_alert_router.py
+```
+
+### Testing with httpx
+
+The alert router uses httpx for async HTTP requests. Tests use httpx mocking:
+
+```python
+# Example test with mocked Telegram API
+mock_response = Mock(spec=Response)
+mock_response.status_code = 200
+mock_response.json.return_value = {"ok": True, "result": {"message_id": 123}}
+
+mock_client = AsyncMock()
+mock_client.post.return_value = mock_response
+alert_router._http_client = mock_client
