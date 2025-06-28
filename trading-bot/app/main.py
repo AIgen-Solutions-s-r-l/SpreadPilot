@@ -92,7 +92,7 @@ logger = get_logger(__name__)
 app = FastAPI(
     title="SpreadPilot Trading Bot",
     description="Trading bot for SpreadPilot platform",
-    version="1.1.4.0",
+    version="1.1.5.0",
 )
 
 # Add CORS middleware

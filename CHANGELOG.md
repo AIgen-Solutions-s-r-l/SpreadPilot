@@ -5,6 +5,21 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.5.0] - 2025-06-28
+
+### Added
+- **Real-time P&L System**: Comprehensive PostgreSQL-based P&L tracking with 30-second MTM calculations
+- **PostgreSQL Integration**: New database layer with SQLAlchemy models and Alembic migrations
+- **Automated Rollups**: Daily P&L summaries at 16:30 ET and monthly at 00:10 ET with performance metrics
+- **Trade & Quote Recording**: Complete trade execution and market data storage system
+- **P&L Service**: Dedicated service for monitoring, calculation, and aggregation of profit/loss data
+- **Enhanced Documentation**: Updated architecture diagrams and system documentation
+
+### Enhanced
+- **Trading Bot Integration**: P&L service seamlessly integrated with existing trading architecture
+- **Database Infrastructure**: Dual database architecture with MongoDB for trading data and PostgreSQL for P&L analytics
+- **Comprehensive Testing**: 18 unit tests covering P&L service functionality and edge cases
+
 ## [v1.1.4.0] - 2025-06-28
 
 ### Added
