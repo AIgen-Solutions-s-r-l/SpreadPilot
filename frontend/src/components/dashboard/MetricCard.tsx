@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Chip, SvgIcon } from '@mui/material';
+import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
 import { ArrowUpward as ArrowUpIcon, ArrowDownward as ArrowDownIcon } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 

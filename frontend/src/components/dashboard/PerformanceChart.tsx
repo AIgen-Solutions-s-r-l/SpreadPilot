@@ -123,7 +123,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ title = 'PERFORMANC
   const data = generateChartData(timeRange);
   
   const handleTimeRangeChange = (
-    event: React.MouseEvent<HTMLElement>,
+    _event: React.MouseEvent<HTMLElement>,
     newTimeRange: string,
   ) => {
     if (newTimeRange !== null) {

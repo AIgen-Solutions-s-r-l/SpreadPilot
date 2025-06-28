@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Grid, Box } from '@mui/material';
+import { Container, Box } from '@mui/material';
 import {
   BarChart as BarChartIcon,
   TrendingUp as TrendingUpIcon,

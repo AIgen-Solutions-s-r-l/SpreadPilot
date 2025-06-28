@@ -7,9 +7,6 @@ import {
   Button,
   List,
   ListItem,
-  Divider,
-  Chip,
-  Avatar,
   useTheme
 } from '@mui/material';
 import { 
@@ -171,7 +168,7 @@ const ActiveFollowersList: React.FC<ActiveFollowersListProps> = ({
         </Box>
         
         <List disablePadding>
-          {mockFollowers.map((follower, index) => (
+          {mockFollowers.map((follower) => (
             <FollowerItem key={follower.id} follower={follower} />
           ))}
         </List>

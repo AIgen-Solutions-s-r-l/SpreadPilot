@@ -3,14 +3,11 @@ import {
   Container,
   Typography,
   TextField,
-  Button,
-  Box,
   Paper,
-  Grid,
-  CircularProgress,
   Alert,
   AlertTitle,
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid';
 import { LoadingButton } from '@mui/lab'; // For buttons with loading state
 import * as followerService from '../services/followerService';
 
@@ -94,15 +91,15 @@ const CommandsPage: React.FC = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
+      <Grid2 container spacing={3}>
         {/* Close Single Position */}
-        <Grid item xs={12}>
+        <Grid2 size={{xs: 12}}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" component="h2" gutterBottom>
               Close Follower Position
             </Typography>
-            <Grid container spacing={2} alignItems="flex-end">
-              <Grid item xs={12} sm={5}>
+            <Grid2 container spacing={2} alignItems="flex-end">
+              <Grid2 size={{xs: 12, sm: 5}}>
                 <TextField
                   fullWidth
                   label="Follower ID"
@@ -113,8 +110,8 @@ const CommandsPage: React.FC = () => {
                   variant="outlined"
                   size="small"
                 />
-              </Grid>
-              <Grid item xs={12} sm={4}>
+              </Grid2>
+              <Grid2 size={{xs: 12, sm: 4}}>
                 <TextField
                   fullWidth
                   type="password"
@@ -126,8 +123,8 @@ const CommandsPage: React.FC = () => {
                   variant="outlined"
                   size="small"
                 />
-              </Grid>
-              <Grid item xs={12} sm={3}>
+              </Grid2>
+              <Grid2 size={{xs: 12, sm: 3}}>
                 <LoadingButton
                   fullWidth
                   variant="contained"
@@ -139,22 +136,22 @@ const CommandsPage: React.FC = () => {
                 >
                   Close Position
                 </LoadingButton>
-              </Grid>
-            </Grid>
+              </Grid2>
+            </Grid2>
           </Paper>
-        </Grid>
+        </Grid2>
 
         {/* Close All Positions */}
-        <Grid item xs={12}>
+        <Grid2 size={{xs: 12}}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" component="h2" gutterBottom>
               Close All Positions
             </Typography>
-            <Grid container spacing={2} alignItems="flex-end">
-              <Grid item xs={12} sm={5}>
+            <Grid2 container spacing={2} alignItems="flex-end">
+              <Grid2 size={{xs: 12, sm: 5}}>
                 {/* Empty for alignment */}
-              </Grid>
-              <Grid item xs={12} sm={4}>
+              </Grid2>
+              <Grid2 size={{xs: 12, sm: 4}}>
                 <TextField
                   fullWidth
                   type="password"
@@ -166,8 +163,8 @@ const CommandsPage: React.FC = () => {
                   variant="outlined"
                   size="small"
                 />
-              </Grid>
-              <Grid item xs={12} sm={3}>
+              </Grid2>
+              <Grid2 size={{xs: 12, sm: 3}}>
                 <LoadingButton
                   fullWidth
                   variant="contained"
@@ -179,11 +176,11 @@ const CommandsPage: React.FC = () => {
                 >
                   Close All
                 </LoadingButton>
-              </Grid>
-            </Grid>
+              </Grid2>
+            </Grid2>
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Container>
   );
 };

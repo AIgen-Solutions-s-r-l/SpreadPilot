@@ -7,7 +7,6 @@ import {
   Tabs,
   Tab,
   Paper,
-  Grid,
   Card,
   CardContent,
   Chip,
@@ -16,10 +15,9 @@ import {
   ListItemIcon,
   ListItemText,
   useTheme,
-  Alert,
-  AlertTitle,
   Button
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   Refresh as RefreshIcon,
@@ -121,16 +119,13 @@ const ActivePositionsSummary: React.FC = () => {
 const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedRow, setSelectedRow] = useState<Position | null>(null);
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, row: Position) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-    setSelectedRow(row);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedRow(null);
   };
 
   const columns: GridColDef[] = [
@@ -158,8 +153,8 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
       disableColumnMenu: true,
       flex: 0.5,
       minWidth: 100,
-      renderCell: (params) => (
-        <IconButton onClick={(event) => handleMenuOpen(event, params.row as Position)}>
+      renderCell: () => (
+        <IconButton onClick={(event) => handleMenuOpen(event)}>
           <MoreVertIcon />
         </IconButton>
       ),
@@ -289,8 +284,8 @@ const PerformanceDashboard: React.FC = () => {
   return (
   <Paper sx={{p:3}}>
     <Typography variant="h6" gutterBottom>PERFORMANCE METRICS</Typography>
-    <Grid container spacing={3}>
-      <Grid item xs={12} md={6}>
+    <Grid2 container spacing={3}>
+      <Grid2 size={{xs: 12, md: 6}}>
         <Card>
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>Cumulative P&L</Typography>
@@ -307,8 +302,8 @@ const PerformanceDashboard: React.FC = () => {
             </Box>
           </CardContent>
         </Card>
-      </Grid>
-      <Grid item xs={12} md={6}>
+      </Grid2>
+      <Grid2 size={{xs: 12, md: 6}}>
         <Card>
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>Trades per Month</Typography>
@@ -325,8 +320,8 @@ const PerformanceDashboard: React.FC = () => {
             </Box>
           </CardContent>
         </Card>
-      </Grid>
-    </Grid>
+      </Grid2>
+    </Grid2>
     <Box mt={3}>
       <Typography variant="h6" gutterBottom>Key Statistics</Typography>
       <Typography variant="body1">Total Trades: 156 | Win Rate: 68% | Avg Win: $245.67 | Avg Loss: $78.45</Typography>
@@ -398,7 +393,7 @@ const TradingSignalsTable: React.FC<{ signals: TradingSignal[] }> = ({ signals }
 const TradingActivityPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>(0);
 
-  const handleChangeTab = (event: SyntheticEvent, newValue: ActiveTab) => {
+  const handleChangeTab = (_event: SyntheticEvent, newValue: ActiveTab) => {
     setActiveTab(newValue);
   };
 
@@ -447,14 +442,14 @@ const TradingActivityPage: React.FC = () => {
 
       <TabPanel value={activeTab} index={0}>
         <ActivePositionsSummary />
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
+        <Grid2 container spacing={3}>
+          <Grid2 size={{xs: 12, lg: 8}}>
             <PositionsTable positions={mockPositions} />
-          </Grid>
-          <Grid item xs={12} lg={4}>
+          </Grid2>
+          <Grid2 size={{xs: 12, lg: 4}}>
             <PositionDistributionChart />
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
       </TabPanel>
       <TabPanel value={activeTab} index={1}>
         <TradeHistoryTable trades={mockTradeHistory} />

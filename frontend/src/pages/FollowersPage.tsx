@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -14,13 +14,6 @@ import {
   ListItemText,
   Chip,
   Collapse,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -28,16 +21,15 @@ import {
   Select,
   FormControl,
   InputLabel,
-  Grid,
   useTheme,
   alpha,
   Tooltip as MuiTooltip,
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams, GridActionsCellItem } from '@mui/x-data-grid';
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  FilterList as FilterListIcon,
   SortByAlpha as SortByAlphaIcon,
   GetApp as GetAppIcon,
   Tune as TuneIcon,
@@ -46,20 +38,14 @@ import {
   WarningAmberOutlined as WarningAmberOutlinedIcon,
   ErrorOutline as ErrorOutlineIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   MoreVert as MoreVertIcon,
   Visibility as VisibilityIcon,
   Article as ArticleIcon,
-  ShowChart as ShowChartIcon,
-  PeopleOutline as PeopleOutlineIcon,
-  CompareArrows as CompareArrowsIcon,
-  AttachMoney as AttachMoneyIcon,
-  Refresh as RefreshIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 
 
 // Mock Data Type
@@ -128,7 +114,7 @@ const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, the
 
 const FollowersPage: React.FC = () => {
   const theme = useTheme();
-  const [followers, setFollowers] = useState<Follower[]>([
+  const [followers] = useState<Follower[]>([
     { id: 'Follower_001', status: 'ACTIVE', botStatus: 'ONLINE', ibgwStatus: 'CONN', positions: { count: 3, value: '$12.5K' }, pnlToday: '+$1,245.67', accountId: 'IB12345678', created: '2025-01-15', lastActive: '2 min ago', pnlMtd: '+$5,678.90', pnlYtd: '+$12,345.67', currentPositions: [{ symbol: 'SOXL', shares: 100, price: '$45.67' }] },
     { id: 'Follower_002', status: 'INACTIVE', botStatus: 'OFFLINE', ibgwStatus: 'DISC', positions: { count: 0, value: '$0' }, pnlToday: '$0.00', accountId: 'IB87654321', created: '2024-11-20', lastActive: '5 days ago', pnlMtd: '-$250.00', pnlYtd: '+$1,200.00', currentPositions: [] },
     { id: 'Follower_003', status: 'ACTIVE', botStatus: 'WARN', ibgwStatus: 'CONN', positions: { count: 1, value: '$5.1K' }, pnlToday: '-$123.45', accountId: 'IB11223344', created: '2025-03-01', lastActive: '1 hour ago', pnlMtd: '+$1,200.50', pnlYtd: '+$3,500.75', currentPositions: [{ symbol: 'QQQ', shares: 50, price: '$410.25' }] },
@@ -158,14 +144,6 @@ const FollowersPage: React.FC = () => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
   
   const handleOpenAddDialog = () => setOpenAddDialog(true);
   const handleCloseAddDialog = () => setOpenAddDialog(false);
@@ -187,10 +165,6 @@ const FollowersPage: React.FC = () => {
     handleCloseConfirmDialog();
   };
 
-  const pnlChartData = [
-    { name: 'Jan', pnl: 1200 }, { name: 'Feb', pnl: 2100 }, { name: 'Mar', pnl: 1500 },
-    { name: 'Apr', pnl: 3000 }, { name: 'May', pnl: 2500 }, { name: 'Jun', pnl: 3200 },
-  ];
 
 
   const columns: GridColDef<Follower>[] = [
@@ -309,8 +283,8 @@ const FollowersPage: React.FC = () => {
       </Box>
 
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item={true} xs={12} sm={6} md={4}>
+        <Grid2 container spacing={2} alignItems="center">
+          <Grid2 size={{xs: 12, sm: 6, md: 4}}>
             <TextField
               fullWidth
               variant="outlined"
@@ -324,8 +298,8 @@ const FollowersPage: React.FC = () => {
                 ),
               }}
             />
-          </Grid>
-          <Grid item={true} xs={6} sm={3} md={2}>
+          </Grid2>
+          <Grid2 size={{xs: 6, sm: 3, md: 2}}>
             <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>
               <Select defaultValue="ALL" label="Status">
@@ -336,8 +310,8 @@ const FollowersPage: React.FC = () => {
                 <MenuItem value="ERROR">Error</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item={true} xs={6} sm={3} md={2}>
+          </Grid2>
+          <Grid2 size={{xs: 6, sm: 3, md: 2}}>
              <FormControl fullWidth size="small">
               <InputLabel>Bot Status</InputLabel>
               <Select defaultValue="ALL" label="Bot Status">
@@ -346,15 +320,15 @@ const FollowersPage: React.FC = () => {
                 <MenuItem value="OFFLINE">Offline</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item={true} xs={12} sm={12} md={4} sx={{display: 'flex', justifyContent: {xs: 'flex-start', md: 'flex-end'}, gap: 1, flexWrap: 'wrap'}}>
+          </Grid2>
+          <Grid2 size={{xs: 12, sm: 12, md: 4}} sx={{display: 'flex', justifyContent: {xs: 'flex-start', md: 'flex-end'}, gap: 1, flexWrap: 'wrap'}}>
             <Button variant="outlined" size="small" startIcon={<SortByAlphaIcon />}>Sort</Button>
             <Button variant="outlined" size="small" startIcon={<GetAppIcon />}>Export</Button>
             <MuiTooltip title="Advanced Filters">
               <IconButton size="small"><TuneIcon /></IconButton>
             </MuiTooltip>
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
       </Paper>
 
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -476,16 +450,16 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
 
   return (
     <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.light, 0.05), borderTop: `1px solid ${theme.palette.divider}` }}>
-      <Grid container spacing={2}>
-        <Grid item={true} xs={12} md={4}>
+      <Grid2 container spacing={2}>
+        <Grid2 size={{xs: 12, md: 4}}>
           <Typography variant="subtitle2" gutterBottom color="text.secondary">ACCOUNT DETAILS</Typography>
           <Paper variant="outlined" sx={{p:2}}>
             <Typography variant="body2"><strong>Account ID:</strong> {follower.accountId}</Typography>
             <Typography variant="body2"><strong>Created:</strong> {follower.created}</Typography>
             <Typography variant="body2"><strong>Last Active:</strong> {follower.lastActive}</Typography>
           </Paper>
-        </Grid>
-        <Grid item={true} xs={12} md={4}>
+        </Grid2>
+        <Grid2 size={{xs: 12, md: 4}}>
           <Typography variant="subtitle2" gutterBottom color="text.secondary">PERFORMANCE</Typography>
            <Paper variant="outlined" sx={{p:2}}>
             <Typography variant="body2"><strong>P&L Today:</strong>
@@ -506,8 +480,8 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
               </ResponsiveContainer>
             </Box>
           </Paper>
-        </Grid>
-        <Grid item={true} xs={12} md={4}>
+        </Grid2>
+        <Grid2 size={{xs: 12, md: 4}}>
           <Typography variant="subtitle2" gutterBottom color="text.secondary">CURRENT POSITIONS ({follower.currentPositions.length})</Typography>
           <Paper variant="outlined" sx={{p:2, maxHeight: 200, overflowY: 'auto'}}>
             {follower.currentPositions.length > 0 ? follower.currentPositions.map(p => (
@@ -517,8 +491,8 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
               </Box>
             )) : <Typography variant="caption">No active positions</Typography>}
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Box>
   );
 };
