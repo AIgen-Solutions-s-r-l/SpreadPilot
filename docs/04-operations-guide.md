@@ -355,20 +355,48 @@ curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
     https://trading-bot-url/api/v1/reconnect
 ```
 
-#### 👁️ Watchdog False Positives
+#### 👁️ Watchdog Service Issues
 
-**Symptoms:**
-- 🔄 Unnecessary service restarts
-- ✅ Services actually healthy
-- 📈 High restart count in metrics
+**Monitoring Watchdog Health:**
+```bash
+# Check watchdog status
+docker logs spreadpilot-watchdog --tail 50
 
-**Resolution:**
-```yaml
-# Adjust watchdog configuration
-health_check:
-  timeout: 30  # Increase from 10
-  retries: 3   # Add retries
-  interval: 60 # Reduce frequency
+# Monitor service failures
+docker logs spreadpilot-watchdog | grep "consecutive failures"
+
+# Check alert storage
+mongo spreadpilot_admin --eval "db.alerts.find({}).sort({timestamp: -1}).limit(10)"
+```
+
+**Common Issues & Resolution:**
+
+**1. False Positives (Unnecessary restarts):**
+```bash
+# Adjust environment variables
+docker-compose stop watchdog
+export CHECK_INTERVAL_SECONDS=30  # Increase from 15
+export MAX_CONSECUTIVE_FAILURES=5  # Increase from 3
+export HEALTH_CHECK_TIMEOUT=10    # Increase from 5
+docker-compose up -d watchdog
+```
+
+**2. Docker Socket Permission Issues:**
+```bash
+# Check Docker socket access
+docker exec spreadpilot-watchdog docker ps
+
+# Fix permissions if needed
+docker exec spreadpilot-watchdog chmod 666 /var/run/docker.sock
+```
+
+**3. Service Not Being Monitored:**
+```bash
+# Verify health endpoint
+docker exec spreadpilot-watchdog curl http://trading-bot:8080/health
+
+# Check network connectivity
+docker exec spreadpilot-watchdog ping trading-bot
 ```
 
 #### 📊 Report Generation Failures

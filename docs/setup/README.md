@@ -21,9 +21,9 @@ SpreadPilot is a **sophisticated automated trading platform** that executes QQQ 
 | 5️⃣ | 🖥️ **Frontend** | React dashboard for monitoring and control | 10 min |
 | 6️⃣ | 🔔 **Alert Router** | Telegram-first notification system with email fallback | 10 min |
 | 7️⃣ | 📊 **Report Worker** | Professional PDF/Excel report generation | 15 min |
+| 8️⃣ | 👀 **Watchdog** | Self-hosted health monitoring with auto-recovery | 10 min |
 
 ### 🎯 **Additional Components** *(Optional)*
-- 👀 **Watchdog** - System health monitoring and auto-recovery
 - 🐘 **PostgreSQL** - Analytics database for P&L and commission data
 - 🔴 **Redis** - High-performance caching and Pub/Sub messaging
 - ☁️ **GCS Storage** - Cloud storage for reports and files
@@ -44,6 +44,7 @@ graph LR
     D --> E[🖥️ Frontend]
     E --> F[🔔 Alert Router]
     F --> G[📊 Report Worker]
+    G --> H[👀 Watchdog]
 ```
 
 ### 📋 **Detailed Setup Guides**
@@ -57,6 +58,7 @@ graph LR
 | 🖥️ [**Frontend Setup**](./4-frontend.md) | User Interface | 🟢 Basic | Admin API, Node.js |
 | 🔔 [**Alert Router Setup**](./5-alert-router.md) | Notifications | 🟢 Basic | Telegram Bot (Primary), SMTP (Fallback) |
 | 📊 [**Report Worker Setup**](./6-report-worker.md) | Report Generation | 🟡 Moderate | PostgreSQL, GCS Bucket |
+| 👀 [**Watchdog Setup**](./7-watchdog.md) | Health Monitoring | 🟢 Basic | Docker Socket, MongoDB |
 
 ---
 

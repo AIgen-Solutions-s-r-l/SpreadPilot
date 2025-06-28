@@ -186,30 +186,30 @@ Centralized alert management with Telegram-first, email-fallback notification st
 - 🔐 **MongoDB** for configuration and secrets management
 - ✅ **pytest + httpx mocking** for comprehensive testing
 
-### 👀 **Watchdog** - *System Health Monitor*
+### 👀 **Watchdog** - *Self-Hosted Health Monitor*
 
-Proactive monitoring and automatic recovery system for critical components.
+Proactive monitoring and automatic recovery system for critical SpreadPilot services.
 
 **🎯 Primary Responsibilities:**
-- 🔍 **Health Monitoring** - Continuous service health checks and status tracking
-- 🔄 **Auto-Recovery** - Automatic restart of failed components
-- 📊 **Status Tracking** - System state management in MongoDB
-- 🚨 **Alert Generation** - Critical failure notifications and escalation
-- 📈 **Performance Monitoring** - Resource usage and performance metrics
+- 🔍 **Health Monitoring** - HTTP health checks every 15 seconds
+- 🔄 **Auto-Recovery** - Docker restart after 3 consecutive failures
+- 📊 **Failure Tracking** - Per-service failure count management
+- 🚨 **Alert Generation** - MongoDB-stored alerts for failures and recovery
+- ⚡ **Concurrent Monitoring** - Parallel health checks for all services
 
 **🏗️ Architecture Components:**
-- 🔍 **HealthChecker** - Service endpoint monitoring and validation
-- 🔄 **RecoveryManager** - Automatic restart and recovery procedures
-- 📊 **StatusTracker** - System state persistence and history
-- 🚨 **AlertGenerator** - Critical event detection and notification
-- 📈 **MetricsCollector** - Performance data collection and analysis
+- 🔍 **ServiceWatchdog** - Main monitoring orchestrator with asyncio
+- 🌐 **Health Checker** - HTTP endpoint validation using httpx
+- 🔄 **Docker Integration** - Container restart via subprocess
+- 📊 **Failure Counter** - Consecutive failure tracking per service
+- 🚨 **Alert Publisher** - MongoDB integration for alert storage
 
 **🔧 Technology Stack:**
 - 🐍 **Python 3.11+** with asyncio for concurrent monitoring
-- 🍃 **MongoDB** for status tracking and configuration
-- 🔄 **Docker API** for container management
-- 📊 **Prometheus** for metrics collection
-- 🚨 **Pub/Sub** for alert event publishing
+- 🌐 **httpx** for async HTTP health checks
+- 🍃 **MongoDB** (motor) for alert storage
+- 🐳 **Docker CLI** for container management
+- ⏱️ **Configurable intervals** via environment variables
 
 ### 🖥️ **Frontend** - *Administrative Dashboard*
 
