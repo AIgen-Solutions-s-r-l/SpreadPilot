@@ -20,6 +20,13 @@ wrapt>=1.15.0 # Force newer version compatible with Python 3.12+
 motor>=3.4.0 # Async MongoDB driver
 firebase-admin>=6.0.0 # Added dependency for trading-bot service
 pydantic-settings>=2.0.0 # Added dependency for trading-bot config
+
+# PostgreSQL dependencies for P&L system
+sqlalchemy[asyncio]>=2.0.0  # SQLAlchemy with async support
+asyncpg>=0.29.0  # Async PostgreSQL driver
+alembic>=1.13.0  # Database migrations
+psycopg2-binary>=2.9.7  # PostgreSQL adapter (for Alembic)
+pytz>=2023.3  # Timezone handling
 httpx-ws # For WebSocket testing with httpx client
 # Linting and formatting
 black>=23.3.0
