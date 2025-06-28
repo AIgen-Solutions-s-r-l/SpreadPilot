@@ -5,6 +5,22 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.8.0] - 2025-06-28
+
+### Added
+- **Telegram-First Alert Router**: Enhanced notification system with Telegram as primary channel
+- **Email Fallback Strategy**: Automatic email delivery when ALL Telegram attempts fail
+- **Concurrent Delivery**: Parallel message sending to multiple recipients for better performance
+- **httpx Integration**: Async HTTP client for reliable Telegram Bot API communication
+- **Smart Routing Logic**: Partial success handling - email only sent if no Telegram messages succeed
+- **Comprehensive Testing**: Unit tests with httpx mocking and integration test scenarios
+
+### Enhanced
+- **Alert Router Architecture**: Complete rewrite with AlertRouter class and context manager support
+- **Message Formatting**: Rich Telegram messages with Markdown and deep dashboard links
+- **Documentation Updates**: Architecture diagrams and setup guides reflect new routing strategy
+- **Error Handling**: Improved resilience with proper fallback activation and error reporting
+
 ## [v1.1.7.0] - 2025-06-28
 
 ### Added
