@@ -30,19 +30,25 @@ This document provides detailed instructions for setting up the Alert Router for
 
 ## 1. 🎯 Understanding the Alert Router
 
-The Alert Router is a service that manages the delivery of critical notifications from the SpreadPilot trading system.
+The Alert Router is a service that manages the delivery of critical notifications from the SpreadPilot trading system using a Telegram-first, email-fallback strategy.
 
 ### 🔧 Core Responsibilities
 
 1. Receiving alert events via Google Cloud Pub/Sub
-2. Routing alerts to appropriate channels (Telegram, email)
-3. Formatting messages with deep links to the dashboard
-4. Securely loading secrets from MongoDB
-5. Providing health check endpoints
+2. Routing alerts with Telegram as primary channel
+3. Automatic email fallback when Telegram delivery fails
+4. Formatting messages with deep links to the dashboard
+5. Concurrent delivery to multiple recipients
+6. Securely loading secrets from MongoDB
+7. Providing health check endpoints
 
 ### 🏗️ Architecture
 
-The Alert Router is implemented as a FastAPI application that runs in a Docker container. It communicates with MongoDB for secret management and with external services (Telegram, SMTP) for sending notifications.
+The Alert Router is implemented as a FastAPI application that runs in a Docker container. It uses httpx for async Telegram Bot API requests and falls back to SMTP email delivery when needed. The service implements an intelligent routing strategy:
+
+- **Primary Channel (Telegram)**: Instant notifications with Markdown formatting
+- **Fallback Channel (Email)**: Activated only when ALL Telegram attempts fail
+- **Partial Success**: If at least one Telegram message succeeds, email is not sent
 
 > 📝 **Consolidation Note**: The Alert Router has been consolidated from two different implementations (`alert_router/` and `alert-router/`) into a single, unified version in `alert-router/`. This consolidation improves maintainability, reduces duplication, and provides a consistent API implementation with the best features from both previous versions.
 
@@ -220,12 +226,23 @@ If the Alert Router fails to connect to MongoDB:
 
 ### 📧 Notification Channel Issues
 
-If alerts are not being sent to Telegram or email:
+If alerts are not being sent properly:
 
-1. Verify that the Telegram bot token is correct
-2. Check that the Telegram admin IDs are correct
-3. Ensure that the SMTP settings are correct
-4. Check the Alert Router logs for specific error messages related to Telegram or SMTP
+1. **Telegram Issues (Primary Channel)**:
+   - Verify that the Telegram bot token is correct
+   - Check that the Telegram admin IDs are comma-separated and valid
+   - Test Telegram connectivity with the Bot API
+   - Review logs for httpx request failures
+
+2. **Email Issues (Fallback Channel)**:
+   - Remember: Email is only sent if ALL Telegram attempts fail
+   - Verify SMTP settings (host, port, TLS, credentials)
+   - Check that email recipients are correctly configured
+   - Review logs for email fallback activation
+
+3. **Routing Strategy**:
+   - If at least one Telegram message succeeds, email will NOT be sent
+   - Check Alert Router logs for routing decisions and delivery results
 
 ### 🐳 Container Startup Issues
 
