@@ -5,6 +5,16 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.12.1] - 2025-06-28
+
+### Fixed
+- **Watchdog Dockerfile**: Corrected COPY paths to use relative paths from build context
+- **Container Security**: Added non-root user 'watchdog' with UID 1000 for improved security
+- **Build Error**: Resolved "requirements.in not found" error during Docker build
+
+### Security
+- **Non-root Container**: Watchdog now runs as non-root user, complying with security best practices
+
 ## [v1.1.12.0] - 2025-06-28
 
 ### Added
