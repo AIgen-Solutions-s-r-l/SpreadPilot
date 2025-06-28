@@ -5,6 +5,23 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.9.0] - 2025-06-28
+
+### Added
+- **Self-Hosted Watchdog Service**: Autonomous health monitoring with auto-recovery capabilities
+- **HTTP Health Checks**: Monitors Trading Bot, Admin API, Report Worker, and Frontend every 15 seconds
+- **Auto-Recovery System**: Docker container restart after 3 consecutive health check failures
+- **MongoDB Alert Storage**: Persistent alert tracking for failures and recovery events
+- **Concurrent Monitoring**: Parallel health checks using Python asyncio for efficiency
+- **Docker Integration**: Container management via Docker socket for restart operations
+- **Configurable Thresholds**: Environment variables for check intervals and failure limits
+
+### Enhanced
+- **System Resilience**: Automatic recovery reduces manual intervention requirements
+- **Alert Tracking**: MongoDB storage enables historical analysis of service reliability
+- **Documentation**: Added comprehensive setup guide and operations troubleshooting section
+- **Testing**: Unit tests with mocked httpx and Docker subprocess calls
+
 ## [v1.1.8.0] - 2025-06-28
 
 ### Added
