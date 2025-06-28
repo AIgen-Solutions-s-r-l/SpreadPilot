@@ -5,6 +5,38 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.11.0] - 2025-06-28
+
+### Added
+- **FastAPI Admin API Module**: Dedicated `admin_api.py` with JWT authentication for production deployments
+- **Traefik Reverse Proxy**: Complete configuration for HTTPS, domain routing, and Let's Encrypt certificates
+- **Docker Compose Override**: `docker-compose.traefik.yml` for seamless Traefik integration
+- **Production Startup Script**: `scripts/start-with-traefik.sh` for easy deployment with Traefik
+- **Enhanced Health Checks**: Multiple endpoints for monitoring and load balancer integration
+- **CORS Middleware**: Pre-configured cross-origin support for API security
+- **Traefik Architecture Diagram**: Visual representation of reverse proxy architecture
+
+### Enhanced
+- **Admin API Dockerfile**: Support for multiple entry points and curl for health checks
+- **Documentation Updates**: Comprehensive Traefik deployment guide in all relevant docs
+- **Network Configuration**: Proper web and internal network separation for security
+- **Environment Templates**: `.env.traefik` template for easy configuration
+
+## [v1.1.10.0] - 2025-06-28
+
+### Added
+- **Mobile Admin Dashboard**: Vue 3 + Vite SPA for on-the-go follower management
+- **Real-time Time Value Monitoring**: Risk indicators with SAFE/RISK/CRITICAL color badges
+- **JWT Authentication**: Secure token-based access control for mobile dashboard
+- **Responsive Design**: Mobile-first UI with drawer navigation and desktop sidebar
+- **Real-time Polling**: Composables for live data updates (followers, logs, time values)
+- **Dashboard Docker Integration**: Added to docker-compose.yml on port 3001
+
+### Enhanced
+- **System Architecture**: Updated diagrams to include Admin Dashboard component
+- **Documentation**: Comprehensive README for admin-dashboard with setup instructions
+- **Frontend Stack**: Modern Vue 3 Composition API with Tailwind CSS
+
 ## [v1.1.9.0] - 2025-06-28
 
 ### Added
