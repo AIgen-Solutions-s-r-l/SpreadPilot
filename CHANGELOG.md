@@ -5,6 +5,12 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.12.2] - 2025-06-28
+
+### Fixed
+- **CI/CD**: Updated deprecated actions/upload-artifact from v3 to v4
+- **Security Workflow**: Resolved GitHub Actions workflow failure
+
 ## [v1.1.12.1] - 2025-06-28
 
 ### Fixed
