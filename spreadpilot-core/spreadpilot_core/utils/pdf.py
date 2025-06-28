@@ -18,6 +18,7 @@ from reportlab.platypus import (
 
 from ..logging import get_logger
 from ..models import Follower
+from ..models.pnl import CommissionMonthly
 from .time import format_ny_time
 
 logger = get_logger(__name__)
@@ -198,5 +199,169 @@ def generate_pdf_report(
             follower_id=follower.id,
             month=month,
             year=year,
+        )
+        raise
+
+
+def generate_commission_report_pdf(record: CommissionMonthly, output_path: str) -> str:
+    """Generate PDF report for commission record.
+    
+    Args:
+        record: CommissionMonthly record
+        output_path: Path where PDF should be saved
+        
+    Returns:
+        Path to generated PDF file
+    """
+    try:
+        # Create PDF document
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72,
+        )
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = styles["Title"]
+        heading_style = styles["Heading1"]
+        normal_style = styles["Normal"]
+        
+        # Create content elements
+        elements = []
+        
+        # Add title
+        month_name = datetime.date(record.year, record.month, 1).strftime("%B")
+        title = Paragraph(f"Commission Report - {month_name} {record.year}", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 24))
+        
+        # Add follower information
+        elements.append(Paragraph("Account Information", heading_style))
+        elements.append(Spacer(1, 12))
+        
+        follower_data = [
+            ["Follower ID", record.follower_id],
+            ["Email", record.follower_email],
+            ["IBAN", record.follower_iban],
+            ["Currency", record.commission_currency],
+        ]
+        
+        follower_table = Table(follower_data, colWidths=[150, 350])
+        follower_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (0, -1), colors.black),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("BACKGROUND", (1, 0), (-1, -1), colors.white),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(follower_table)
+        elements.append(Spacer(1, 24))
+        
+        # Add commission summary
+        elements.append(Paragraph("Commission Summary", heading_style))
+        elements.append(Spacer(1, 12))
+        
+        # Determine color for P&L
+        pnl_color = colors.green if record.monthly_pnl >= 0 else colors.red
+        
+        summary_data = [
+            ["Monthly P&L", f"{record.monthly_pnl:,.2f} {record.commission_currency}"],
+            ["Commission Rate", f"{record.commission_pct * 100:.1f}%"],
+            ["Commission Amount", f"{record.commission_amount:,.2f} {record.commission_currency}"],
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[150, 350])
+        summary_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (0, -1), colors.black),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 11),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("BACKGROUND", (1, 0), (-1, -1), colors.white),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ("TEXTCOLOR", (1, 0), (1, 0), pnl_color),  # Color P&L based on value
+            ("FONTNAME", (1, 2), (1, 2), "Helvetica-Bold"),  # Bold commission amount
+        ]))
+        elements.append(summary_table)
+        elements.append(Spacer(1, 24))
+        
+        # Add payment status
+        elements.append(Paragraph("Payment Information", heading_style))
+        elements.append(Spacer(1, 12))
+        
+        payment_data = [
+            ["Payment Status", "Paid" if record.is_paid else "Pending"],
+        ]
+        
+        if record.payment_date:
+            payment_data.append(["Payment Date", record.payment_date.strftime("%Y-%m-%d")])
+        if record.payment_reference:
+            payment_data.append(["Payment Reference", record.payment_reference])
+            
+        payment_table = Table(payment_data, colWidths=[150, 350])
+        payment_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (0, -1), colors.black),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("BACKGROUND", (1, 0), (-1, -1), colors.white),
+            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(payment_table)
+        elements.append(Spacer(1, 36))
+        
+        # Add footer
+        footer_text = (
+            f"This report was generated on {format_ny_time()} by SpreadPilot. "
+            f"For any questions, please contact capital@tradeautomation.it."
+        )
+        footer = Paragraph(footer_text, normal_style)
+        elements.append(footer)
+        
+        # Legal disclaimer
+        elements.append(Spacer(1, 12))
+        disclaimer_style = ParagraphStyle(
+            "Disclaimer",
+            parent=normal_style,
+            fontSize=8,
+            textColor=colors.grey,
+        )
+        disclaimer_text = (
+            "This document is for informational purposes only. "
+            "Please retain this report for your records. "
+            "Commission calculations are based on the agreed-upon percentage "
+            "of positive monthly P&L as per your service agreement."
+        )
+        disclaimer = Paragraph(disclaimer_text, disclaimer_style)
+        elements.append(disclaimer)
+        
+        # Build PDF
+        doc.build(elements)
+        
+        logger.info(
+            "Generated commission PDF report",
+            follower_id=record.follower_id,
+            month=record.month,
+            year=record.year,
+            filepath=output_path,
+        )
+        
+        return output_path
+    except Exception as e:
+        logger.error(
+            f"Error generating commission PDF report: {e}",
+            follower_id=record.follower_id,
+            month=record.month,
+            year=record.year,
         )
         raise

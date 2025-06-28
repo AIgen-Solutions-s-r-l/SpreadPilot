@@ -247,6 +247,10 @@ class CommissionMonthly(Base):
     payment_date = Column(Date, nullable=True)
     payment_reference = Column(String(100), nullable=True)
     
+    # Email status
+    sent = Column(Boolean, nullable=False, default=False)
+    sent_at = Column(DateTime, nullable=True)
+    
     # Timestamps
     calculated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -258,4 +262,5 @@ class CommissionMonthly(Base):
         Index('ix_commission_monthly_period', 'year', 'month'),
         Index('ix_commission_monthly_payable', 'is_payable'),
         Index('ix_commission_monthly_paid', 'is_paid'),
+        Index('ix_commission_monthly_sent', 'sent'),
     )
