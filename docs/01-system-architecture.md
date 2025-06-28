@@ -141,6 +141,7 @@ Advanced report generation service with cloud storage integration.
 - 💰 **P&L Integration** - Real-time data from PostgreSQL with commission calculations
 - 📧 **Email Delivery** - Automated report distribution via SendGrid
 - ⏰ **Scheduled Processing** - Google Cloud Pub/Sub triggered workflows
+- 📅 **Weekly Email Reports** - Cron-based commission report emails every Monday
 
 **🏗️ Architecture Components:**
 - 📄 **ReportGenerator** - Core report generation engine with GCS integration

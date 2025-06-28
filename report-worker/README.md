@@ -22,6 +22,7 @@ The Report Worker is a specialized microservice responsible for generating compr
 - ⏰ **Scheduled Jobs**: Google Cloud Pub/Sub triggered processing
 - 🔄 **Real-time Data**: 30-second MTM calculations
 - 📅 **Monthly Rollups**: Automated monthly aggregation at 00:10 ET
+- 📧 **Weekly Email Reports**: Automated commission report emails every Monday
 - 🚨 **Health Monitoring**: Built-in health check endpoints
 
 ---
@@ -64,6 +65,9 @@ SMTP_PORT=587
 SMTP_USER=user
 SMTP_PASSWORD=password
 SMTP_TLS=true
+
+# 📮 SendGrid Settings (for commission report emails)
+SENDGRID_API_KEY=your_sendgrid_api_key
 
 # ☁️ GCS Settings (for report file storage)
 GCS_BUCKET_NAME=spreadpilot-reports
@@ -156,6 +160,26 @@ The Report Worker handles two main job types triggered via Google Cloud Pub/Sub:
   - 🔗 Create signed URLs (24-hour expiration)
   - 📧 Email reports to followers
   - 🔔 Send admin notifications
+
+### 📧 **Weekly Commission Email Reports**
+The Report Worker includes a cron job for automated weekly commission report emails:
+
+- **🗓️ Schedule**: Every Monday at 9:00 AM UTC
+- **📋 Process**:
+  - Query commission_monthly table for unsent reports (sent=false)
+  - Generate PDF reports with commission details
+  - Attach PDF and include signed Excel download link
+  - Send via SendGrid with admin CC
+  - Mark reports as sent in database
+- **🔄 Retry Logic**: 3 attempts with exponential backoff
+- **📁 Cron Setup**: 
+  ```bash
+  # Install crontab (included in Docker image)
+  crontab /app/crontab
+  
+  # Manual execution
+  python app/cron_email_reports.py
+  ```
 
 ---
 

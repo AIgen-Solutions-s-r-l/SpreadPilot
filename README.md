@@ -26,6 +26,7 @@ SpreadPilot is a modern microservices-based trading platform designed for scalab
 - ☁️ Secure GCS storage with signed URL access
 - 🎛️ Real-time admin dashboard with live logs and system status
 - 🔔 Flexible alerting via Telegram and email
+- 📧 Automated weekly commission report emails with PDF attachments
 
 ### 🏗️ **Architecture**
 - 🐳 Containerized microservices with Docker

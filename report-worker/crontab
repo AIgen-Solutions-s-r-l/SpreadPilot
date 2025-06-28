@@ -1,0 +1,17 @@
+# SpreadPilot Report Worker Crontab Configuration
+# 
+# This crontab should be installed in the report-worker container or host
+# where the report-worker service is running.
+#
+# To install:
+# crontab crontab
+#
+# To view current crontab:
+# crontab -l
+
+# Send commission reports every Monday at 9:00 AM UTC
+# This corresponds to 4:00 AM EST / 5:00 AM EDT
+0 9 * * 1 cd /app && python app/cron_email_reports.py >> /var/log/commission_reports.log 2>&1
+
+# Alternative schedule: Send commission reports on the 1st of each month at 9:00 AM UTC
+# 0 9 1 * * cd /app && python app/cron_email_reports.py >> /var/log/commission_reports.log 2>&1
