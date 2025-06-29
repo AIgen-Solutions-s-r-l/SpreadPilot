@@ -13,7 +13,7 @@ WORKDIR /app
 RUN pip install pip-tools
 
 # Copy the requirements files into the container at /app
-COPY requirements.in ./
+COPY watchdog/requirements.in ./
 
 # Compile requirements.in to requirements.txt and install dependencies
 # This step leverages Docker layer caching. If requirements.in hasn't changed,
@@ -21,8 +21,12 @@ COPY requirements.in ./
 RUN pip-compile requirements.in -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 
+# Copy spreadpilot-core library
+COPY spreadpilot-core /app/spreadpilot-core
+RUN pip install -e /app/spreadpilot-core
+
 # Copy the rest of the application code into the container at /app
-COPY . .
+COPY watchdog/ .
 
 # Create a non-root user to run the application
 RUN groupadd -r watchdog && useradd -r -g watchdog -u 1000 watchdog

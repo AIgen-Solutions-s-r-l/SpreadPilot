@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:20-alpine as build
 
 WORKDIR /app
 
@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+# Use npm install to regenerate package-lock.json with correct versions
+RUN npm install
 
 # Copy source code
 COPY . .
