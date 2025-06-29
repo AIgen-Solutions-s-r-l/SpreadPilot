@@ -136,6 +136,8 @@ jsonPayload.operation="signal_processing"
 | **Trading Bot Offline** | No heartbeat >5 min | Email, Telegram, SMS |
 | **IB Gateway Disconnected** | Connection lost >1 min | All channels |
 | **Assignment Detected** | Option assignment event | All channels + Dashboard |
+| **Time Value Critical** | Option TV <= $0.10 | All channels + Auto-liquidation |
+| **Time Value Risk** | Option TV <= $1.00 | Email, Telegram |
 
 #### ➕ Creating Custom Alerts
 
@@ -354,6 +356,35 @@ curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
 curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
     https://trading-bot-url/api/v1/reconnect
 ```
+
+#### ⚠️ Time Value Monitor Issues
+
+**Symptoms:**
+- ❌ Positions not being closed when TV <= $0.10
+- ⚠️ No SAFE/RISK/CRITICAL alerts in Redis stream
+- 📊 Time value calculations incorrect
+
+**Diagnosis & Resolution:**
+```bash
+# 1. Check monitor status in logs
+docker logs spreadpilot-trading-bot | grep "time_value_monitor"
+
+# 2. Verify Redis alerts stream
+redis-cli xread count 10 streams alerts 0
+
+# 3. Check active positions
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://trading-bot-url/api/v1/positions
+
+# 4. Force position check
+curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+    https://trading-bot-url/api/v1/check-time-values
+```
+
+**Common Issues:**
+- **Market data unavailable**: Check IB Gateway connection
+- **Redis connection lost**: Verify Redis is running and accessible
+- **Calculation errors**: Review option strike/underlying prices
 
 #### 👁️ Watchdog Service Issues
 
