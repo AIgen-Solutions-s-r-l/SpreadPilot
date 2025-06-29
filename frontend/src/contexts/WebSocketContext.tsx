@@ -10,7 +10,7 @@ interface WebSocketContextType {
 }
 
 // Create the context
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+export const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 // Define the props for the provider component
 interface WebSocketProviderProps {

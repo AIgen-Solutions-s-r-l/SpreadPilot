@@ -71,7 +71,7 @@ export const closeFollowerPosition = async (followerId: string, pin: string): Pr
     });
   } catch (error) {
     console.error(`Failed to close position for follower ${followerId}:`, error);
-    if (error.response?.status === 403) {
+    if ((error as any).response?.status === 403) {
       throw new Error('Invalid PIN');
     }
     throw error;

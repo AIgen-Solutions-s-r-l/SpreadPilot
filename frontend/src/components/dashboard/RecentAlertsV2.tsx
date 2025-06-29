@@ -20,7 +20,8 @@ import {
   BugReport as BugReportIcon,
   ErrorOutline as CriticalIcon,
 } from '@mui/icons-material';
-import type { LogEntry, LogLevel } from '../../schemas/log.schema';
+import type { LogEntry } from '../../schemas/log.schema';
+import { LogLevel } from '../../schemas/log.schema';
 
 interface AlertItemProps {
   log: LogEntry;

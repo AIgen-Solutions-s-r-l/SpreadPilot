@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LogEntry, LogLevel } from '../types/logEntry';
+import type { LogEntry } from '../schemas/log.schema';
+import { LogLevel } from '../schemas/log.schema';
 import * as logService from '../services/logService';
 import { useWebSocket } from '../hooks/useWebSocket'; // Import WebSocket hook
 
@@ -17,7 +18,7 @@ const LogsPage: React.FC = () => {
     try {
       // Pass undefined if filterLevel is empty string
       const data = await logService.getLogs(200, level || undefined);
-      setLogs(data);
+      setLogs(data.logs || []);
     } catch (err) {
       setError('Failed to fetch logs.');
       console.error(err);

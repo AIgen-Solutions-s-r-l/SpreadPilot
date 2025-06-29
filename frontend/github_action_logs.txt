@@ -1,0 +1,286 @@
+2025-06-29T15:00:06.9103434Z Current runner version: '2.325.0'
+2025-06-29T15:00:06.9165470Z ##[group]Runner Image Provisioner
+2025-06-29T15:00:06.9166714Z Hosted Compute Agent
+2025-06-29T15:00:06.9167664Z Version: 20250620.352
+2025-06-29T15:00:06.9168744Z Commit: f262f3aba23b10ea191b2a62bdee1ca4c3d344da
+2025-06-29T15:00:06.9169930Z Build Date: 2025-06-20T19:27:17Z
+2025-06-29T15:00:06.9170832Z ##[endgroup]
+2025-06-29T15:00:06.9172068Z ##[group]Operating System
+2025-06-29T15:00:06.9173041Z Ubuntu
+2025-06-29T15:00:06.9173774Z 24.04.2
+2025-06-29T15:00:06.9174603Z LTS
+2025-06-29T15:00:06.9175342Z ##[endgroup]
+2025-06-29T15:00:06.9176140Z ##[group]Runner Image
+2025-06-29T15:00:06.9176996Z Image: ubuntu-24.04
+2025-06-29T15:00:06.9177960Z Version: 20250622.1.0
+2025-06-29T15:00:06.9179676Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250622.1/images/ubuntu/Ubuntu2404-Readme.md
+2025-06-29T15:00:06.9206500Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250622.1
+2025-06-29T15:00:06.9208073Z ##[endgroup]
+2025-06-29T15:00:06.9209940Z ##[group]GITHUB_TOKEN Permissions
+2025-06-29T15:00:06.9212569Z Contents: read
+2025-06-29T15:00:06.9213485Z Metadata: read
+2025-06-29T15:00:06.9214266Z Packages: read
+2025-06-29T15:00:06.9214978Z ##[endgroup]
+2025-06-29T15:00:06.9217842Z Secret source: Actions
+2025-06-29T15:00:06.9218873Z Prepare workflow directory
+2025-06-29T15:00:07.0396471Z Prepare all required actions
+2025-06-29T15:00:07.0512756Z Getting action download info
+2025-06-29T15:00:07.5547918Z ##[group]Download immutable action package 'actions/checkout@v4'
+2025-06-29T15:00:07.5548991Z Version: 4.2.2
+2025-06-29T15:00:07.5549997Z Digest: sha256:ccb2698953eaebd21c7bf6268a94f9c26518a7e38e27e0b83c1fe1ad049819b1
+2025-06-29T15:00:07.5551515Z Source commit SHA: 11bd71901bbe5b1630ceea73d27597364c9af683
+2025-06-29T15:00:07.5552341Z ##[endgroup]
+2025-06-29T15:00:07.6334274Z ##[group]Download immutable action package 'actions/setup-node@v4'
+2025-06-29T15:00:07.6335081Z Version: 4.4.0
+2025-06-29T15:00:07.6335951Z Digest: sha256:9427cefe82346e992fb5b949e3569b39d537ae41aa3086483b14eceebfc16bc1
+2025-06-29T15:00:07.6336996Z Source commit SHA: 49933ea5288caeca8642d1e84afbd3f7d6820020
+2025-06-29T15:00:07.6337678Z ##[endgroup]
+2025-06-29T15:00:07.8050695Z Complete job name: Frontend Tests & Build
+2025-06-29T15:00:07.8722753Z ##[group]Run actions/checkout@v4
+2025-06-29T15:00:07.8723614Z with:
+2025-06-29T15:00:07.8724039Z   repository: blackms/SpreadPilot
+2025-06-29T15:00:07.8724744Z   token: ***
+2025-06-29T15:00:07.8725154Z   ssh-strict: true
+2025-06-29T15:00:07.8725566Z   ssh-user: git
+2025-06-29T15:00:07.8725979Z   persist-credentials: true
+2025-06-29T15:00:07.8726450Z   clean: true
+2025-06-29T15:00:07.8726866Z   sparse-checkout-cone-mode: true
+2025-06-29T15:00:07.8727375Z   fetch-depth: 1
+2025-06-29T15:00:07.8727782Z   fetch-tags: false
+2025-06-29T15:00:07.8728197Z   show-progress: true
+2025-06-29T15:00:07.8728619Z   lfs: false
+2025-06-29T15:00:07.8729002Z   submodules: false
+2025-06-29T15:00:07.8729442Z   set-safe-directory: true
+2025-06-29T15:00:07.8730124Z env:
+2025-06-29T15:00:07.8730524Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:07.8730960Z   NODE_VERSION: 18
+2025-06-29T15:00:07.8731549Z ##[endgroup]
+2025-06-29T15:00:07.9866730Z Syncing repository: blackms/SpreadPilot
+2025-06-29T15:00:07.9869611Z ##[group]Getting Git version info
+2025-06-29T15:00:07.9871043Z Working directory is '/home/runner/work/SpreadPilot/SpreadPilot'
+2025-06-29T15:00:07.9873237Z [command]/usr/bin/git version
+2025-06-29T15:00:07.9903324Z git version 2.49.0
+2025-06-29T15:00:07.9931647Z ##[endgroup]
+2025-06-29T15:00:07.9947039Z Temporarily overriding HOME='/home/runner/work/_temp/490ae2dc-0435-4cd1-9743-2c6b6e25e571' before making global git config changes
+2025-06-29T15:00:07.9950864Z Adding repository directory to the temporary git global config as a safe directory
+2025-06-29T15:00:07.9963913Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:00:07.9998753Z Deleting the contents of '/home/runner/work/SpreadPilot/SpreadPilot'
+2025-06-29T15:00:08.0003482Z ##[group]Initializing the repository
+2025-06-29T15:00:08.0008425Z [command]/usr/bin/git init /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:00:08.0066595Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-06-29T15:00:08.0068727Z hint: is subject to change. To configure the initial branch name to use in all
+2025-06-29T15:00:08.0072052Z hint: of your new repositories, which will suppress this warning, call:
+2025-06-29T15:00:08.0074605Z hint:
+2025-06-29T15:00:08.0075625Z hint: 	git config --global init.defaultBranch <name>
+2025-06-29T15:00:08.0076825Z hint:
+2025-06-29T15:00:08.0077964Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-06-29T15:00:08.0080447Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-06-29T15:00:08.0082043Z hint:
+2025-06-29T15:00:08.0082761Z hint: 	git branch -m <name>
+2025-06-29T15:00:08.0084265Z Initialized empty Git repository in /home/runner/work/SpreadPilot/SpreadPilot/.git/
+2025-06-29T15:00:08.0088296Z [command]/usr/bin/git remote add origin https://github.com/blackms/SpreadPilot
+2025-06-29T15:00:08.0121850Z ##[endgroup]
+2025-06-29T15:00:08.0123253Z ##[group]Disabling automatic garbage collection
+2025-06-29T15:00:08.0125971Z [command]/usr/bin/git config --local gc.auto 0
+2025-06-29T15:00:08.0164475Z ##[endgroup]
+2025-06-29T15:00:08.0166557Z ##[group]Setting up auth
+2025-06-29T15:00:08.0168047Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-06-29T15:00:08.0200508Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-06-29T15:00:08.0462130Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-06-29T15:00:08.0494568Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-06-29T15:00:08.0723053Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-06-29T15:00:08.0758671Z ##[endgroup]
+2025-06-29T15:00:08.0761623Z ##[group]Fetching the repository
+2025-06-29T15:00:08.0777644Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3ab4a351b1eb4e154fb594b168e85af82cbff0ff:refs/remotes/origin/main
+2025-06-29T15:00:08.5472876Z From https://github.com/blackms/SpreadPilot
+2025-06-29T15:00:08.5474865Z  * [new ref]         3ab4a351b1eb4e154fb594b168e85af82cbff0ff -> origin/main
+2025-06-29T15:00:08.5493348Z ##[endgroup]
+2025-06-29T15:00:08.5495049Z ##[group]Determining the checkout info
+2025-06-29T15:00:08.5497360Z ##[endgroup]
+2025-06-29T15:00:08.5499395Z [command]/usr/bin/git sparse-checkout disable
+2025-06-29T15:00:08.5543147Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-06-29T15:00:08.5573139Z ##[group]Checking out the ref
+2025-06-29T15:00:08.5576729Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2025-06-29T15:00:08.5875982Z Switched to a new branch 'main'
+2025-06-29T15:00:08.5880457Z branch 'main' set up to track 'origin/main'.
+2025-06-29T15:00:08.5891094Z ##[endgroup]
+2025-06-29T15:00:08.5924987Z [command]/usr/bin/git log -1 --format=%H
+2025-06-29T15:00:08.5947241Z 3ab4a351b1eb4e154fb594b168e85af82cbff0ff
+2025-06-29T15:00:08.6242017Z ##[group]Run actions/setup-node@v4
+2025-06-29T15:00:08.6243153Z with:
+2025-06-29T15:00:08.6243956Z   node-version: 18
+2025-06-29T15:00:08.6244826Z   cache: npm
+2025-06-29T15:00:08.6245825Z   cache-dependency-path: frontend/package-lock.json
+2025-06-29T15:00:08.6247153Z   always-auth: false
+2025-06-29T15:00:08.6248076Z   check-latest: false
+2025-06-29T15:00:08.6249241Z   token: ***
+2025-06-29T15:00:08.6250042Z env:
+2025-06-29T15:00:08.6251042Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:08.6252119Z   NODE_VERSION: 18
+2025-06-29T15:00:08.6252979Z ##[endgroup]
+2025-06-29T15:00:08.8341056Z Found in cache @ /opt/hostedtoolcache/node/18.20.8/x64
+2025-06-29T15:00:08.8354275Z ##[group]Environment details
+2025-06-29T15:00:09.2380194Z node: v18.20.8
+2025-06-29T15:00:09.2390580Z npm: 10.8.2
+2025-06-29T15:00:09.2392045Z yarn: 1.22.22
+2025-06-29T15:00:09.2394623Z ##[endgroup]
+2025-06-29T15:00:09.2410113Z [command]/opt/hostedtoolcache/node/18.20.8/x64/bin/npm config get cache
+2025-06-29T15:00:09.3902762Z /home/runner/.npm
+2025-06-29T15:00:09.5426022Z npm cache is not found
+2025-06-29T15:00:09.5608220Z ##[group]Run npm ci
+2025-06-29T15:00:09.5609137Z [36;1mnpm ci[0m
+2025-06-29T15:00:09.5702860Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:00:09.5703816Z env:
+2025-06-29T15:00:09.5704536Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:09.5705415Z   NODE_VERSION: 18
+2025-06-29T15:00:09.5706199Z ##[endgroup]
+2025-06-29T15:00:10.4024059Z npm warn EBADENGINE Unsupported engine {
+2025-06-29T15:00:10.4025109Z npm warn EBADENGINE   package: 'react-router@7.5.1',
+2025-06-29T15:00:10.4025953Z npm warn EBADENGINE   required: { node: '>=20.0.0' },
+2025-06-29T15:00:10.4026911Z npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+2025-06-29T15:00:10.4027694Z npm warn EBADENGINE }
+2025-06-29T15:00:10.4028338Z npm warn EBADENGINE Unsupported engine {
+2025-06-29T15:00:10.4029221Z npm warn EBADENGINE   package: 'react-router-dom@7.5.1',
+2025-06-29T15:00:10.4030104Z npm warn EBADENGINE   required: { node: '>=20.0.0' },
+2025-06-29T15:00:10.4031107Z npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+2025-06-29T15:00:10.4032363Z npm warn EBADENGINE }
+2025-06-29T15:00:25.4981894Z 
+2025-06-29T15:00:25.4983574Z added 334 packages, and audited 335 packages in 16s
+2025-06-29T15:00:25.4984988Z 
+2025-06-29T15:00:25.4985731Z 74 packages are looking for funding
+2025-06-29T15:00:25.4986372Z   run `npm fund` for details
+2025-06-29T15:00:25.5230817Z 
+2025-06-29T15:00:25.5236655Z 4 vulnerabilities (1 low, 1 moderate, 2 high)
+2025-06-29T15:00:25.5237353Z 
+2025-06-29T15:00:25.5237807Z To address all issues, run:
+2025-06-29T15:00:25.5238214Z   npm audit fix
+2025-06-29T15:00:25.5238407Z 
+2025-06-29T15:00:25.5238598Z Run `npm audit` for details.
+2025-06-29T15:00:25.5585020Z ##[group]Run npm run lint
+2025-06-29T15:00:25.5585307Z [36;1mnpm run lint[0m
+2025-06-29T15:00:25.5647617Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:00:25.5647850Z env:
+2025-06-29T15:00:25.5648020Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:25.5648213Z   NODE_VERSION: 18
+2025-06-29T15:00:25.5648385Z ##[endgroup]
+2025-06-29T15:00:25.6962464Z 
+2025-06-29T15:00:25.6964267Z > frontend@1.0.0 lint
+2025-06-29T15:00:25.6965121Z > eslint .
+2025-06-29T15:00:25.6965721Z 
+2025-06-29T15:00:28.0730384Z 
+2025-06-29T15:00:28.0738947Z /home/runner/work/SpreadPilot/SpreadPilot/frontend/src/contexts/AuthContext.tsx
+2025-06-29T15:00:28.0786245Z ##[warning]  17:14  warning  Fast refresh only works when a file only exports components. Move your React context(s) to a separate file  react-refresh/only-export-components
+2025-06-29T15:00:28.0796532Z 
+2025-06-29T15:00:28.0797131Z ✖ 1 problem (0 errors, 1 warning)
+2025-06-29T15:00:28.0797435Z 
+2025-06-29T15:00:28.1132094Z ##[group]Run npm run type-check || true
+2025-06-29T15:00:28.1132466Z [36;1mnpm run type-check || true[0m
+2025-06-29T15:00:28.1189468Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:00:28.1189690Z env:
+2025-06-29T15:00:28.1189852Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:28.1190045Z   NODE_VERSION: 18
+2025-06-29T15:00:28.1253732Z ##[endgroup]
+2025-06-29T15:00:28.2734176Z npm error Missing script: "type-check"
+2025-06-29T15:00:28.2736012Z npm error
+2025-06-29T15:00:28.2736462Z npm error To see a list of scripts, run:
+2025-06-29T15:00:28.2736930Z npm error   npm run
+2025-06-29T15:00:28.2762731Z npm error A complete log of this run can be found in: /home/runner/.npm/_logs/2025-06-29T15_00_28_201Z-debug-0.log
+2025-06-29T15:00:28.2886764Z ##[group]Run npm test -- --coverage --watchAll=false || true
+2025-06-29T15:00:28.2887805Z [36;1mnpm test -- --coverage --watchAll=false || true[0m
+2025-06-29T15:00:28.2952293Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:00:28.2952520Z env:
+2025-06-29T15:00:28.2952688Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:28.2952881Z   NODE_VERSION: 18
+2025-06-29T15:00:28.2953060Z ##[endgroup]
+2025-06-29T15:00:28.4568361Z npm error Missing script: "test"
+2025-06-29T15:00:28.4569252Z npm error
+2025-06-29T15:00:28.4570769Z npm error To see a list of scripts, run:
+2025-06-29T15:00:28.4571512Z npm error   npm run
+2025-06-29T15:00:28.4595546Z npm error A complete log of this run can be found in: /home/runner/.npm/_logs/2025-06-29T15_00_28_392Z-debug-0.log
+2025-06-29T15:00:28.4658046Z ##[group]Run npm run build
+2025-06-29T15:00:28.4658305Z [36;1mnpm run build[0m
+2025-06-29T15:00:28.4714933Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:00:28.4715151Z env:
+2025-06-29T15:00:28.4715320Z   PYTHON_VERSION: 3.11
+2025-06-29T15:00:28.4715515Z   NODE_VERSION: 18
+2025-06-29T15:00:28.4715701Z ##[endgroup]
+2025-06-29T15:00:28.6468218Z 
+2025-06-29T15:00:28.6468721Z > frontend@1.0.0 build
+2025-06-29T15:00:28.6469139Z > tsc -b && vite build
+2025-06-29T15:00:28.6469351Z 
+2025-06-29T15:00:37.4176908Z ##[error]src/components/dashboard/ActiveFollowersListV2.tsx(67,9): error TS2367: This comparison appears to be unintentional because the types '"RUNNING" | "STOPPED" | "STARTING"' and '"CONNECTING"' have no overlap.
+2025-06-29T15:00:37.4188269Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(23,25): error TS6196: 'LogLevel' is declared but never used.
+2025-06-29T15:00:37.4191407Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(34,12): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4194596Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(36,12): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4197567Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(38,12): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4200445Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(40,12): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4203447Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(42,12): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4206137Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(100,34): error TS2345: Argument of type 'Date' is not assignable to parameter of type 'string'.
+2025-06-29T15:00:37.4208886Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(125,21): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4252167Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(126,21): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4255337Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(127,21): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4259702Z ##[error]src/components/dashboard/RecentAlertsV2.tsx(186,35): error TS2339: Property 'id' does not exist on type '{ message: string; timestamp: Date; service: string; level: "ERROR" | "DEBUG" | "INFO" | "WARNING" | "CRITICAL"; extra?: Record<string, any> | undefined; }'.
+2025-06-29T15:00:37.4265373Z ##[error]src/hooks/useDashboard.ts(65,35): error TS2339: Property 'follower_pnl' does not exist on type '{ date: string; total_pnl: number; realized_pnl: number; unrealized_pnl: number; message?: string | undefined; trades?: { symbol: string; pnl: number; quantity: number; }[] | undefined; }'.
+2025-06-29T15:00:37.4268620Z ##[error]src/hooks/useDashboard.ts(65,56): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+2025-06-29T15:00:37.4270965Z ##[error]src/hooks/useDashboard.ts(65,61): error TS7006: Parameter 'fp' implicitly has an 'any' type.
+2025-06-29T15:00:37.4283541Z ##[error]src/hooks/useServiceHealth.ts(55,30): error TS2503: Cannot find namespace 'NodeJS'.
+2025-06-29T15:00:37.4286949Z ##[error]src/hooks/useWebSocket.ts(2,10): error TS2459: Module '"../contexts/WebSocketContext"' declares 'WebSocketContext' locally, but it is not exported.
+2025-06-29T15:00:37.4290130Z ##[error]src/pages/FollowersPageV2.tsx(45,66): error TS2305: Module '"../services/followerService"' has no exported member 'createFollower'.
+2025-06-29T15:00:37.4299974Z ##[error]src/pages/FollowersPageV2.tsx(459,11): error TS2322: Type '{ rows: { id: string; enabled: boolean; botStatus: "RUNNING" | "STOPPED" | "ERROR" | "STARTING"; ibGwStatus: "ERROR" | "CONNECTED" | "DISCONNECTED" | "CONNECTING"; assignmentState: "ASSIGNED" | ... 1 more ... | "PENDING"; ... 8 more ...; positions?: { ...; } | undefined; }[]; ... 8 more ...; sx: { ...; }; }' is not assignable to type 'IntrinsicAttributes & Omit<Partial<DataGridPropsWithDefaultValues<{ id: string; enabled: boolean; botStatus: "RUNNING" | "STOPPED" | "ERROR" | "STARTING"; ibGwStatus: "ERROR" | "CONNECTED" | "DISCONNECTED" | "CONNECTING"; ... 9 more ...; positions?: { ...; } | undefined; }>> & DataGridPropsWithComplexDefaultValueBef...'.
+2025-06-29T15:00:37.4326836Z   Property 'pageSize' does not exist on type 'IntrinsicAttributes & Omit<Partial<DataGridPropsWithDefaultValues<{ id: string; enabled: boolean; botStatus: "RUNNING" | "STOPPED" | "ERROR" | "STARTING"; ibGwStatus: "ERROR" | "CONNECTED" | "DISCONNECTED" | "CONNECTING"; ... 9 more ...; positions?: { ...; } | undefined; }>> & DataGridPropsWithComplexDefaultValueBef...'.
+2025-06-29T15:00:37.4329965Z ##[error]src/pages/FollowersPageV2.tsx(461,30): error TS7006: Parameter 'newPageSize' implicitly has an 'any' type.
+2025-06-29T15:00:37.4332317Z ##[error]src/pages/FollowersPageV2.tsx(463,26): error TS7006: Parameter 'newPage' implicitly has an 'any' type.
+2025-06-29T15:00:37.4333940Z ##[error]src/pages/LoginPage.tsx(15,13): error TS2554: Expected 1 arguments, but got 0.
+2025-06-29T15:00:37.4353431Z ##[error]src/pages/LogsPage.tsx(12,11): error TS2339: Property 'lastMessage' does not exist on type '{}'.
+2025-06-29T15:00:37.4357550Z ##[error]src/pages/LogsPage.tsx(12,24): error TS2339: Property 'isConnected' does not exist on type '{}'.
+2025-06-29T15:00:37.4363583Z ##[error]src/pages/LogsPage.tsx(20,15): error TS2345: Argument of type '{ count: number; requested: number; filters: { search: string | null; service: string | null; level: string | null; }; logs: { message: string; timestamp: Date; service: string; level: "ERROR" | "DEBUG" | "INFO" | "WARNING" | "CRITICAL"; extra?: Record<...> | undefined; }[]; }' is not assignable to parameter of type 'SetStateAction<LogEntry[]>'.
+2025-06-29T15:00:37.4367550Z ##[error]src/pages/LogsPageV2.tsx(46,10): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4370173Z ##[error]src/pages/LogsPageV2.tsx(52,10): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4372997Z ##[error]src/pages/LogsPageV2.tsx(58,10): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4375642Z ##[error]src/pages/LogsPageV2.tsx(64,10): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4378424Z ##[error]src/pages/LogsPageV2.tsx(70,10): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4381049Z ##[error]src/pages/LogsPageV2.tsx(87,11): error TS2339: Property 'isConnected' does not exist on type '{}'.
+2025-06-29T15:00:37.4401739Z ##[error]src/pages/LogsPageV2.tsx(204,52): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4404581Z ##[error]src/pages/LogsPageV2.tsx(215,52): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4407341Z ##[error]src/pages/LogsPageV2.tsx(226,52): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4410198Z ##[error]src/pages/LogsPageV2.tsx(237,52): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4413052Z ##[error]src/pages/LogsPageV2.tsx(248,52): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4415595Z ##[error]src/pages/LogsPageV2.tsx(287,30): error TS2693: 'LogLevel' only refers to a type, but is being used as a value here.
+2025-06-29T15:00:37.4417730Z ##[error]src/pages/LogsPageV2.tsx(288,27): error TS2769: No overload matches this call.
+2025-06-29T15:00:37.4420435Z   Overload 2 of 3, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & MenuItemOwnProps & Omit<ButtonBaseOwnProps, "classes"> & CommonProps & Omit<...>): Element | null', gave the following error.
+2025-06-29T15:00:37.4422232Z     Type 'unknown' is not assignable to type 'Key | null | undefined'.
+2025-06-29T15:00:37.4424504Z ##[error]src/pages/LogsPageV2.tsx(290,39): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '"ERROR" | "DEBUG" | "INFO" | "WARNING" | "CRITICAL"'.
+2025-06-29T15:00:37.4427054Z ##[error]src/pages/LogsPageV2.tsx(291,21): error TS2769: No overload matches this call.
+2025-06-29T15:00:37.4429381Z   Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & BoxOwnProps<Theme> & Omit<any, keyof BoxOwnProps<Theme>>): Element | null', gave the following error.
+2025-06-29T15:00:37.4430731Z     Type 'unknown' is not assignable to type 'ReactNode'.
+2025-06-29T15:00:37.4472129Z   Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+2025-06-29T15:00:37.4473172Z     Type 'unknown' is not assignable to type 'ReactNode'.
+2025-06-29T15:00:37.4476124Z ##[error]src/pages/LogsPageV2.tsx(382,26): error TS2339: Property 'id' does not exist on type '{ message: string; timestamp: Date; service: string; level: "ERROR" | "DEBUG" | "INFO" | "WARNING" | "CRITICAL"; extra?: Record<string, any> | undefined; }'.
+2025-06-29T15:00:37.4478991Z ##[error]src/pages/LogsPageV2.tsx(407,21): error TS2769: No overload matches this call.
+2025-06-29T15:00:37.4481712Z   Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & ChipOwnProps & CommonProps & Omit<any, "children" | ... 15 more ... | "skipFocusWhenDisabled">): Element | null', gave the following error.
+2025-06-29T15:00:37.4483637Z     Type 'Element | null' is not assignable to type 'ReactElement<unknown, string | JSXElementConstructor<any>> | undefined'.
+2025-06-29T15:00:37.4484973Z       Type 'null' is not assignable to type 'ReactElement<unknown, string | JSXElementConstructor<any>> | undefined'.
+2025-06-29T15:00:37.4486307Z   Overload 2 of 2, '(props: DefaultComponentProps<ChipTypeMap<{}, "div">>): Element | null', gave the following error.
+2025-06-29T15:00:37.4487692Z     Type 'Element | null' is not assignable to type 'ReactElement<unknown, string | JSXElementConstructor<any>> | undefined'.
+2025-06-29T15:00:37.4489038Z       Type 'null' is not assignable to type 'ReactElement<unknown, string | JSXElementConstructor<any>> | undefined'.
+2025-06-29T15:00:37.4490662Z ##[error]src/services/followerService.ts(74,9): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4533186Z ##[error]src/services/logService.ts(30,9): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4535346Z ##[error]src/services/logService.ts(32,43): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4537505Z ##[error]src/services/pnlService.ts(18,9): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4539591Z ##[error]src/services/pnlService.ts(19,43): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4541897Z ##[error]src/services/pnlService.ts(38,9): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.4544003Z ##[error]src/services/pnlService.ts(39,43): error TS18046: 'error' is of type 'unknown'.
+2025-06-29T15:00:37.7071536Z ##[error]Process completed with exit code 2.
+2025-06-29T15:00:37.7154099Z Post job cleanup.
+2025-06-29T15:00:37.8102315Z [command]/usr/bin/git version
+2025-06-29T15:00:37.8149038Z git version 2.49.0
+2025-06-29T15:00:37.8195863Z Temporarily overriding HOME='/home/runner/work/_temp/07ab6113-6064-4894-9f7f-3e503abdbdd2' before making global git config changes
+2025-06-29T15:00:37.8197527Z Adding repository directory to the temporary git global config as a safe directory
+2025-06-29T15:00:37.8202692Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:00:37.8246683Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-06-29T15:00:37.8285351Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-06-29T15:00:37.8525133Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-06-29T15:00:37.8548146Z http.https://github.com/.extraheader
+2025-06-29T15:00:37.8563740Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-06-29T15:00:37.8597091Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-06-29T15:00:37.8925419Z Cleaning up orphan processes

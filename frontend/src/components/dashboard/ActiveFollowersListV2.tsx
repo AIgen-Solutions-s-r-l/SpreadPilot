@@ -64,7 +64,7 @@ const FollowerItem: React.FC<FollowerItemProps> = ({ follower }) => {
   const getDisplayStatus = (): 'online' | 'offline' | 'warning' | 'error' => {
     if (!follower.enabled) return 'offline';
     if (follower.botStatus === 'ERROR' || follower.ibGwStatus === 'ERROR') return 'error';
-    if (follower.botStatus === 'CONNECTING' || follower.ibGwStatus === 'CONNECTING') return 'warning';
+    if (follower.botStatus === 'STARTING' || follower.ibGwStatus === 'CONNECTING') return 'warning';
     if (follower.botStatus === 'RUNNING' && follower.ibGwStatus === 'CONNECTED') return 'online';
     return 'offline';
   };

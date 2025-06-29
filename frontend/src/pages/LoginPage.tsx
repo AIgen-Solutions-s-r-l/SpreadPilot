@@ -12,7 +12,7 @@ const LoginPage: React.FC = () => {
     setError(null); // Clear previous errors
     try {
       // TODO: Pass actual credentials when authService is implemented
-      await login(/* { username, password } */);
+      await login({ username: 'admin', password: 'password' });
       // Navigation will be handled by the App component based on isAuthenticated state
     } catch (err) {
       setError('Login failed. Please check your credentials.'); // Basic error message

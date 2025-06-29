@@ -62,7 +62,7 @@ export const useDashboard = (): DashboardData => {
       const activeFollowersList = followers.filter(f => f.enabled);
       const totalPositions = followers.reduce((sum, f) => sum + (f.positions?.count || 0), 0);
       const totalPositionsValue = followers.reduce((sum, f) => sum + (f.positions?.value || 0), 0);
-      const tradeCount = todayPnl.follower_pnl.reduce((sum, fp) => sum + fp.trade_count, 0);
+      const tradeCount = todayPnl.trades?.length || 0;
 
       setMetrics({
         totalPnl: periodPnl.total,

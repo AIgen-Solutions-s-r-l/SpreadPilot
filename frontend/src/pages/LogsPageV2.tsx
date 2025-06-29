@@ -404,7 +404,7 @@ const LogsPageV2: React.FC = () => {
                   <Chip
                     label={log.level}
                     size="small"
-                    icon={getLogLevelProps(log.level, theme).icon}
+                    icon={getLogLevelProps(log.level, theme).icon || undefined}
                     sx={{
                       ...getLogLevelProps(log.level, theme),
                       height: 20,

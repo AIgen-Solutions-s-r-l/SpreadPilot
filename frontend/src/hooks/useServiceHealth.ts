@@ -52,7 +52,7 @@ export const useServiceHealth = (options: UseServiceHealthOptions = {}): UseServ
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchHealth = useCallback(async () => {
     try {

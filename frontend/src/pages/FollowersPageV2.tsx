@@ -42,7 +42,7 @@ import {
 
 // Hooks and services
 import { useFollowers } from '../hooks/useFollowers';
-import { enableFollower, disableFollower, closeFollowerPosition, createFollower } from '../services/followerService';
+import { enableFollower, disableFollower, closeFollowerPosition, addFollower } from '../services/followerService';
 import type { Follower, CreateFollowerRequest } from '../schemas/follower.schema';
 import { TimeValueBadge } from '../components/common/TimeValueBadge';
 
@@ -156,7 +156,7 @@ const FollowersPageV2: React.FC = () => {
         return;
       }
       
-      await createFollower(newFollower as CreateFollowerRequest);
+      await addFollower(newFollower as CreateFollowerRequest);
       await refresh();
       handleCloseAddDialog();
     } catch (error: any) {
@@ -456,13 +456,21 @@ const FollowersPageV2: React.FC = () => {
         <DataGrid
           rows={filteredFollowers}
           columns={columns}
-          pageSize={rowsPerPage}
-          rowsPerPageOptions={[5, 10, 25]}
-          onPageSizeChange={(newPageSize) => setRowsPerPage(newPageSize)}
-          page={page}
-          onPageChange={(newPage) => setPage(newPage)}
+          initialState={{
+            pagination: {
+              paginationModel: {
+                pageSize: rowsPerPage,
+                page: page,
+              },
+            },
+          }}
+          pageSizeOptions={[5, 10, 25]}
+          onPaginationModelChange={(model) => {
+            setRowsPerPage(model.pageSize);
+            setPage(model.page);
+          }}
           autoHeight
-          disableSelectionOnClick
+          disableRowSelectionOnClick
           sx={{
             '& .MuiDataGrid-row': {
               cursor: 'pointer'
