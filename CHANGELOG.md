@@ -5,6 +5,51 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0.0] - 2025-06-29
+
+### 🚀 Major Features
+
+#### Real-Time P&L System (PNL-δ1)
+- **P&L Service**: Comprehensive P&L tracking with PostgreSQL storage and Redis streams
+- **Database Migration**: Added Alembic migrations for trades, quotes, and P&L rollup tables
+- **Real-Time Processing**: Live subscription to trade_fills and quotes streams with automatic calculations
+- **Time-Based Rollups**: Intraday, daily, and monthly P&L aggregations with performance metrics
+
+#### Enhanced Dashboard & UI (UI-δ4, API-δ3)
+- **Live Dashboard**: Real-time WebSocket integration with automatic 30-second refresh
+- **P&L Endpoints**: Updated to use PostgreSQL with comprehensive metrics and follower breakdowns
+- **Manual Controls**: QuickActionsWidget with emergency stop and manual position closing
+- **Status Monitoring**: Live connection status, follower counts, and system health indicators
+- **Performance Charts**: Real P&L history visualization with multiple timeframes
+
+#### Report Worker Enhancements (REP-δ2)
+- **MinIO Integration**: S3-compatible storage with presigned URL generation for secure file access
+- **Dual Email Support**: SMTP alongside SendGrid with automatic fallback mechanism
+- **Vault Migration**: Complete migration from MongoDB to Vault for secrets management
+- **Enhanced Templates**: Improved email templates with download links and expiration notices
+
+#### Security Hardening (SEC-δ5)
+- **Secret Removal**: Eliminated all hardcoded credentials including manual operation PINs
+- **Vault Integration**: Complete migration to HashiCorp Vault for all sensitive data
+- **Environment Variables**: Secure fallback hierarchy (Vault → Environment → Defaults)
+- **Documentation**: Comprehensive security migration guide with credential mapping
+
+### 🔧 Improvements
+- **API Endpoints**: Updated logs endpoint to use root path (`/logs`) for consistency
+- **Frontend Security**: Removed client-side PIN validation (server-side only)
+- **Template Updates**: Updated deployment templates to reference Vault paths
+- **Error Handling**: Enhanced error handling in dashboard components with retry mechanisms
+
+### 📚 Documentation
+- **Security Guide**: Complete Vault migration documentation with verification commands
+- **API Documentation**: Updated endpoint specifications with PostgreSQL integration details
+- **Deployment Updates**: Revised environment variable templates for Vault integration
+
+### 🧪 Testing
+- **Unit Tests**: Added comprehensive tests for P&L service Redis integration
+- **MinIO Tests**: Added tests for report worker MinIO storage and email functionality
+- **Integration Coverage**: Enhanced test coverage for Vault and MinIO workflows
+
 ## [v1.2.0.0] - 2025-06-29
 
 ### 🚀 Major Features
