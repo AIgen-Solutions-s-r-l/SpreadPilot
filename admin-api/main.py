@@ -51,9 +51,36 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SpreadPilot Admin API",
-    description="API service for managing SpreadPilot followers and operations.",
-    version="0.1.0",
+    description="""
+API service for managing SpreadPilot followers and operations.
+
+## Features
+
+* **Authentication**: JWT-based authentication for all endpoints
+* **Followers Management**: CRUD operations for follower accounts
+* **P&L Tracking**: Real-time profit and loss data (daily and monthly)
+* **Logs Access**: Query system logs with filtering capabilities
+* **Manual Operations**: Emergency position closing with PIN verification (PIN: 0312)
+* **WebSocket**: Real-time updates for dashboard
+* **Health Monitoring**: Service health check endpoint
+
+## Security
+
+All endpoints (except /health) require JWT authentication. 
+Manual operations additionally require PIN verification.
+    """,
+    version="0.2.0",
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "Authentication", "description": "Login and token management"},
+        {"name": "Dashboard", "description": "Dashboard data and updates"},
+        {"name": "Followers", "description": "Follower account management"},
+        {"name": "P&L", "description": "Profit and Loss data endpoints"},
+        {"name": "Logs", "description": "System log access"},
+        {"name": "Manual Operations", "description": "Manual trading operations (requires PIN)"},
+        {"name": "WebSocket", "description": "Real-time WebSocket connections"},
+        {"name": "Health", "description": "Service health monitoring"},
+    ]
 )
 
 # Configure CORS

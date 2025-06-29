@@ -42,6 +42,9 @@ The Admin API is a backend service that provides an administrative interface for
 4. Exposing endpoints for manual control (e.g., closing positions)
 5. Serving as the backend for the frontend web interface
 6. Providing WebSocket support for real-time updates
+7. P&L data access (daily and monthly profit/loss reports)
+8. System log queries with filtering capabilities
+9. Emergency manual position closing with PIN verification
 
 ### 🏗️ Architecture
 
@@ -220,6 +223,48 @@ Use the returned token for authenticated requests:
 ```bash
 curl http://localhost:8083/api/v1/followers \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### 💰 P&L Data Access
+
+Get today's profit and loss data:
+```bash
+curl http://localhost:8083/api/v1/pnl/today \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Get monthly P&L data:
+```bash
+curl http://localhost:8083/api/v1/pnl/month?year=2024&month=1 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 📝 System Logs
+
+Query recent system logs:
+```bash
+# Get recent logs (default 200 entries)
+curl http://localhost:8083/api/v1/logs/recent \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Filter logs by service, level, and search text
+curl "http://localhost:8083/api/v1/logs/recent?n=50&service=trading-bot&level=ERROR" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 🚨 Manual Operations
+
+Manually close positions (requires PIN 0312):
+```bash
+curl -X POST http://localhost:8083/api/v1/manual-close \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "follower_id": "follower123",
+    "pin": "0312",
+    "close_all": true,
+    "reason": "Emergency close"
+  }'
 ```
 
 ### 🔌 WebSocket Connection
