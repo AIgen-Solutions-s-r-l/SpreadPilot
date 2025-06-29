@@ -258,10 +258,7 @@ class IBKRClient:
             An ib_insync.Stock contract object.
         """
         logger.debug(
-            "Creating stock contract",
-            symbol=symbol,
-            exchange=exchange,
-            currency=currency,
+            f"Creating stock contract - symbol: {symbol}, exchange: {exchange}, currency: {currency}"
         )
         # TODO: Add caching?
         try:
@@ -274,13 +271,12 @@ class IBKRClient:
             # contract = qualified_contracts[0]
             # Log a representation instead of the object itself
             logger.info(
-                "Stock contract created successfully", contract_repr=repr(contract)
+                f"Stock contract created successfully: {repr(contract)}"
             )
             return contract
         except Exception:
             logger.error(
-                "Error creating stock contract",
-                symbol=symbol,
+                f"Error creating stock contract for symbol: {symbol}",
                 exc_info=True,
             )
             raise  # Re-raise the exception after logging

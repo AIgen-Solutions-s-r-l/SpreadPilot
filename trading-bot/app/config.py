@@ -134,8 +134,8 @@ class Settings(BaseSettings):
         env="VAULT_ADDR",
         description="HashiCorp Vault server URL",
     )
-    vault_token: str = Field(
-        ...,
+    vault_token: str | None = Field(
+        None,
         env="VAULT_TOKEN",
         description="HashiCorp Vault authentication token",
     )
@@ -174,7 +174,8 @@ class Settings(BaseSettings):
             vault_client = get_vault_client()
             # Override client settings with config values
             vault_client.vault_url = self.vault_url
-            vault_client.vault_token = self.vault_token
+            if self.vault_token:
+                vault_client.vault_token = self.vault_token
             vault_client.mount_point = self.vault_mount_point
             # Reset client to pick up new settings
             vault_client._client = None
