@@ -7,6 +7,8 @@ services:
       context: .
       dockerfile: trading-bot/Dockerfile
     container_name: spreadpilot-trading-bot
+    labels:
+      - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       - FIRESTORE_EMULATOR_HOST=firestore:8080
@@ -35,17 +37,18 @@ services:
       context: ./watchdog
       dockerfile: Dockerfile
     container_name: spreadpilot-watchdog
+    labels:
+      - "spreadpilot"
     environment:
       - CHECK_INTERVAL_SECONDS=15
       - HEALTH_CHECK_TIMEOUT=5
       - MAX_CONSECUTIVE_FAILURES=3
-      - MONGO_URI=mongodb://mongodb:27017
-      - MONGO_DB_NAME=spreadpilot_admin
+      - REDIS_URL=redis://redis:6379
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
       - ./spreadpilot-core:/app/spreadpilot-core    # Core library for alerts
     depends_on:
-      - mongodb
+      - redis
       - trading-bot
       - admin-api
       - report-worker
@@ -60,6 +63,8 @@ services:
       context: .
       dockerfile: admin-api/Dockerfile
     container_name: spreadpilot-admin-api
+    labels:
+      - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       # - FIRESTORE_EMULATOR_HOST=firestore:8080 # Removed Firestore
@@ -89,6 +94,8 @@ services:
       context: .
       dockerfile: report-worker/Dockerfile
     container_name: spreadpilot-report-worker
+    labels:
+      - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       - FIRESTORE_EMULATOR_HOST=firestore:8080
@@ -113,6 +120,8 @@ services:
       context: .
       dockerfile: alert-router/Dockerfile
     container_name: spreadpilot-alert-router
+    labels:
+      - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
       - FIRESTORE_EMULATOR_HOST=firestore:8080
@@ -139,6 +148,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: spreadpilot-frontend
+    labels:
+      - "spreadpilot"
     ports:
       - "8080:80"
     depends_on:
@@ -152,6 +163,8 @@ services:
       context: ./admin-dashboard
       dockerfile: Dockerfile
     container_name: spreadpilot-admin-dashboard
+    labels:
+      - "spreadpilot"
     ports:
       - "3001:80"
     depends_on:
@@ -196,12 +209,24 @@ services:
     networks:
       - spreadpilot-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: spreadpilot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - spreadpilot-network
+
   # Observability services
 
 volumes:
   prometheus-data:
   grafana-data:
   mongo_data:
+  redis_data:
 
 networks:
   spreadpilot-network:
