@@ -20,6 +20,13 @@ SpreadPilot Core provides essential building blocks for the entire platform:
 - 👥 Follower and trading account management
 - 💰 P&L and commission calculation models
 
+### 💹 **P&L Service**
+- 📈 Real-time P&L monitoring and calculations
+- ⏱️ Automatic daily rollups at 16:30 ET
+- 📅 Monthly rollups at 00:10 ET on 1st
+- 💸 Commission calculation (pct if pnl_month > 0)
+- 🔄 Subscribe to trade fills and tick feeds
+
 ### 📈 **Report Generation**
 - 📄 PDF reports with ReportLab
 - 📊 Excel reports with pandas/openpyxl
@@ -98,6 +105,33 @@ excel_path = generate_excel_report(follower, month=12, year=2024, ...)
 # Send notifications
 await send_email(to="user@example.com", subject="Report", body="...")
 await send_telegram_message(chat_id="123", message="Alert!")
+```
+
+### 💹 `pnl` - P&L Service
+```python
+from spreadpilot_core.pnl import PnLService
+
+# Initialize P&L service
+pnl_service = PnLService()
+
+# Set callbacks for external integrations
+pnl_service.set_callbacks(
+    get_positions_fn=get_follower_positions,
+    get_market_price_fn=get_market_price,
+    subscribe_tick_fn=subscribe_to_tick_feed
+)
+
+# Start monitoring
+await pnl_service.start_monitoring(shutdown_event)
+
+# Record trade fill
+await pnl_service.record_trade_fill("follower-123", fill_data)
+
+# Get real-time P&L
+current_pnl = await pnl_service.get_current_pnl("follower-123")
+
+# Get monthly commission
+commission = await pnl_service.get_monthly_commission("follower-123", 2025, 6)
 ```
 
 ---
@@ -194,6 +228,71 @@ async def trading_example():
     )
 
 asyncio.run(trading_example())
+```
+
+### 💹 P&L Monitoring Example
+
+```python
+import asyncio
+from spreadpilot_core.pnl import PnLService
+from spreadpilot_core.db.mongodb import get_mongo_db
+
+async def pnl_monitoring_example():
+    # Initialize P&L service
+    pnl_service = PnLService()
+    
+    # Define callback functions
+    async def get_positions(follower_id):
+        """Get follower positions from database."""
+        db = await get_mongo_db()
+        positions = await db.positions.find({"follower_id": follower_id}).to_list(None)
+        return positions
+    
+    async def get_market_price(position):
+        """Get market price for a position."""
+        # This would typically call IBKR API
+        return position.avg_cost * 1.05  # Mock 5% profit
+    
+    async def subscribe_tick(contract_info):
+        """Subscribe to tick feed for a contract."""
+        print(f"Subscribing to {contract_info}")
+    
+    # Set callbacks
+    pnl_service.set_callbacks(
+        get_positions_fn=get_positions,
+        get_market_price_fn=get_market_price,
+        subscribe_tick_fn=subscribe_tick
+    )
+    
+    # Add followers to monitor
+    await pnl_service.add_follower("follower-123")
+    await pnl_service.add_follower("follower-456")
+    
+    # Record a trade fill
+    fill_data = {
+        "symbol": "QQQ",
+        "contract_type": "PUT",
+        "strike": 450.0,
+        "expiration": "2025-07-18",
+        "trade_type": "SELL",
+        "quantity": 5,
+        "price": 2.45,
+        "commission": 1.25,
+        "order_id": "ORDER123",
+        "execution_id": "EXEC123"
+    }
+    await pnl_service.record_trade_fill("follower-123", fill_data)
+    
+    # Get current P&L
+    current_pnl = await pnl_service.get_current_pnl("follower-123")
+    print(f"Current P&L: ${current_pnl['total_pnl']:.2f}")
+    
+    # Get monthly commission
+    commission = await pnl_service.get_monthly_commission("follower-123", 2025, 6)
+    if commission and commission['is_payable']:
+        print(f"Commission due: ${commission['commission_amount']:.2f}")
+
+asyncio.run(pnl_monitoring_example())
 ```
 
 ### 📄 Report Generation Example

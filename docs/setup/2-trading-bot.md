@@ -37,6 +37,7 @@ The Trading Bot is the heart of SpreadPilot, responsible for automated trading o
 | **Signal Processing** | Polls Google Sheets for trading signals | Every 1 second |
 | **Order Execution** | Places orders via IB Gateway | On signal detection |
 | **Position Monitoring** | Tracks open positions and P&L | Every 60 seconds |
+| **P&L Calculation** | Real-time MTM calculations with commission tracking | Every 30 seconds |
 | **Assignment Detection** | Monitors for option assignments | Every 60 seconds |
 | **Alert Generation** | Creates alerts for important events | As needed |
 | **Follower Management** | Manages copy-trading accounts | Real-time |
@@ -54,6 +55,19 @@ The Trading Bot is the heart of SpreadPilot, responsible for automated trading o
                    │ MongoDB │  │  Alerts  │
                    └─────────┘  └──────────┘
 ```
+
+### P&L Service Integration
+
+The Trading Bot integrates with the P&L service from `spreadpilot-core` for real-time profit/loss tracking:
+
+| Component | Purpose | Details |
+|-----------|---------|---------|
+| **MTM Calculations** | Mark-to-market P&L every 30 seconds | Updates `pnl_intraday` table |
+| **Daily Rollups** | Consolidated daily P&L at 16:30 ET | Creates `pnl_daily` records |
+| **Monthly Rollups** | Monthly summaries at 00:10 ET on 1st | Updates `pnl_monthly` with commission |
+| **Commission Logic** | `commission = pct * pnl_month` if `pnl_month > 0` | 20% default commission rate |
+
+The P&L service uses PostgreSQL for storage and provides real-time data to the admin dashboard.
 
 ## 🐳 Docker Configuration
 

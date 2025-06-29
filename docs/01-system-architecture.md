@@ -103,7 +103,7 @@ The heart of SpreadPilot's automated trading system.
 - 🏦 **IBKRClient** - Interactive Brokers API wrapper with connection management
 - 📡 **SignalProcessor** - Google Sheets integration and signal validation
 - 📋 **PositionManager** - Position tracking, assignment detection, and lifecycle management
-- 💰 **PnLService** - Real-time P&L calculations with PostgreSQL integration
+- 💰 **PnLService** - Real-time P&L calculations with PostgreSQL integration (30-second MTM updates)
 - ⚠️ **TimeValueMonitor** - Risk management and automatic liquidation engine
 - 🔔 **AlertManager** - Notification generation and alert routing
 
