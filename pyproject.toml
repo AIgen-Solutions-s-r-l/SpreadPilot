@@ -68,6 +68,11 @@ ignore = [
     "N803",  # Argument name should be lowercase
     "RUF005", # Consider iterable unpacking instead of concatenation
     "DTZ011", # datetime.date.today() used
+    "RUF015", # Prefer next(iter(...))
+    "N999",  # Invalid module name
+    "RUF006", # Store reference to asyncio.create_task
+    "RUF003", # Comment contains ambiguous character
+    "N802",  # Function name should be lowercase
 ]
 
 # Allow autofix for all enabled rules
