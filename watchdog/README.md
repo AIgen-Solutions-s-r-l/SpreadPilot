@@ -5,11 +5,12 @@ A self-hosted health monitoring service that monitors all SpreadPilot containers
 ## Features
 
 - **Dynamic Container Discovery**: Automatically discovers and monitors all containers with 'spreadpilot' label
-- **Continuous Health Monitoring**: Checks service health endpoints every 30 seconds
+- **Continuous Health Monitoring**: Checks service health endpoints every 15 seconds
 - **Auto-Recovery**: Automatically restarts failed services after 3 consecutive failures
 - **Concurrent Monitoring**: Checks all services in parallel for efficiency
 - **Redis Alert Publishing**: Publishes critical alerts to Redis stream for downstream processing
 - **Docker Integration**: Uses Docker API for container management and restart operations
+- **Self-Healing**: Automatic recovery with configurable failure thresholds
 
 ## Monitored Services
 
@@ -27,7 +28,7 @@ The watchdog automatically monitors any running container with the label `spread
 
 ### Environment Variables
 
-- `CHECK_INTERVAL_SECONDS`: Time between health checks (default: 30)
+- `CHECK_INTERVAL_SECONDS`: Time between health checks (default: 15)
 - `HEALTH_CHECK_TIMEOUT`: HTTP timeout for health checks (default: 10)
 - `MAX_CONSECUTIVE_FAILURES`: Failures before restart (default: 3)
 - `REDIS_URL`: Redis connection URL for alert publishing (default: redis://localhost:6379)
@@ -78,8 +79,22 @@ Alert structure:
 ### Running Tests
 
 ```bash
-pytest tests/
+# Unit tests
+pytest tests/test_watchdog.py
+
+# Integration tests (requires Docker)
+pytest tests/test_watchdog_integration.py
 ```
+
+### Integration Testing
+
+The integration test suite includes:
+
+1. **Unhealthy Service Test**: Creates a Flask service that returns 503 on health checks, verifies the watchdog restarts it after 3 failures
+2. **Healthy Service Test**: Verifies healthy services are not restarted
+3. **Recovery Alert Test**: Tests that recovery alerts are published when services become healthy after failures
+
+The tests use Docker to create real containers and validate the complete watchdog behavior.
 
 ### Running Locally
 
