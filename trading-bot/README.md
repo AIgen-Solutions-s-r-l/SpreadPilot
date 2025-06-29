@@ -328,6 +328,20 @@ mongosh mongodb://user:pass@localhost:27017/spreadpilot_admin
   - **LIMIT_REACHED**: All ladder attempts exhausted
   - **GATEWAY_UNREACHABLE**: IB connection/rejection errors
 
+### 🛡️ **Risk Management Features**
+- ⚠️ **Time Value Monitor** (`app/service/time_value_monitor.py`):
+  - 📊 Monitors all open spread positions every 60 seconds
+  - 💰 Calculates extrinsic value: TV = Market Price - Intrinsic Value
+  - 🚦 Three risk states:
+    - **SAFE**: TV > $1.00 (Green)
+    - **RISK**: $0.10 < TV ≤ $1.00 (Yellow)
+    - **CRITICAL**: TV ≤ $0.10 (Red)
+  - ⚡ Automatic market order execution when TV ≤ $0.10
+  - 🔴 Redis stream alerts with AlertType.ASSIGNMENT_DETECTED
+  - 🔄 Integrates with IBGateway Manager for multi-follower support
+  - 🔐 HashiCorp Vault integration for secure credential retrieval
+  - 📈 Position state tracking: OPEN → CLOSING → CLOSED
+
 ### 🛡️ **Risk Management**
 - ⚠️ Time value monitoring (TV < $0.10 liquidation)
 - 📋 Position limit enforcement

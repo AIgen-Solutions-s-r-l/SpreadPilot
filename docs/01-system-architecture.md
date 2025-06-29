@@ -105,6 +105,11 @@ The heart of SpreadPilot's automated trading system.
 - 📋 **PositionManager** - Position tracking, assignment detection, and lifecycle management
 - 💰 **PnLService** - Real-time P&L calculations with PostgreSQL integration (30-second MTM updates)
 - ⚠️ **TimeValueMonitor** - Risk management and automatic liquidation engine
+  - Monitors all open spread positions every 60 seconds
+  - Calculates time value: TV = Market Price - Intrinsic Value
+  - Automatically executes market orders when TV ≤ $0.10
+  - Publishes Redis alerts with status: SAFE/RISK/CRITICAL
+  - Integrates with IBKR Manager for multi-follower support
 - 🔔 **AlertManager** - Notification generation and alert routing
 
 **🔧 Technology Stack:**

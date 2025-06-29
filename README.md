@@ -17,7 +17,10 @@ SpreadPilot is a modern microservices-based trading platform designed for scalab
 - 💳 Automated commission calculation on positive P&L with IBAN tracking
 
 ### 🛡️ **Risk Management**
-- ⚠️ Time value monitoring with automatic liquidation (TV < $0.10)
+- ⚠️ Time value monitoring with automatic liquidation (TV ≤ $0.10)
+  - 60-second continuous monitoring during market hours
+  - Automatic market order execution for critical positions
+  - Redis stream alerts with status: SAFE/RISK/CRITICAL
 - 🔒 Multi-follower support with isolated IBKR connections
 - 📋 Comprehensive position monitoring and assignment handling
 
