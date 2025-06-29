@@ -9,9 +9,11 @@ The Gateway Manager is a core component of SpreadPilot that automatically manage
 - **Multi-Follower Support**: Automatically creates and manages one IBGateway container per enabled follower
 - **Isolated Connections**: Each follower gets their own dedicated IBGateway instance with unique ports and client IDs
 - **Automatic Resource Management**: Dynamic port and client ID allocation with conflict resolution
-- **Health Monitoring**: Continuous health checks with automatic reconnection for failed gateways
+- **Health Monitoring**: Continuous health checks every 30 seconds using `ib_insync.isConnected()`
 - **Exponential Backoff**: Retry logic for connection failures with configurable parameters
 - **Container Lifecycle Management**: Automatic start, stop, and cleanup of Docker containers
+- **Vault Integration**: Secure credential retrieval from HashiCorp Vault with `IB_USER` and `IB_PASS`
+- **Graceful Shutdown**: 30-second timeout for container stops with force removal fallback
 
 ## Architecture
 
@@ -49,6 +51,16 @@ The Gateway Manager is a core component of SpreadPilot that automatically manage
 - `CLIENT_ID_RANGE_END`: End of TWS client ID range (default: `9999`)
 - `HEALTHCHECK_INTERVAL`: Interval between health checks in seconds (default: `30`)
 - `MAX_STARTUP_TIME`: Maximum container startup time in seconds (default: `120`)
+- `VAULT_ENABLED`: Enable Vault integration for credentials (default: `true`)
+
+### Container Environment Variables
+
+Each IBGateway container is started with:
+- `IB_USER`: IBKR username (from Vault or follower configuration)
+- `IB_PASS`: IBKR password (from Vault or placeholder)
+- `TRADING_MODE`: Trading mode (`paper` or `live`)
+- `TWS_SETTINGS_PATH`: IBC configuration path
+- `DISPLAY`: X display for headless operation
 
 ### Initialization Parameters
 
@@ -61,7 +73,8 @@ manager = GatewayManager(
     client_id_range_end=9999,
     container_prefix="ibgateway-follower",
     healthcheck_interval=30,
-    max_startup_time=120
+    max_startup_time=120,
+    vault_enabled=True  # Enable Vault integration
 )
 ```
 
@@ -100,6 +113,9 @@ status = manager.get_gateway_status('follower-123')
 
 # List all gateways and their status
 gateways = manager.list_gateways()
+
+# Stop a specific follower's gateway
+await manager.stop_follower_gateway('follower-123')
 ```
 
 ### Stopping the Gateway Manager
@@ -117,10 +133,11 @@ await manager.stop()
 - Sets up port mappings for TWS API access
 
 ### 2. Health Monitoring
-- Monitors container status
-- Attempts IB client connections
+- Monitors container status every 30 seconds
+- Verifies IB client connections using `isConnected()`
 - Handles startup timeout detection
-- Performs automatic reconnection
+- Performs automatic reconnection with exponential backoff
+- Updates gateway status based on connection health
 
 ### 3. Status Management
 Gateway instances can be in one of four states:
@@ -241,8 +258,10 @@ Each follower's IBGateway runs in an isolated Docker container with:
 
 ### Credential Management
 IBGateway credentials are managed through:
-- Environment variables (for testing)
-- Secret Manager integration (for production)
+- HashiCorp Vault integration (primary method)
+- Environment variables `IB_USER` and `IB_PASS`
+- Follower-specific vault secret references
+- Fallback to stored username with placeholder password
 - No hardcoded passwords in configuration
 
 ### Network Security
@@ -332,7 +351,8 @@ def __init__(
     client_id_range_end: int = 9999,
     container_prefix: str = "ibgateway-follower",
     healthcheck_interval: int = 30,
-    max_startup_time: int = 120
+    max_startup_time: int = 120,
+    vault_enabled: bool = True
 )
 ```
 
@@ -349,6 +369,9 @@ Returns a ready IB client instance for the specified follower.
 
 ##### async reload_followers() -> None
 Reloads followers from database and updates gateways accordingly.
+
+##### async stop_follower_gateway(follower_id: str) -> None
+Stops the IBGateway container for a specific follower with graceful shutdown.
 
 ##### get_gateway_status(follower_id: str) -> Optional[GatewayStatus]
 Returns the current status of a gateway for the specified follower.

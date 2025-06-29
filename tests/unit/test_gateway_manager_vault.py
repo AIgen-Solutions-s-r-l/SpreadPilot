@@ -122,8 +122,8 @@ class TestGatewayManagerVaultIntegration:
             mock_docker_client.containers.run.assert_called_once()
             call_args = mock_docker_client.containers.run.call_args
             environment = call_args[1]['environment']
-            assert environment['TWS_USERID'] == "vault_user"
-            assert environment['TWS_PASSWORD'] == "vault_pass"
+            assert environment['IB_USER'] == "vault_user"
+            assert environment['IB_PASS'] == "vault_pass"
     
     @patch('spreadpilot_core.ibkr.gateway_manager.docker.from_env')
     @patch('spreadpilot_core.ibkr.gateway_manager.get_vault_client')
@@ -158,8 +158,8 @@ class TestGatewayManagerVaultIntegration:
             mock_docker_client.containers.run.assert_called_once()
             call_args = mock_docker_client.containers.run.call_args
             environment = call_args[1]['environment']
-            assert environment['TWS_USERID'] == "stored_user"
-            assert environment['TWS_PASSWORD'] == "placeholder"  # Fallback password
+            assert environment['IB_USER'] == "stored_user"
+            assert environment['IB_PASS'] == "placeholder"  # Fallback password
     
     @patch('spreadpilot_core.ibkr.gateway_manager.docker.from_env')
     def test_start_gateway_no_vault_secret_ref(self, mock_docker):
@@ -189,8 +189,8 @@ class TestGatewayManagerVaultIntegration:
             mock_docker_client.containers.run.assert_called_once()
             call_args = mock_docker_client.containers.run.call_args
             environment = call_args[1]['environment']
-            assert environment['TWS_USERID'] == "stored_user"
-            assert environment['TWS_PASSWORD'] == "placeholder"  # Fallback password
+            assert environment['IB_USER'] == "stored_user"
+            assert environment['IB_PASS'] == "placeholder"  # Fallback password
     
     @patch('spreadpilot_core.ibkr.gateway_manager.docker.from_env')
     def test_start_gateway_vault_disabled(self, mock_docker):
@@ -222,8 +222,8 @@ class TestGatewayManagerVaultIntegration:
             mock_docker_client.containers.run.assert_called_once()
             call_args = mock_docker_client.containers.run.call_args
             environment = call_args[1]['environment']
-            assert environment['TWS_USERID'] == "stored_user"
-            assert environment['TWS_PASSWORD'] == "placeholder"  # Fallback password
+            assert environment['IB_USER'] == "stored_user"
+            assert environment['IB_PASS'] == "placeholder"  # Fallback password
 
 
 class TestGatewayManagerVaultConfiguration:
