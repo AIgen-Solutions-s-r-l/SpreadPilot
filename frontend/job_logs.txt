@@ -1,0 +1,860 @@
+﻿2025-06-29T15:12:07.9023000Z Current runner version: '2.325.0'
+2025-06-29T15:12:07.9056512Z ##[group]Runner Image Provisioner
+2025-06-29T15:12:07.9057871Z Hosted Compute Agent
+2025-06-29T15:12:07.9059106Z Version: 20250620.352
+2025-06-29T15:12:07.9060192Z Commit: f262f3aba23b10ea191b2a62bdee1ca4c3d344da
+2025-06-29T15:12:07.9061289Z Build Date: 2025-06-20T19:27:17Z
+2025-06-29T15:12:07.9062325Z ##[endgroup]
+2025-06-29T15:12:07.9063188Z ##[group]Operating System
+2025-06-29T15:12:07.9064122Z Ubuntu
+2025-06-29T15:12:07.9064990Z 24.04.2
+2025-06-29T15:12:07.9065758Z LTS
+2025-06-29T15:12:07.9066509Z ##[endgroup]
+2025-06-29T15:12:07.9067258Z ##[group]Runner Image
+2025-06-29T15:12:07.9068629Z Image: ubuntu-24.04
+2025-06-29T15:12:07.9069436Z Version: 20250622.1.0
+2025-06-29T15:12:07.9071120Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20250622.1/images/ubuntu/Ubuntu2404-Readme.md
+2025-06-29T15:12:07.9073926Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20250622.1
+2025-06-29T15:12:07.9075738Z ##[endgroup]
+2025-06-29T15:12:07.9077616Z ##[group]GITHUB_TOKEN Permissions
+2025-06-29T15:12:07.9080452Z Contents: read
+2025-06-29T15:12:07.9081470Z Metadata: read
+2025-06-29T15:12:07.9082252Z Packages: read
+2025-06-29T15:12:07.9083039Z ##[endgroup]
+2025-06-29T15:12:07.9086061Z Secret source: Actions
+2025-06-29T15:12:07.9087217Z Prepare workflow directory
+2025-06-29T15:12:07.9929024Z Prepare all required actions
+2025-06-29T15:12:07.9985352Z Getting action download info
+2025-06-29T15:12:08.6178685Z ##[group]Download immutable action package 'actions/checkout@v4'
+2025-06-29T15:12:08.6180405Z Version: 4.2.2
+2025-06-29T15:12:08.6181871Z Digest: sha256:ccb2698953eaebd21c7bf6268a94f9c26518a7e38e27e0b83c1fe1ad049819b1
+2025-06-29T15:12:08.6183172Z Source commit SHA: 11bd71901bbe5b1630ceea73d27597364c9af683
+2025-06-29T15:12:08.6183913Z ##[endgroup]
+2025-06-29T15:12:09.0860978Z ##[group]Download immutable action package 'actions/setup-python@v5'
+2025-06-29T15:12:09.0862177Z Version: 5.6.0
+2025-06-29T15:12:09.0862963Z Digest: sha256:0b35a0c11c97499e4e0576589036d450b9f5f9da74b7774225b3614b57324404
+2025-06-29T15:12:09.0864081Z Source commit SHA: a26af69be951a213d495a4c3e4e4022e16d87065
+2025-06-29T15:12:09.0864840Z ##[endgroup]
+2025-06-29T15:12:09.5230836Z ##[group]Download immutable action package 'actions/cache@v4'
+2025-06-29T15:12:09.5231632Z Version: 4.2.3
+2025-06-29T15:12:09.5232413Z Digest: sha256:c8a3bb963e1f1826d8fcc8d1354f0dd29d8ac1db1d4f6f20247055ae11b81ed9
+2025-06-29T15:12:09.5233405Z Source commit SHA: 5a3ec84eff668545956fd18022155c47e93e2684
+2025-06-29T15:12:09.5234212Z ##[endgroup]
+2025-06-29T15:12:09.6437560Z Download action repository 'codecov/codecov-action@v4' (SHA:b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238)
+2025-06-29T15:12:10.4205907Z ##[group]Download immutable action package 'actions/upload-artifact@v4'
+2025-06-29T15:12:10.4207341Z Version: 4.6.2
+2025-06-29T15:12:10.4208934Z Digest: sha256:290722aa3281d5caf23d0acdc3dbeb3424786a1a01a9cc97e72f147225e37c38
+2025-06-29T15:12:10.4210742Z Source commit SHA: ea165f8d65b6e75b540449e92b4886f43607fa02
+2025-06-29T15:12:10.4211939Z ##[endgroup]
+2025-06-29T15:12:10.6645258Z Complete job name: Python Unit Tests (Pytest)
+2025-06-29T15:12:10.7164776Z ##[group]Checking docker version
+2025-06-29T15:12:10.7178654Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2025-06-29T15:12:10.8420550Z '1.48'
+2025-06-29T15:12:10.8439778Z Docker daemon API version: '1.48'
+2025-06-29T15:12:10.8441181Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2025-06-29T15:12:10.8718418Z '1.48'
+2025-06-29T15:12:10.8737273Z Docker client API version: '1.48'
+2025-06-29T15:12:10.8744426Z ##[endgroup]
+2025-06-29T15:12:10.8749126Z ##[group]Clean up resources from previous jobs
+2025-06-29T15:12:10.8755334Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=0d874e"
+2025-06-29T15:12:10.9083002Z ##[command]/usr/bin/docker network prune --force --filter "label=0d874e"
+2025-06-29T15:12:10.9226616Z ##[endgroup]
+2025-06-29T15:12:10.9227498Z ##[group]Create local container network
+2025-06-29T15:12:10.9239832Z ##[command]/usr/bin/docker network create --label 0d874e github_network_6871343b0c714c9687f7d6284042dbd1
+2025-06-29T15:12:11.0115868Z 7854fa28c4a35284b1eb0cdfcc2a5c15877031733ff2cb990fb7e4b88f11c682
+2025-06-29T15:12:11.0140009Z ##[endgroup]
+2025-06-29T15:12:11.0179649Z ##[group]Starting mongodb service container
+2025-06-29T15:12:11.0208749Z ##[command]/usr/bin/docker pull mongo:6.0
+2025-06-29T15:12:11.9295818Z 6.0: Pulling from library/mongo
+2025-06-29T15:12:12.1712737Z 89dc6ea4eae2: Pulling fs layer
+2025-06-29T15:12:12.1713270Z 159a29ccbce7: Pulling fs layer
+2025-06-29T15:12:12.1713670Z 03b36943d08f: Pulling fs layer
+2025-06-29T15:12:12.1714099Z d40f5033967d: Pulling fs layer
+2025-06-29T15:12:12.1714504Z b60bc6403a22: Pulling fs layer
+2025-06-29T15:12:12.1714878Z f0134ae75612: Pulling fs layer
+2025-06-29T15:12:12.1715243Z 96577fad2c40: Pulling fs layer
+2025-06-29T15:12:12.1715607Z 62defe137215: Pulling fs layer
+2025-06-29T15:12:12.1715969Z d40f5033967d: Waiting
+2025-06-29T15:12:12.1716313Z b60bc6403a22: Waiting
+2025-06-29T15:12:12.1716635Z f0134ae75612: Waiting
+2025-06-29T15:12:12.1716971Z 96577fad2c40: Waiting
+2025-06-29T15:12:12.1717301Z 62defe137215: Waiting
+2025-06-29T15:12:12.4658792Z 159a29ccbce7: Download complete
+2025-06-29T15:12:12.5337175Z 03b36943d08f: Verifying Checksum
+2025-06-29T15:12:12.5345664Z 03b36943d08f: Download complete
+2025-06-29T15:12:12.6989221Z 89dc6ea4eae2: Verifying Checksum
+2025-06-29T15:12:12.6995170Z 89dc6ea4eae2: Download complete
+2025-06-29T15:12:12.8110593Z b60bc6403a22: Verifying Checksum
+2025-06-29T15:12:12.8114792Z b60bc6403a22: Download complete
+2025-06-29T15:12:12.8126092Z d40f5033967d: Verifying Checksum
+2025-06-29T15:12:12.8134016Z d40f5033967d: Download complete
+2025-06-29T15:12:12.9726331Z f0134ae75612: Verifying Checksum
+2025-06-29T15:12:12.9727919Z f0134ae75612: Download complete
+2025-06-29T15:12:13.1180613Z 62defe137215: Verifying Checksum
+2025-06-29T15:12:13.1183705Z 62defe137215: Download complete
+2025-06-29T15:12:13.9489043Z 89dc6ea4eae2: Pull complete
+2025-06-29T15:12:15.2450445Z 96577fad2c40: Verifying Checksum
+2025-06-29T15:12:15.2450927Z 96577fad2c40: Download complete
+2025-06-29T15:12:15.8085608Z 159a29ccbce7: Pull complete
+2025-06-29T15:12:15.9764297Z 03b36943d08f: Pull complete
+2025-06-29T15:12:16.0369900Z d40f5033967d: Pull complete
+2025-06-29T15:12:16.0562459Z b60bc6403a22: Pull complete
+2025-06-29T15:12:16.0730101Z f0134ae75612: Pull complete
+2025-06-29T15:12:22.8705677Z 96577fad2c40: Pull complete
+2025-06-29T15:12:22.9193147Z 62defe137215: Pull complete
+2025-06-29T15:12:22.9258535Z Digest: sha256:2c6f0a6f33856597ad3d467a71af506bec71e73d945ead65b1af119be38b4c43
+2025-06-29T15:12:22.9275312Z Status: Downloaded newer image for mongo:6.0
+2025-06-29T15:12:22.9288807Z docker.io/library/mongo:6.0
+2025-06-29T15:12:22.9356421Z ##[command]/usr/bin/docker create --name 0ab0a83b01934ee9921f000fcc7b9bc2_mongo60_8967ec --label 0d874e --network github_network_6871343b0c714c9687f7d6284042dbd1 --network-alias mongodb -p 27017:27017 --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'" --health-interval 10s --health-timeout 5s --health-retries 5 -e "MONGO_INITDB_ROOT_USERNAME=testuser" -e "MONGO_INITDB_ROOT_PASSWORD=testpass" -e GITHUB_ACTIONS=true -e CI=true mongo:6.0
+2025-06-29T15:12:22.9768529Z 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:22.9792554Z ##[command]/usr/bin/docker start 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:23.1986217Z 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:23.2002622Z ##[command]/usr/bin/docker ps --all --filter id=04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2025-06-29T15:12:23.2181388Z 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add Up Less than a second (health: starting)
+2025-06-29T15:12:23.2213954Z ##[command]/usr/bin/docker port 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:23.2461363Z 27017/tcp -> 0.0.0.0:27017
+2025-06-29T15:12:23.2462234Z 27017/tcp -> [::]:27017
+2025-06-29T15:12:23.2536419Z ##[endgroup]
+2025-06-29T15:12:23.2538361Z ##[group]Starting redis service container
+2025-06-29T15:12:23.2539887Z ##[command]/usr/bin/docker pull redis:7-alpine
+2025-06-29T15:12:24.1156755Z 7-alpine: Pulling from library/redis
+2025-06-29T15:12:24.3479926Z f18232174bc9: Pulling fs layer
+2025-06-29T15:12:24.3520509Z 43d45750a845: Pulling fs layer
+2025-06-29T15:12:24.3521353Z e5c719682459: Pulling fs layer
+2025-06-29T15:12:24.3522135Z 890691a58c5f: Pulling fs layer
+2025-06-29T15:12:24.3522892Z 12a814a1432a: Pulling fs layer
+2025-06-29T15:12:24.3523956Z 249de296e9ec: Pulling fs layer
+2025-06-29T15:12:24.3532812Z 4f4fb700ef54: Pulling fs layer
+2025-06-29T15:12:24.3535136Z 235a05f8b97c: Pulling fs layer
+2025-06-29T15:12:24.3535483Z 890691a58c5f: Waiting
+2025-06-29T15:12:24.3536735Z 12a814a1432a: Waiting
+2025-06-29T15:12:24.3537025Z 249de296e9ec: Waiting
+2025-06-29T15:12:24.3538463Z 4f4fb700ef54: Waiting
+2025-06-29T15:12:24.3538774Z 235a05f8b97c: Waiting
+2025-06-29T15:12:24.6243915Z 43d45750a845: Verifying Checksum
+2025-06-29T15:12:24.6256282Z 43d45750a845: Download complete
+2025-06-29T15:12:24.6727218Z e5c719682459: Verifying Checksum
+2025-06-29T15:12:24.6727639Z e5c719682459: Download complete
+2025-06-29T15:12:24.7239264Z f18232174bc9: Verifying Checksum
+2025-06-29T15:12:24.7250025Z f18232174bc9: Download complete
+2025-06-29T15:12:24.8424297Z f18232174bc9: Pull complete
+2025-06-29T15:12:24.8738699Z 43d45750a845: Pull complete
+2025-06-29T15:12:24.9601109Z 890691a58c5f: Verifying Checksum
+2025-06-29T15:12:24.9603179Z 890691a58c5f: Download complete
+2025-06-29T15:12:25.0148827Z 249de296e9ec: Verifying Checksum
+2025-06-29T15:12:25.0150128Z 249de296e9ec: Download complete
+2025-06-29T15:12:25.0290520Z e5c719682459: Pull complete
+2025-06-29T15:12:25.0924787Z 890691a58c5f: Pull complete
+2025-06-29T15:12:25.0933272Z 12a814a1432a: Verifying Checksum
+2025-06-29T15:12:25.0933850Z 12a814a1432a: Download complete
+2025-06-29T15:12:25.2295286Z 4f4fb700ef54: Verifying Checksum
+2025-06-29T15:12:25.2301390Z 4f4fb700ef54: Download complete
+2025-06-29T15:12:25.2861778Z 235a05f8b97c: Verifying Checksum
+2025-06-29T15:12:25.2863698Z 235a05f8b97c: Download complete
+2025-06-29T15:12:25.3261251Z 12a814a1432a: Pull complete
+2025-06-29T15:12:25.3433850Z 249de296e9ec: Pull complete
+2025-06-29T15:12:25.3569968Z 4f4fb700ef54: Pull complete
+2025-06-29T15:12:25.3750784Z 235a05f8b97c: Pull complete
+2025-06-29T15:12:25.3803663Z Digest: sha256:ee9e8748ace004102a267f7b8265dab2c618317df22507b89d16a8add7154273
+2025-06-29T15:12:25.3823838Z Status: Downloaded newer image for redis:7-alpine
+2025-06-29T15:12:25.3836095Z docker.io/library/redis:7-alpine
+2025-06-29T15:12:25.3854274Z ##[command]/usr/bin/docker create --name 8727ee8476ad4934b8a3fd4bb3261e12_redis7alpine_f81dd1 --label 0d874e --network github_network_6871343b0c714c9687f7d6284042dbd1 --network-alias redis -p 6379:6379 --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5 -e GITHUB_ACTIONS=true -e CI=true redis:7-alpine
+2025-06-29T15:12:25.4158873Z 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:12:25.4175952Z ##[command]/usr/bin/docker start 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:12:25.6129039Z 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:12:25.6141232Z ##[command]/usr/bin/docker ps --all --filter id=28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2025-06-29T15:12:25.6332873Z 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4 Up Less than a second (health: starting)
+2025-06-29T15:12:25.6357586Z ##[command]/usr/bin/docker port 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:12:25.6548911Z 6379/tcp -> 0.0.0.0:6379
+2025-06-29T15:12:25.6549565Z 6379/tcp -> [::]:6379
+2025-06-29T15:12:25.6580291Z ##[endgroup]
+2025-06-29T15:12:25.6593475Z ##[group]Waiting for all services to be ready
+2025-06-29T15:12:25.6611604Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:25.6794870Z starting
+2025-06-29T15:12:25.6922254Z mongodb service is starting, waiting 2 seconds before checking again.
+2025-06-29T15:12:27.6922338Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:27.7054823Z starting
+2025-06-29T15:12:27.7073487Z mongodb service is starting, waiting 4 seconds before checking again.
+2025-06-29T15:12:32.0808564Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:32.0939631Z starting
+2025-06-29T15:12:32.0951749Z mongodb service is starting, waiting 7 seconds before checking again.
+2025-06-29T15:12:39.1296797Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:12:39.1427069Z healthy
+2025-06-29T15:12:39.1447258Z mongodb service is healthy.
+2025-06-29T15:12:39.1448272Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:12:39.1579359Z healthy
+2025-06-29T15:12:39.1595509Z redis service is healthy.
+2025-06-29T15:12:39.1596259Z ##[endgroup]
+2025-06-29T15:12:39.1833850Z ##[group]Run actions/checkout@v4
+2025-06-29T15:12:39.1834355Z with:
+2025-06-29T15:12:39.1834553Z   repository: blackms/SpreadPilot
+2025-06-29T15:12:39.1834928Z   token: ***
+2025-06-29T15:12:39.1835107Z   ssh-strict: true
+2025-06-29T15:12:39.1835278Z   ssh-user: git
+2025-06-29T15:12:39.1835478Z   persist-credentials: true
+2025-06-29T15:12:39.1835686Z   clean: true
+2025-06-29T15:12:39.1835869Z   sparse-checkout-cone-mode: true
+2025-06-29T15:12:39.1836086Z   fetch-depth: 1
+2025-06-29T15:12:39.1836248Z   fetch-tags: false
+2025-06-29T15:12:39.1836425Z   show-progress: true
+2025-06-29T15:12:39.1836593Z   lfs: false
+2025-06-29T15:12:39.1836748Z   submodules: false
+2025-06-29T15:12:39.1836919Z   set-safe-directory: true
+2025-06-29T15:12:39.1837274Z env:
+2025-06-29T15:12:39.1837431Z   PYTHON_VERSION: 3.11
+2025-06-29T15:12:39.1837614Z   NODE_VERSION: 18
+2025-06-29T15:12:39.1837780Z ##[endgroup]
+2025-06-29T15:12:39.3006492Z Syncing repository: blackms/SpreadPilot
+2025-06-29T15:12:39.3008489Z ##[group]Getting Git version info
+2025-06-29T15:12:39.3009144Z Working directory is '/home/runner/work/SpreadPilot/SpreadPilot'
+2025-06-29T15:12:39.3009999Z [command]/usr/bin/git version
+2025-06-29T15:12:39.3063291Z git version 2.49.0
+2025-06-29T15:12:39.3097357Z ##[endgroup]
+2025-06-29T15:12:39.3112533Z Temporarily overriding HOME='/home/runner/work/_temp/bd36a0c7-d9eb-4262-b553-ec2f0099384c' before making global git config changes
+2025-06-29T15:12:39.3115446Z Adding repository directory to the temporary git global config as a safe directory
+2025-06-29T15:12:39.3130137Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:12:39.3171834Z Deleting the contents of '/home/runner/work/SpreadPilot/SpreadPilot'
+2025-06-29T15:12:39.3176218Z ##[group]Initializing the repository
+2025-06-29T15:12:39.3181590Z [command]/usr/bin/git init /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:12:39.3260376Z hint: Using 'master' as the name for the initial branch. This default branch name
+2025-06-29T15:12:39.3263148Z hint: is subject to change. To configure the initial branch name to use in all
+2025-06-29T15:12:39.3264225Z hint: of your new repositories, which will suppress this warning, call:
+2025-06-29T15:12:39.3264783Z hint:
+2025-06-29T15:12:39.3265512Z hint: 	git config --global init.defaultBranch <name>
+2025-06-29T15:12:39.3266014Z hint:
+2025-06-29T15:12:39.3266482Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2025-06-29T15:12:39.3267291Z hint: 'development'. The just-created branch can be renamed via this command:
+2025-06-29T15:12:39.3267895Z hint:
+2025-06-29T15:12:39.3268382Z hint: 	git branch -m <name>
+2025-06-29T15:12:39.3270010Z Initialized empty Git repository in /home/runner/work/SpreadPilot/SpreadPilot/.git/
+2025-06-29T15:12:39.3281976Z [command]/usr/bin/git remote add origin https://github.com/blackms/SpreadPilot
+2025-06-29T15:12:39.3320558Z ##[endgroup]
+2025-06-29T15:12:39.3321370Z ##[group]Disabling automatic garbage collection
+2025-06-29T15:12:39.3324475Z [command]/usr/bin/git config --local gc.auto 0
+2025-06-29T15:12:39.3356258Z ##[endgroup]
+2025-06-29T15:12:39.3356859Z ##[group]Setting up auth
+2025-06-29T15:12:39.3364431Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-06-29T15:12:39.3399284Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-06-29T15:12:39.3687423Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-06-29T15:12:39.3726088Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-06-29T15:12:39.3959992Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2025-06-29T15:12:39.3996650Z ##[endgroup]
+2025-06-29T15:12:39.3998501Z ##[group]Fetching the repository
+2025-06-29T15:12:39.4017904Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3ae47976b39e4b7db8d7948526f788edd814abc0:refs/remotes/origin/main
+2025-06-29T15:12:40.3830358Z From https://github.com/blackms/SpreadPilot
+2025-06-29T15:12:40.3832448Z  * [new ref]         3ae47976b39e4b7db8d7948526f788edd814abc0 -> origin/main
+2025-06-29T15:12:40.3866497Z ##[endgroup]
+2025-06-29T15:12:40.3867493Z ##[group]Determining the checkout info
+2025-06-29T15:12:40.3870560Z ##[endgroup]
+2025-06-29T15:12:40.3875461Z [command]/usr/bin/git sparse-checkout disable
+2025-06-29T15:12:40.3919760Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2025-06-29T15:12:40.3949606Z ##[group]Checking out the ref
+2025-06-29T15:12:40.3954534Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2025-06-29T15:12:40.4274795Z Switched to a new branch 'main'
+2025-06-29T15:12:40.4275706Z branch 'main' set up to track 'origin/main'.
+2025-06-29T15:12:40.4285478Z ##[endgroup]
+2025-06-29T15:12:40.4327817Z [command]/usr/bin/git log -1 --format=%H
+2025-06-29T15:12:40.4359311Z 3ae47976b39e4b7db8d7948526f788edd814abc0
+2025-06-29T15:12:40.4572340Z ##[group]Run actions/setup-python@v5
+2025-06-29T15:12:40.4572608Z with:
+2025-06-29T15:12:40.4572780Z   python-version: 3.11
+2025-06-29T15:12:40.4572984Z   check-latest: false
+2025-06-29T15:12:40.4573283Z   token: ***
+2025-06-29T15:12:40.4573466Z   update-environment: true
+2025-06-29T15:12:40.4573674Z   allow-prereleases: false
+2025-06-29T15:12:40.4573884Z   freethreaded: false
+2025-06-29T15:12:40.4574053Z env:
+2025-06-29T15:12:40.4574209Z   PYTHON_VERSION: 3.11
+2025-06-29T15:12:40.4574391Z   NODE_VERSION: 18
+2025-06-29T15:12:40.4574560Z ##[endgroup]
+2025-06-29T15:12:40.6381614Z ##[group]Installed versions
+2025-06-29T15:12:40.6536645Z Successfully set up CPython (3.11.13)
+2025-06-29T15:12:40.6546157Z ##[endgroup]
+2025-06-29T15:12:40.8121887Z ##[group]Run actions/cache@v4
+2025-06-29T15:12:40.8122133Z with:
+2025-06-29T15:12:40.8122308Z   path: ~/.cache/pip
+2025-06-29T15:12:40.8122662Z   key: Linux-pip-04a5293a7eddd11d1ab657a6f8be08cb4f69bf111333b4a02b8022d553db57ae
+2025-06-29T15:12:40.8123063Z   restore-keys: Linux-pip-
+
+2025-06-29T15:12:40.8123484Z   enableCrossOsArchive: false
+2025-06-29T15:12:40.8123698Z   fail-on-cache-miss: false
+2025-06-29T15:12:40.8123896Z   lookup-only: false
+2025-06-29T15:12:40.8124076Z   save-always: false
+2025-06-29T15:12:40.8124249Z env:
+2025-06-29T15:12:40.8124405Z   PYTHON_VERSION: 3.11
+2025-06-29T15:12:40.8124590Z   NODE_VERSION: 18
+2025-06-29T15:12:40.8124834Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:40.8125235Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.13/x64/lib/pkgconfig
+2025-06-29T15:12:40.8125623Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:40.8125995Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:40.8126329Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:40.8126668Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.13/x64/lib
+2025-06-29T15:12:40.8126942Z ##[endgroup]
+2025-06-29T15:12:41.2229943Z Cache hit for: Linux-pip-04a5293a7eddd11d1ab657a6f8be08cb4f69bf111333b4a02b8022d553db57ae
+2025-06-29T15:12:42.3920267Z Received 14385327 of 14385327 (100.0%), 15.1 MBs/sec
+2025-06-29T15:12:42.3922452Z Cache Size: ~14 MB (14385327 B)
+2025-06-29T15:12:42.3954976Z [command]/usr/bin/tar -xf /home/runner/work/_temp/2580a322-cd4a-40c7-afea-17c06ff98c30/cache.tzst -P -C /home/runner/work/SpreadPilot/SpreadPilot --use-compress-program unzstd
+2025-06-29T15:12:42.4347879Z Cache restored successfully
+2025-06-29T15:12:42.4456638Z Cache restored from key: Linux-pip-04a5293a7eddd11d1ab657a6f8be08cb4f69bf111333b4a02b8022d553db57ae
+2025-06-29T15:12:42.4572825Z ##[group]Run python -m pip install --upgrade pip
+2025-06-29T15:12:42.4573260Z [36;1mpython -m pip install --upgrade pip[0m
+2025-06-29T15:12:42.4573564Z [36;1mpip install -r requirements.txt[0m
+2025-06-29T15:12:42.4573848Z [36;1mpip install -r requirements-dev.txt[0m
+2025-06-29T15:12:42.4574127Z [36;1mpip install -e ./spreadpilot-core[0m
+2025-06-29T15:12:42.4677625Z shell: /usr/bin/bash -e {0}
+2025-06-29T15:12:42.4677909Z env:
+2025-06-29T15:12:42.4678261Z   PYTHON_VERSION: 3.11
+2025-06-29T15:12:42.4678470Z   NODE_VERSION: 18
+2025-06-29T15:12:42.4678730Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:42.4679145Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.13/x64/lib/pkgconfig
+2025-06-29T15:12:42.4679542Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:42.4679895Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:42.4680239Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.13/x64
+2025-06-29T15:12:42.4680613Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.13/x64/lib
+2025-06-29T15:12:42.4680900Z ##[endgroup]
+2025-06-29T15:12:43.1037421Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (25.1.1)
+2025-06-29T15:12:43.7504989Z Collecting aiohappyeyeballs==2.6.1 (from -r requirements.txt (line 7))
+2025-06-29T15:12:43.8301110Z   Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+2025-06-29T15:12:44.4900880Z Collecting aiohttp==3.11.18 (from -r requirements.txt (line 9))
+2025-06-29T15:12:44.5014300Z   Downloading aiohttp-3.11.18-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.7 kB)
+2025-06-29T15:12:44.5242506Z Collecting aiosignal==1.3.2 (from -r requirements.txt (line 11))
+2025-06-29T15:12:44.5348242Z   Downloading aiosignal-1.3.2-py2.py3-none-any.whl.metadata (3.8 kB)
+2025-06-29T15:12:44.5537153Z Collecting annotated-types==0.7.0 (from -r requirements.txt (line 13))
+2025-06-29T15:12:44.5644303Z   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+2025-06-29T15:12:44.5937163Z Collecting anyio==4.9.0 (from -r requirements.txt (line 15))
+2025-06-29T15:12:44.6047827Z   Downloading anyio-4.9.0-py3-none-any.whl.metadata (4.7 kB)
+2025-06-29T15:12:44.6321746Z Collecting attrs==25.3.0 (from -r requirements.txt (line 17))
+2025-06-29T15:12:44.6429880Z   Downloading attrs-25.3.0-py3-none-any.whl.metadata (10 kB)
+2025-06-29T15:12:44.6765677Z Collecting certifi==2025.4.26 (from -r requirements.txt (line 19))
+2025-06-29T15:12:44.6872215Z   Downloading certifi-2025.4.26-py3-none-any.whl.metadata (2.5 kB)
+2025-06-29T15:12:44.7077564Z Collecting chardet==5.2.0 (from -r requirements.txt (line 24))
+2025-06-29T15:12:44.7179484Z   Downloading chardet-5.2.0-py3-none-any.whl.metadata (3.4 kB)
+2025-06-29T15:12:44.8027227Z Collecting charset-normalizer==3.4.1 (from -r requirements.txt (line 26))
+2025-06-29T15:12:44.8139833Z   Downloading charset_normalizer-3.4.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (35 kB)
+2025-06-29T15:12:44.8399656Z Collecting deprecated==1.2.18 (from -r requirements.txt (line 28))
+2025-06-29T15:12:44.8503958Z   Downloading Deprecated-1.2.18-py2.py3-none-any.whl.metadata (5.7 kB)
+2025-06-29T15:12:44.8725499Z Collecting dnspython==2.7.0 (from -r requirements.txt (line 34))
+2025-06-29T15:12:44.8831797Z   Downloading dnspython-2.7.0-py3-none-any.whl.metadata (5.8 kB)
+2025-06-29T15:12:44.9045105Z Collecting et-xmlfile==2.0.0 (from -r requirements.txt (line 36))
+2025-06-29T15:12:44.9150308Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2025-06-29T15:12:44.9371742Z Collecting eventkit==1.0.3 (from -r requirements.txt (line 38))
+2025-06-29T15:12:44.9481569Z   Downloading eventkit-1.0.3-py3-none-any.whl.metadata (5.4 kB)
+2025-06-29T15:12:45.0242846Z Collecting frozenlist==1.6.0 (from -r requirements.txt (line 40))
+2025-06-29T15:12:45.0367077Z   Downloading frozenlist-1.6.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (16 kB)
+2025-06-29T15:12:45.0629409Z Collecting googleapis-common-protos==1.70.0 (from -r requirements.txt (line 44))
+2025-06-29T15:12:45.0734516Z   Downloading googleapis_common_protos-1.70.0-py3-none-any.whl.metadata (9.3 kB)
+2025-06-29T15:12:45.6110211Z Collecting grpcio==1.72.0rc1 (from -r requirements.txt (line 48))
+2025-06-29T15:12:45.6218527Z   Downloading grpcio-1.72.0rc1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (3.8 kB)
+2025-06-29T15:12:45.6411297Z Collecting h11==0.16.0 (from -r requirements.txt (line 50))
+2025-06-29T15:12:45.6518376Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2025-06-29T15:12:45.6880541Z Collecting httpcore==1.0.9 (from -r requirements.txt (line 52))
+2025-06-29T15:12:45.6993194Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2025-06-29T15:12:45.7275901Z Collecting httpx==0.28.1 (from -r requirements.txt (line 54))
+2025-06-29T15:12:45.7382029Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2025-06-29T15:12:45.7695584Z Collecting ib-insync==0.9.86 (from -r requirements.txt (line 56))
+2025-06-29T15:12:45.7807462Z   Downloading ib_insync-0.9.86-py3-none-any.whl.metadata (5.4 kB)
+2025-06-29T15:12:45.8031222Z Collecting idna==3.10 (from -r requirements.txt (line 58))
+2025-06-29T15:12:45.8135730Z   Downloading idna-3.10-py3-none-any.whl.metadata (10 kB)
+2025-06-29T15:12:45.8495154Z Collecting importlib-metadata==8.6.1 (from -r requirements.txt (line 64))
+2025-06-29T15:12:45.8601191Z   Downloading importlib_metadata-8.6.1-py3-none-any.whl.metadata (4.7 kB)
+2025-06-29T15:12:45.8864296Z Collecting motor==3.7.0 (from -r requirements.txt (line 66))
+2025-06-29T15:12:45.8978437Z   Downloading motor-3.7.0-py3-none-any.whl.metadata (21 kB)
+2025-06-29T15:12:46.1754160Z Collecting multidict==6.4.3 (from -r requirements.txt (line 68))
+2025-06-29T15:12:46.1866403Z   Downloading multidict-6.4.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.3 kB)
+2025-06-29T15:12:46.2095110Z Collecting nest-asyncio==1.6.0 (from -r requirements.txt (line 72))
+2025-06-29T15:12:46.2198734Z   Downloading nest_asyncio-1.6.0-py3-none-any.whl.metadata (2.8 kB)
+2025-06-29T15:12:46.3969845Z Collecting numpy==2.2.5 (from -r requirements.txt (line 74))
+2025-06-29T15:12:46.4080211Z   Downloading numpy-2.2.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (62 kB)
+2025-06-29T15:12:46.4476486Z Collecting openpyxl==3.1.5 (from -r requirements.txt (line 78))
+2025-06-29T15:12:46.4581265Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2025-06-29T15:12:46.4853248Z Collecting opentelemetry-api==1.32.1 (from -r requirements.txt (line 80))
+2025-06-29T15:12:46.4960790Z   Downloading opentelemetry_api-1.32.1-py3-none-any.whl.metadata (1.6 kB)
+2025-06-29T15:12:46.5216264Z Collecting opentelemetry-exporter-otlp==1.32.1 (from -r requirements.txt (line 87))
+2025-06-29T15:12:46.5326460Z   Downloading opentelemetry_exporter_otlp-1.32.1-py3-none-any.whl.metadata (2.5 kB)
+2025-06-29T15:12:46.5533765Z Collecting opentelemetry-exporter-otlp-proto-common==1.32.1 (from -r requirements.txt (line 89))
+2025-06-29T15:12:46.5711304Z   Downloading opentelemetry_exporter_otlp_proto_common-1.32.1-py3-none-any.whl.metadata (1.9 kB)
+2025-06-29T15:12:46.5922924Z Collecting opentelemetry-exporter-otlp-proto-grpc==1.32.1 (from -r requirements.txt (line 93))
+2025-06-29T15:12:46.6031970Z   Downloading opentelemetry_exporter_otlp_proto_grpc-1.32.1-py3-none-any.whl.metadata (2.5 kB)
+2025-06-29T15:12:46.6283633Z Collecting opentelemetry-exporter-otlp-proto-http==1.32.1 (from -r requirements.txt (line 95))
+2025-06-29T15:12:46.6397476Z   Downloading opentelemetry_exporter_otlp_proto_http-1.32.1-py3-none-any.whl.metadata (2.4 kB)
+2025-06-29T15:12:46.6656516Z Collecting opentelemetry-proto==1.32.1 (from -r requirements.txt (line 97))
+2025-06-29T15:12:46.6765479Z   Downloading opentelemetry_proto-1.32.1-py3-none-any.whl.metadata (2.4 kB)
+2025-06-29T15:12:46.7041315Z Collecting opentelemetry-sdk==1.32.1 (from -r requirements.txt (line 102))
+2025-06-29T15:12:46.7168706Z   Downloading opentelemetry_sdk-1.32.1-py3-none-any.whl.metadata (1.6 kB)
+2025-06-29T15:12:46.7414153Z Collecting opentelemetry-semantic-conventions==0.53b1 (from -r requirements.txt (line 107))
+2025-06-29T15:12:46.7525273Z   Downloading opentelemetry_semantic_conventions-0.53b1-py3-none-any.whl.metadata (2.5 kB)
+2025-06-29T15:12:46.8661960Z Collecting pandas==2.2.3 (from -r requirements.txt (line 109))
+2025-06-29T15:12:46.8771576Z   Downloading pandas-2.2.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (89 kB)
+2025-06-29T15:12:47.1303681Z Collecting pillow==11.2.1 (from -r requirements.txt (line 111))
+2025-06-29T15:12:47.1409545Z   Downloading pillow-11.2.1-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (8.9 kB)
+2025-06-29T15:12:47.1939436Z Collecting propcache==0.3.1 (from -r requirements.txt (line 113))
+2025-06-29T15:12:47.2056055Z   Downloading propcache-0.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (10 kB)
+2025-06-29T15:12:47.3647467Z Collecting protobuf==5.29.4 (from -r requirements.txt (line 117))
+2025-06-29T15:12:47.3754897Z   Downloading protobuf-5.29.4-cp38-abi3-manylinux2014_x86_64.whl.metadata (592 bytes)
+2025-06-29T15:12:47.4864142Z Collecting pydantic==2.11.4 (from -r requirements.txt (line 121))
+2025-06-29T15:12:47.4970581Z   Downloading pydantic-2.11.4-py3-none-any.whl.metadata (66 kB)
+2025-06-29T15:12:48.1483967Z Collecting pydantic-core==2.33.2 (from -r requirements.txt (line 123))
+2025-06-29T15:12:48.1590547Z   Downloading pydantic_core-2.33.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+2025-06-29T15:12:48.4911525Z Collecting pymongo==4.12.1 (from -r requirements.txt (line 125))
+2025-06-29T15:12:48.5020411Z   Downloading pymongo-4.12.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (22 kB)
+2025-06-29T15:12:48.5287611Z Collecting python-dateutil==2.9.0.post0 (from -r requirements.txt (line 127))
+2025-06-29T15:12:48.5391706Z   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2025-06-29T15:12:48.5607783Z Collecting python-http-client==3.3.7 (from -r requirements.txt (line 129))
+2025-06-29T15:12:48.5717404Z   Downloading python_http_client-3.3.7-py3-none-any.whl.metadata (6.9 kB)
+2025-06-29T15:12:48.6091006Z Collecting python-telegram-bot==22.0 (from -r requirements.txt (line 131))
+2025-06-29T15:12:48.6202159Z   Downloading python_telegram_bot-22.0-py3-none-any.whl.metadata (17 kB)
+2025-06-29T15:12:48.6667628Z Collecting pytz==2025.2 (from -r requirements.txt (line 133))
+2025-06-29T15:12:48.6771955Z   Downloading pytz-2025.2-py2.py3-none-any.whl.metadata (22 kB)
+2025-06-29T15:12:48.7985952Z Collecting reportlab==4.4.0 (from -r requirements.txt (line 137))
+2025-06-29T15:12:48.8093154Z   Downloading reportlab-4.4.0-py3-none-any.whl.metadata (1.8 kB)
+2025-06-29T15:12:48.8416329Z Collecting requests==2.32.3 (from -r requirements.txt (line 139))
+2025-06-29T15:12:48.8523416Z   Downloading requests-2.32.3-py3-none-any.whl.metadata (4.6 kB)
+2025-06-29T15:12:48.8880507Z Collecting sendgrid==6.11.0 (from -r requirements.txt (line 141))
+2025-06-29T15:12:48.8992881Z   Downloading sendgrid-6.11.0-py3-none-any.whl.metadata (11 kB)
+2025-06-29T15:12:48.9189716Z Collecting six==1.17.0 (from -r requirements.txt (line 143))
+2025-06-29T15:12:48.9292524Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2025-06-29T15:12:48.9455361Z Collecting sniffio==1.3.1 (from -r requirements.txt (line 145))
+2025-06-29T15:12:48.9556893Z   Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+2025-06-29T15:12:48.9730837Z Collecting starkbank-ecdsa==2.2.0 (from -r requirements.txt (line 147))
+2025-06-29T15:12:48.9835996Z   Downloading starkbank-ecdsa-2.2.0.tar.gz (14 kB)
+2025-06-29T15:12:48.9950179Z   Installing build dependencies: started
+2025-06-29T15:12:49.8244734Z   Installing build dependencies: finished with status 'done'
+2025-06-29T15:12:49.8250683Z   Getting requirements to build wheel: started
+2025-06-29T15:12:50.1612707Z   Getting requirements to build wheel: finished with status 'done'
+2025-06-29T15:12:50.1621500Z   Preparing metadata (pyproject.toml): started
+2025-06-29T15:12:50.3268525Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2025-06-29T15:12:50.3524717Z Collecting typing-extensions==4.13.2 (from -r requirements.txt (line 149))
+2025-06-29T15:12:50.3627387Z   Downloading typing_extensions-4.13.2-py3-none-any.whl.metadata (3.0 kB)
+2025-06-29T15:12:50.3812690Z Collecting typing-inspection==0.4.0 (from -r requirements.txt (line 155))
+2025-06-29T15:12:50.3921329Z   Downloading typing_inspection-0.4.0-py3-none-any.whl.metadata (2.6 kB)
+2025-06-29T15:12:50.4132256Z Collecting tzdata==2025.2 (from -r requirements.txt (line 157))
+2025-06-29T15:12:50.4233886Z   Downloading tzdata-2025.2-py2.py3-none-any.whl.metadata (1.4 kB)
+2025-06-29T15:12:50.4539413Z Collecting urllib3==2.4.0 (from -r requirements.txt (line 159))
+2025-06-29T15:12:50.4643846Z   Downloading urllib3-2.4.0-py3-none-any.whl.metadata (6.5 kB)
+2025-06-29T15:12:50.5551098Z Collecting wrapt==1.17.2 (from -r requirements.txt (line 161))
+2025-06-29T15:12:50.5654159Z   Downloading wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.4 kB)
+2025-06-29T15:12:50.8981567Z Collecting yarl==1.20.0 (from -r requirements.txt (line 163))
+2025-06-29T15:12:50.9092121Z   Downloading yarl-1.20.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (72 kB)
+2025-06-29T15:12:50.9392431Z Collecting zipp==3.21.0 (from -r requirements.txt (line 165))
+2025-06-29T15:12:50.9492481Z   Downloading zipp-3.21.0-py3-none-any.whl.metadata (3.7 kB)
+2025-06-29T15:12:51.2021949Z Collecting sqlalchemy==2.0.36 (from -r requirements.txt (line 167))
+2025-06-29T15:12:51.2128340Z   Downloading SQLAlchemy-2.0.36-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (9.7 kB)
+2025-06-29T15:12:51.6421683Z Collecting greenlet!=0.4.17 (from sqlalchemy==2.0.36->-r requirements.txt (line 167))
+2025-06-29T15:12:51.6528264Z   Downloading greenlet-3.2.3-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (4.1 kB)
+2025-06-29T15:12:51.6710925Z Downloading aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+2025-06-29T15:12:51.6858779Z Downloading aiohttp-3.11.18-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.7 MB)
+2025-06-29T15:12:51.7196586Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 64.0 MB/s eta 0:00:00
+2025-06-29T15:12:51.7316051Z Downloading multidict-6.4.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (223 kB)
+2025-06-29T15:12:51.7452362Z Downloading yarl-1.20.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (358 kB)
+2025-06-29T15:12:51.7600914Z Downloading aiosignal-1.3.2-py2.py3-none-any.whl (7.6 kB)
+2025-06-29T15:12:51.7727541Z Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2025-06-29T15:12:51.7857263Z Downloading anyio-4.9.0-py3-none-any.whl (100 kB)
+2025-06-29T15:12:51.7983903Z Downloading attrs-25.3.0-py3-none-any.whl (63 kB)
+2025-06-29T15:12:51.8111448Z Downloading certifi-2025.4.26-py3-none-any.whl (159 kB)
+2025-06-29T15:12:51.8264312Z Downloading chardet-5.2.0-py3-none-any.whl (199 kB)
+2025-06-29T15:12:51.8396521Z Downloading charset_normalizer-3.4.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (143 kB)
+2025-06-29T15:12:51.8537588Z Downloading Deprecated-1.2.18-py2.py3-none-any.whl (10.0 kB)
+2025-06-29T15:12:51.8668789Z Downloading wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (83 kB)
+2025-06-29T15:12:51.8799217Z Downloading dnspython-2.7.0-py3-none-any.whl (313 kB)
+2025-06-29T15:12:51.8948880Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2025-06-29T15:12:51.9089232Z Downloading eventkit-1.0.3-py3-none-any.whl (31 kB)
+2025-06-29T15:12:51.9232022Z Downloading frozenlist-1.6.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (313 kB)
+2025-06-29T15:12:51.9375596Z Downloading googleapis_common_protos-1.70.0-py3-none-any.whl (294 kB)
+2025-06-29T15:12:51.9510885Z Downloading protobuf-5.29.4-cp38-abi3-manylinux2014_x86_64.whl (319 kB)
+2025-06-29T15:12:51.9667960Z Downloading grpcio-1.72.0rc1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.9 MB)
+2025-06-29T15:12:52.0060771Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.9/5.9 MB 159.9 MB/s eta 0:00:00
+2025-06-29T15:12:52.0163152Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2025-06-29T15:12:52.0285879Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2025-06-29T15:12:52.0408938Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2025-06-29T15:12:52.0592750Z Downloading ib_insync-0.9.86-py3-none-any.whl (72 kB)
+2025-06-29T15:12:52.0756238Z Downloading idna-3.10-py3-none-any.whl (70 kB)
+2025-06-29T15:12:52.0888770Z Downloading importlib_metadata-8.6.1-py3-none-any.whl (26 kB)
+2025-06-29T15:12:52.1020447Z Downloading motor-3.7.0-py3-none-any.whl (74 kB)
+2025-06-29T15:12:52.1152973Z Downloading pymongo-4.12.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.4 MB)
+2025-06-29T15:12:52.1271735Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 128.4 MB/s eta 0:00:00
+2025-06-29T15:12:52.1375900Z Downloading nest_asyncio-1.6.0-py3-none-any.whl (5.2 kB)
+2025-06-29T15:12:52.1528165Z Downloading numpy-2.2.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.4 MB)
+2025-06-29T15:12:52.2268821Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.4/16.4 MB 229.5 MB/s eta 0:00:00
+2025-06-29T15:12:52.2374762Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2025-06-29T15:12:52.2517602Z Downloading opentelemetry_api-1.32.1-py3-none-any.whl (65 kB)
+2025-06-29T15:12:52.2645476Z Downloading opentelemetry_exporter_otlp-1.32.1-py3-none-any.whl (7.0 kB)
+2025-06-29T15:12:52.2785822Z Downloading opentelemetry_exporter_otlp_proto_common-1.32.1-py3-none-any.whl (18 kB)
+2025-06-29T15:12:52.2915591Z Downloading opentelemetry_exporter_otlp_proto_grpc-1.32.1-py3-none-any.whl (18 kB)
+2025-06-29T15:12:52.3048966Z Downloading opentelemetry_sdk-1.32.1-py3-none-any.whl (118 kB)
+2025-06-29T15:12:52.3186949Z Downloading opentelemetry_exporter_otlp_proto_http-1.32.1-py3-none-any.whl (17 kB)
+2025-06-29T15:12:52.3311092Z Downloading requests-2.32.3-py3-none-any.whl (64 kB)
+2025-06-29T15:12:52.3443841Z Downloading urllib3-2.4.0-py3-none-any.whl (128 kB)
+2025-06-29T15:12:52.3590100Z Downloading opentelemetry_proto-1.32.1-py3-none-any.whl (55 kB)
+2025-06-29T15:12:52.3722866Z Downloading opentelemetry_semantic_conventions-0.53b1-py3-none-any.whl (188 kB)
+2025-06-29T15:12:52.3884129Z Downloading pandas-2.2.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (13.1 MB)
+2025-06-29T15:12:52.4501023Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.1/13.1 MB 217.3 MB/s eta 0:00:00
+2025-06-29T15:12:52.4606554Z Downloading pillow-11.2.1-cp311-cp311-manylinux_2_28_x86_64.whl (4.6 MB)
+2025-06-29T15:12:52.4906695Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 166.3 MB/s eta 0:00:00
+2025-06-29T15:12:52.5023555Z Downloading propcache-0.3.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (232 kB)
+2025-06-29T15:12:52.5164210Z Downloading pydantic-2.11.4-py3-none-any.whl (443 kB)
+2025-06-29T15:12:52.5344898Z Downloading pydantic_core-2.33.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.0 MB)
+2025-06-29T15:12:52.5473346Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 179.0 MB/s eta 0:00:00
+2025-06-29T15:12:52.5580115Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2025-06-29T15:12:52.5716309Z Downloading python_http_client-3.3.7-py3-none-any.whl (8.4 kB)
+2025-06-29T15:12:52.5848500Z Downloading python_telegram_bot-22.0-py3-none-any.whl (673 kB)
+2025-06-29T15:12:52.5929109Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 673.5/673.5 kB 93.6 MB/s eta 0:00:00
+2025-06-29T15:12:52.6035576Z Downloading pytz-2025.2-py2.py3-none-any.whl (509 kB)
+2025-06-29T15:12:52.6225638Z Downloading reportlab-4.4.0-py3-none-any.whl (2.0 MB)
+2025-06-29T15:12:52.6367147Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 159.9 MB/s eta 0:00:00
+2025-06-29T15:12:52.6472879Z Downloading sendgrid-6.11.0-py3-none-any.whl (101 kB)
+2025-06-29T15:12:52.6615846Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2025-06-29T15:12:52.6742165Z Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+2025-06-29T15:12:52.6878689Z Downloading typing_extensions-4.13.2-py3-none-any.whl (45 kB)
+2025-06-29T15:12:52.7013164Z Downloading typing_inspection-0.4.0-py3-none-any.whl (14 kB)
+2025-06-29T15:12:52.7141013Z Downloading tzdata-2025.2-py2.py3-none-any.whl (347 kB)
+2025-06-29T15:12:52.7300493Z Downloading zipp-3.21.0-py3-none-any.whl (9.6 kB)
+2025-06-29T15:12:52.7435061Z Downloading SQLAlchemy-2.0.36-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.2 MB)
+2025-06-29T15:12:52.7619359Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 192.0 MB/s eta 0:00:00
+2025-06-29T15:12:52.7723410Z Downloading greenlet-3.2.3-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (585 kB)
+2025-06-29T15:12:52.7793770Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 585.5/585.5 kB 77.2 MB/s eta 0:00:00
+2025-06-29T15:12:52.8793279Z Building wheels for collected packages: starkbank-ecdsa
+2025-06-29T15:12:52.8804611Z   Building wheel for starkbank-ecdsa (pyproject.toml): started
+2025-06-29T15:12:53.0941134Z   Building wheel for starkbank-ecdsa (pyproject.toml): finished with status 'done'
+2025-06-29T15:12:53.0947946Z   Created wheel for starkbank-ecdsa: filename=starkbank_ecdsa-2.2.0-py3-none-any.whl size=16049 sha256=b247578645fe9a97f98ac756872828291817959261a314b65293d0a03617aa02
+2025-06-29T15:12:53.0950397Z   Stored in directory: /home/runner/.cache/pip/wheels/af/6c/c8/3a941332ae93d4748d5b4107d70ed22b4e6ff6ac1e225c5c95
+2025-06-29T15:12:53.0969619Z Successfully built starkbank-ecdsa
+2025-06-29T15:12:53.2191788Z Installing collected packages: starkbank-ecdsa, pytz, zipp, wrapt, urllib3, tzdata, typing-extensions, sniffio, six, python-http-client, protobuf, propcache, pillow, numpy, nest-asyncio, multidict, idna, h11, grpcio, greenlet, frozenlist, et-xmlfile, dnspython, charset-normalizer, chardet, certifi, attrs, annotated-types, aiohappyeyeballs, yarl, typing-inspection, sqlalchemy, sendgrid, requests, reportlab, python-dateutil, pymongo, pydantic-core, opentelemetry-proto, openpyxl, importlib-metadata, httpcore, googleapis-common-protos, eventkit, deprecated, anyio, aiosignal, pydantic, pandas, opentelemetry-exporter-otlp-proto-common, opentelemetry-api, motor, ib-insync, httpx, aiohttp, python-telegram-bot, opentelemetry-semantic-conventions, opentelemetry-sdk, opentelemetry-exporter-otlp-proto-http, opentelemetry-exporter-otlp-proto-grpc, opentelemetry-exporter-otlp
+2025-06-29T15:13:04.6514330Z 
+2025-06-29T15:13:04.6553036Z Successfully installed aiohappyeyeballs-2.6.1 aiohttp-3.11.18 aiosignal-1.3.2 annotated-types-0.7.0 anyio-4.9.0 attrs-25.3.0 certifi-2025.4.26 chardet-5.2.0 charset-normalizer-3.4.1 deprecated-1.2.18 dnspython-2.7.0 et-xmlfile-2.0.0 eventkit-1.0.3 frozenlist-1.6.0 googleapis-common-protos-1.70.0 greenlet-3.2.3 grpcio-1.72.0rc1 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 ib-insync-0.9.86 idna-3.10 importlib-metadata-8.6.1 motor-3.7.0 multidict-6.4.3 nest-asyncio-1.6.0 numpy-2.2.5 openpyxl-3.1.5 opentelemetry-api-1.32.1 opentelemetry-exporter-otlp-1.32.1 opentelemetry-exporter-otlp-proto-common-1.32.1 opentelemetry-exporter-otlp-proto-grpc-1.32.1 opentelemetry-exporter-otlp-proto-http-1.32.1 opentelemetry-proto-1.32.1 opentelemetry-sdk-1.32.1 opentelemetry-semantic-conventions-0.53b1 pandas-2.2.3 pillow-11.2.1 propcache-0.3.1 protobuf-5.29.4 pydantic-2.11.4 pydantic-core-2.33.2 pymongo-4.12.1 python-dateutil-2.9.0.post0 python-http-client-3.3.7 python-telegram-bot-22.0 pytz-2025.2 reportlab-4.4.0 requests-2.32.3 sendgrid-6.11.0 six-1.17.0 sniffio-1.3.1 sqlalchemy-2.0.36 starkbank-ecdsa-2.2.0 typing-extensions-4.13.2 typing-inspection-0.4.0 tzdata-2025.2 urllib3-2.4.0 wrapt-1.17.2 yarl-1.20.0 zipp-3.21.0
+2025-06-29T15:13:06.4585749Z Requirement already satisfied: aiohappyeyeballs==2.6.1 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 7)) (2.6.1)
+2025-06-29T15:13:06.4591283Z Requirement already satisfied: aiohttp==3.11.18 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 9)) (3.11.18)
+2025-06-29T15:13:06.5302323Z Collecting aioresponses==0.7.8 (from -r requirements-dev.txt (line 11))
+2025-06-29T15:13:06.5840639Z   Downloading aioresponses-0.7.8-py2.py3-none-any.whl.metadata (10 kB)
+2025-06-29T15:13:06.5900844Z Requirement already satisfied: aiosignal==1.3.2 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 13)) (1.3.2)
+2025-06-29T15:13:06.6085868Z Collecting alabaster==1.0.0 (from -r requirements-dev.txt (line 15))
+2025-06-29T15:13:06.6191796Z   Downloading alabaster-1.0.0-py3-none-any.whl.metadata (2.8 kB)
+2025-06-29T15:13:06.6237762Z Requirement already satisfied: annotated-types==0.7.0 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 17)) (0.7.0)
+2025-06-29T15:13:06.6244466Z Requirement already satisfied: anyio==4.9.0 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 19)) (4.9.0)
+2025-06-29T15:13:06.6445599Z Collecting asttokens==3.0.0 (from -r requirements-dev.txt (line 25))
+2025-06-29T15:13:06.6552238Z   Downloading asttokens-3.0.0-py3-none-any.whl.metadata (4.7 kB)
+2025-06-29T15:13:06.6600199Z Requirement already satisfied: attrs==25.3.0 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 27)) (25.3.0)
+2025-06-29T15:13:06.6819923Z Collecting babel==2.17.0 (from -r requirements-dev.txt (line 29))
+2025-06-29T15:13:06.6924658Z   Downloading babel-2.17.0-py3-none-any.whl.metadata (2.0 kB)
+2025-06-29T15:13:06.7484606Z Collecting bcrypt==4.3.0 (from -r requirements-dev.txt (line 31))
+2025-06-29T15:13:06.7592058Z   Downloading bcrypt-4.3.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (10 kB)
+2025-06-29T15:13:06.8143181Z Collecting black==25.1.0 (from -r requirements-dev.txt (line 33))
+2025-06-29T15:13:06.8160785Z   Using cached black-25.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl.metadata (81 kB)
+2025-06-29T15:13:06.8424371Z Collecting build==1.2.2.post1 (from -r requirements-dev.txt (line 35))
+2025-06-29T15:13:06.8531562Z   Downloading build-1.2.2.post1-py3-none-any.whl.metadata (6.5 kB)
+2025-06-29T15:13:06.8806522Z Collecting cachecontrol==0.14.2 (from -r requirements-dev.txt (line 39))
+2025-06-29T15:13:06.8922270Z   Downloading cachecontrol-0.14.2-py3-none-any.whl.metadata (3.1 kB)
+2025-06-29T15:13:06.9224586Z Collecting cachetools==5.5.2 (from -r requirements-dev.txt (line 41))
+2025-06-29T15:13:06.9332469Z   Downloading cachetools-5.5.2-py3-none-any.whl.metadata (5.4 kB)
+2025-06-29T15:13:06.9377349Z Requirement already satisfied: certifi==2025.4.26 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 43)) (2025.4.26)
+2025-06-29T15:13:07.0469483Z Collecting cffi==1.17.1 (from -r requirements-dev.txt (line 48))
+2025-06-29T15:13:07.0578939Z   Downloading cffi-1.17.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.5 kB)
+2025-06-29T15:13:07.0621624Z Requirement already satisfied: charset-normalizer==3.4.1 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 50)) (3.4.1)
+2025-06-29T15:13:07.0831872Z Collecting click==8.1.8 (from -r requirements-dev.txt (line 52))
+2025-06-29T15:13:07.0940985Z   Downloading click-8.1.8-py3-none-any.whl.metadata (2.3 kB)
+2025-06-29T15:13:07.3969618Z Collecting coverage==7.8.0 (from coverage[toml]==7.8.0->-r requirements-dev.txt (line 57))
+2025-06-29T15:13:07.4086076Z   Downloading coverage-7.8.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (8.5 kB)
+2025-06-29T15:13:07.5760047Z Collecting cryptography==44.0.2 (from -r requirements-dev.txt (line 59))
+2025-06-29T15:13:07.5874601Z   Downloading cryptography-44.0.2-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+2025-06-29T15:13:07.6126374Z Collecting decorator==5.2.1 (from -r requirements-dev.txt (line 64))
+2025-06-29T15:13:07.6231284Z   Downloading decorator-5.2.1-py3-none-any.whl.metadata (3.9 kB)
+2025-06-29T15:13:07.6277385Z Requirement already satisfied: dnspython==2.7.0 in /opt/hostedtoolcache/Python/3.11.13/x64/lib/python3.11/site-packages (from -r requirements-dev.txt (line 68)) (2.7.0)
+2025-06-29T15:13:07.6560321Z Collecting docker==7.1.0 (from -r requirements-dev.txt (line 72))
+2025-06-29T15:13:07.6665966Z   Downloading docker-7.1.0-py3-none-any.whl.metadata (3.8 kB)
+2025-06-29T15:13:07.6932611Z Collecting docutils==0.21.2 (from -r requirements-dev.txt (line 74))
+2025-06-29T15:13:07.7037505Z   Downloading docutils-0.21.2-py3-none-any.whl.metadata (2.8 kB)
+2025-06-29T15:13:07.7249738Z Collecting ecdsa==0.19.1 (from -r requirements-dev.txt (line 79))
+2025-06-29T15:13:07.7353617Z   Downloading ecdsa-0.19.1-py2.py3-none-any.whl.metadata (29 kB)
+2025-06-29T15:13:07.7614581Z Collecting email-validator==2.2.0 (from -r requirements-dev.txt (line 81))
+2025-06-29T15:13:07.7719876Z   Downloading email_validator-2.2.0-py3-none-any.whl.metadata (25 kB)
+2025-06-29T15:13:07.7952725Z Collecting execnet==2.1.1 (from -r requirements-dev.txt (line 83))
+2025-06-29T15:13:07.8057663Z   Downloading execnet-2.1.1-py3-none-any.whl.metadata (2.9 kB)
+2025-06-29T15:13:07.8265627Z Collecting executing==2.2.0 (from -r requirements-dev.txt (line 85))
+2025-06-29T15:13:07.8367620Z   Downloading executing-2.2.0-py2.py3-none-any.whl.metadata (8.9 kB)
+2025-06-29T15:13:07.8872380Z Collecting fastapi==0.110.3 (from -r requirements-dev.txt (line 87))
+2025-06-29T15:13:07.8982927Z   Downloading fastapi-0.110.3-py3-none-any.whl.metadata (24 kB)
+2025-06-29T15:13:07.9267927Z Collecting firebase-admin==6.8.0 (from -r requirements-dev.txt (line 89))
+2025-06-29T15:13:07.9377442Z   Downloading firebase_admin-6.8.0-py3-none-any.whl.metadata (1.5 kB)
+2025-06-29T15:13:07.9678537Z ERROR: Could not find a version that satisfies the requirement freezegun==1.6.0 (from versions: 0.0.1, 0.0.2, 0.0.3, 0.0.4, 0.0.5, 0.0.6, 0.0.7, 0.0.8, 0.0.9, 0.1.0, 0.1.1, 0.1.2, 0.1.3, 0.1.4, 0.1.5, 0.1.6, 0.1.7, 0.1.8, 0.1.9, 0.1.11, 0.1.12, 0.1.13, 0.1.14, 0.1.15, 0.1.16, 0.1.17, 0.1.18, 0.1.19, 0.1.19.1, 0.2.0, 0.2.1, 0.2.2, 0.2.3, 0.2.4, 0.2.5, 0.2.6, 0.2.7, 0.2.8, 0.3.0, 0.3.1, 0.3.2, 0.3.3, 0.3.4, 0.3.5, 0.3.6, 0.3.7, 0.3.8, 0.3.9, 0.3.10, 0.3.11, 0.3.12, 0.3.13, 0.3.14, 0.3.15, 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.2.2, 1.3.0, 1.3.1, 1.4.0, 1.5.0, 1.5.1, 1.5.2)
+2025-06-29T15:13:07.9706697Z ERROR: No matching distribution found for freezegun==1.6.0
+2025-06-29T15:13:08.0808355Z ##[error]Process completed with exit code 1.
+2025-06-29T15:13:08.0895656Z Post job cleanup.
+2025-06-29T15:13:08.1903703Z [command]/usr/bin/git version
+2025-06-29T15:13:08.1947099Z git version 2.49.0
+2025-06-29T15:13:08.1996121Z Temporarily overriding HOME='/home/runner/work/_temp/6ddd0e6f-a961-4b88-af86-222103388245' before making global git config changes
+2025-06-29T15:13:08.1997951Z Adding repository directory to the temporary git global config as a safe directory
+2025-06-29T15:13:08.2003757Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SpreadPilot/SpreadPilot
+2025-06-29T15:13:08.2058933Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2025-06-29T15:13:08.2098866Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2025-06-29T15:13:08.2353646Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2025-06-29T15:13:08.2381020Z http.https://github.com/.extraheader
+2025-06-29T15:13:08.2397286Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2025-06-29T15:13:08.2434384Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2025-06-29T15:13:08.2776799Z Print service container logs: 0ab0a83b01934ee9921f000fcc7b9bc2_mongo60_8967ec
+2025-06-29T15:13:08.2782119Z ##[command]/usr/bin/docker logs --details 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:13:08.2937293Z  about to fork child process, waiting until server is ready for connections.
+2025-06-29T15:13:08.2938284Z  forked process: 27
+2025-06-29T15:13:08.2938714Z  
+2025-06-29T15:13:08.2939276Z  {"t":{"$date":"2025-06-29T15:12:23.245+00:00"},"s":"I",  "c":"CONTROL",  "id":20698,   "ctx":"-","msg":"***** SERVER RESTARTED *****"}
+2025-06-29T15:13:08.2940543Z  {"t":{"$date":"2025-06-29T15:12:23.246+00:00"},"s":"I",  "c":"CONTROL",  "id":23285,   "ctx":"-","msg":"Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'"}
+2025-06-29T15:13:08.2942969Z  {"t":{"$date":"2025-06-29T15:12:23.247+00:00"},"s":"I",  "c":"NETWORK",  "id":4915701, "ctx":"main","msg":"Initialized wire specification","attr":{"spec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":0,"maxWireVersion":17},"outgoing":{"minWireVersion":6,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.2945744Z  {"t":{"$date":"2025-06-29T15:12:23.249+00:00"},"s":"I",  "c":"NETWORK",  "id":4648601, "ctx":"main","msg":"Implicit TCP FastOpen unavailable. If TCP FastOpen is required, set tcpFastOpenServer, tcpFastOpenClient, and tcpFastOpenQueueSize."}
+2025-06-29T15:13:08.2947897Z  {"t":{"$date":"2025-06-29T15:12:23.251+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationDonorService","namespace":"config.tenantMigrationDonors"}}
+2025-06-29T15:13:08.2950409Z  {"t":{"$date":"2025-06-29T15:12:23.251+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationRecipientService","namespace":"config.tenantMigrationRecipients"}}
+2025-06-29T15:13:08.2952601Z  {"t":{"$date":"2025-06-29T15:12:23.251+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"ShardSplitDonorService","namespace":"config.tenantSplitDonors"}}
+2025-06-29T15:13:08.2954087Z  {"t":{"$date":"2025-06-29T15:12:23.252+00:00"},"s":"I",  "c":"CONTROL",  "id":5945603, "ctx":"main","msg":"Multi threading initialized"}
+2025-06-29T15:13:08.2955824Z  {"t":{"$date":"2025-06-29T15:12:23.252+00:00"},"s":"I",  "c":"CONTROL",  "id":4615611, "ctx":"initandlisten","msg":"MongoDB starting","attr":{"pid":27,"port":27017,"dbPath":"/data/db","architecture":"64-bit","host":"04ea6e5db2f0"}}
+2025-06-29T15:13:08.2958545Z  {"t":{"$date":"2025-06-29T15:12:23.252+00:00"},"s":"I",  "c":"CONTROL",  "id":23403,   "ctx":"initandlisten","msg":"Build Info","attr":{"buildInfo":{"version":"6.0.24","gitVersion":"1b052b94a23863fd12be97aaa4e4b1d96456e5cc","openSSLVersion":"OpenSSL 3.0.2 15 Mar 2022","modules":[],"allocator":"tcmalloc","environment":{"distmod":"ubuntu2204","distarch":"x86_64","target_arch":"x86_64"}}}}
+2025-06-29T15:13:08.2960999Z  {"t":{"$date":"2025-06-29T15:12:23.252+00:00"},"s":"I",  "c":"CONTROL",  "id":51765,   "ctx":"initandlisten","msg":"Operating System","attr":{"os":{"name":"Ubuntu","version":"22.04"}}}
+2025-06-29T15:13:08.2963475Z  {"t":{"$date":"2025-06-29T15:12:23.252+00:00"},"s":"I",  "c":"CONTROL",  "id":21951,   "ctx":"initandlisten","msg":"Options set by command line","attr":{"options":{"net":{"bindIp":"127.0.0.1","port":27017,"tls":{"mode":"disabled"}},"processManagement":{"fork":true,"pidFilePath":"/tmp/docker-entrypoint-temp-mongod.pid"},"systemLog":{"destination":"file","logAppend":true,"path":"/proc/1/fd/1"}}}}
+2025-06-29T15:13:08.2966900Z  {"t":{"$date":"2025-06-29T15:12:23.254+00:00"},"s":"I",  "c":"STORAGE",  "id":22297,   "ctx":"initandlisten","msg":"Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem","tags":["startupWarnings"]}
+2025-06-29T15:13:08.2971954Z  {"t":{"$date":"2025-06-29T15:12:23.254+00:00"},"s":"I",  "c":"STORAGE",  "id":22315,   "ctx":"initandlisten","msg":"Opening WiredTiger","attr":{"config":"create,cache_size=3460M,session_max=33000,eviction=(threads_min=4,threads_max=4),config_base=false,statistics=(fast),log=(enabled=true,remove=true,path=journal,compressor=snappy),builtin_extension_config=(zstd=(compression_level=6)),file_manager=(close_idle_time=600,close_scan_interval=10,close_handle_minimum=2000),statistics_log=(wait=0),json_output=(error,message),verbose=[recovery_progress:1,checkpoint_progress:1,compact_progress:1,backup:0,checkpoint:0,compact:0,evict:0,history_store:0,recovery:0,rts:0,salvage:0,tiered:0,timestamp:0,transaction:0,verify:0,log:0],"}}
+2025-06-29T15:13:08.2979603Z  {"t":{"$date":"2025-06-29T15:12:23.405+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209943,"ts_usec":405517,"thread":"27:0x7f25f863acc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery log replay has successfully finished and ran for 0 milliseconds"}}}
+2025-06-29T15:13:08.2983160Z  {"t":{"$date":"2025-06-29T15:12:23.405+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209943,"ts_usec":405597,"thread":"27:0x7f25f863acc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Set global recovery timestamp: (0, 0)"}}}
+2025-06-29T15:13:08.2986615Z  {"t":{"$date":"2025-06-29T15:12:23.405+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209943,"ts_usec":405619,"thread":"27:0x7f25f863acc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Set global oldest timestamp: (0, 0)"}}}
+2025-06-29T15:13:08.2990628Z  {"t":{"$date":"2025-06-29T15:12:23.405+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209943,"ts_usec":405654,"thread":"27:0x7f25f863acc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery was completed successfully and took 0ms, including 0ms for the log replay, 0ms for the rollback to stable, and 0ms for the checkpoint."}}}
+2025-06-29T15:13:08.2993672Z  {"t":{"$date":"2025-06-29T15:12:23.411+00:00"},"s":"I",  "c":"STORAGE",  "id":4795906, "ctx":"initandlisten","msg":"WiredTiger opened","attr":{"durationMillis":157}}
+2025-06-29T15:13:08.2995138Z  {"t":{"$date":"2025-06-29T15:12:23.411+00:00"},"s":"I",  "c":"RECOVERY", "id":23987,   "ctx":"initandlisten","msg":"WiredTiger recoveryTimestamp","attr":{"recoveryTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+2025-06-29T15:13:08.2997025Z  {"t":{"$date":"2025-06-29T15:12:23.422+00:00"},"s":"W",  "c":"CONTROL",  "id":22120,   "ctx":"initandlisten","msg":"Access control is not enabled for the database. Read and write access to data and configuration is unrestricted","tags":["startupWarnings"]}
+2025-06-29T15:13:08.2999307Z  {"t":{"$date":"2025-06-29T15:12:23.423+00:00"},"s":"W",  "c":"CONTROL",  "id":22178,   "ctx":"initandlisten","msg":"/sys/kernel/mm/transparent_hugepage/enabled is 'always'. We suggest setting it to 'never' in this binary version","tags":["startupWarnings"]}
+2025-06-29T15:13:08.3001466Z  {"t":{"$date":"2025-06-29T15:12:23.423+00:00"},"s":"W",  "c":"CONTROL",  "id":5123300, "ctx":"initandlisten","msg":"vm.max_map_count is too low","attr":{"currentValue":262144,"recommendedMinimum":1677720,"maxConns":838860},"tags":["startupWarnings"]}
+2025-06-29T15:13:08.3004181Z  {"t":{"$date":"2025-06-29T15:12:23.423+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"admin.system.version","uuidDisposition":"provided","uuid":{"uuid":{"$uuid":"9d1d8514-1c67-43fb-b77c-13f473c58349"}},"options":{"uuid":{"$uuid":"9d1d8514-1c67-43fb-b77c-13f473c58349"}}}}
+2025-06-29T15:13:08.3007467Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"9d1d8514-1c67-43fb-b77c-13f473c58349"}},"namespace":"admin.system.version","index":"_id_","ident":"index-1-5538546344267218422","collectionIdent":"collection-0-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3010158Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"REPL",     "id":20459,   "ctx":"initandlisten","msg":"Setting featureCompatibilityVersion","attr":{"newVersion":"6.0"}}
+2025-06-29T15:13:08.3011820Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"REPL",     "id":5853300, "ctx":"initandlisten","msg":"current featureCompatibilityVersion value","attr":{"featureCompatibilityVersion":"6.0","context":"setFCV"}}
+2025-06-29T15:13:08.3015725Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"NETWORK",  "id":4915702, "ctx":"initandlisten","msg":"Updated wire specification","attr":{"oldSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":0,"maxWireVersion":17},"outgoing":{"minWireVersion":6,"maxWireVersion":17},"isInternalClient":true},"newSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":17,"maxWireVersion":17},"outgoing":{"minWireVersion":17,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.3021787Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"NETWORK",  "id":4915702, "ctx":"initandlisten","msg":"Updated wire specification","attr":{"oldSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":17,"maxWireVersion":17},"outgoing":{"minWireVersion":17,"maxWireVersion":17},"isInternalClient":true},"newSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":17,"maxWireVersion":17},"outgoing":{"minWireVersion":17,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.3025929Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"REPL",     "id":5853300, "ctx":"initandlisten","msg":"current featureCompatibilityVersion value","attr":{"featureCompatibilityVersion":"6.0","context":"startup"}}
+2025-06-29T15:13:08.3027433Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"STORAGE",  "id":5071100, "ctx":"initandlisten","msg":"Clearing temp directory"}
+2025-06-29T15:13:08.3028645Z  {"t":{"$date":"2025-06-29T15:12:23.432+00:00"},"s":"I",  "c":"CONTROL",  "id":20536,   "ctx":"initandlisten","msg":"Flow Control is enabled on this deployment"}
+2025-06-29T15:13:08.3030093Z  {"t":{"$date":"2025-06-29T15:12:23.433+00:00"},"s":"I",  "c":"FTDC",     "id":20625,   "ctx":"initandlisten","msg":"Initializing full-time diagnostic data capture","attr":{"dataDirectory":"/data/db/diagnostic.data"}}
+2025-06-29T15:13:08.3032364Z  {"t":{"$date":"2025-06-29T15:12:23.434+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.startup_log","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"0f9a0ffd-cedd-4970-9549-1da859a7bf0e"}},"options":{"capped":true,"size":10485760}}}
+2025-06-29T15:13:08.3035536Z  {"t":{"$date":"2025-06-29T15:12:23.441+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"0f9a0ffd-cedd-4970-9549-1da859a7bf0e"}},"namespace":"local.startup_log","index":"_id_","ident":"index-3-5538546344267218422","collectionIdent":"collection-2-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3038707Z  {"t":{"$date":"2025-06-29T15:12:23.441+00:00"},"s":"I",  "c":"REPL",     "id":6015317, "ctx":"initandlisten","msg":"Setting new configuration state","attr":{"newState":"ConfigReplicationDisabled","oldState":"ConfigPreStart"}}
+2025-06-29T15:13:08.3040189Z  {"t":{"$date":"2025-06-29T15:12:23.441+00:00"},"s":"I",  "c":"STORAGE",  "id":22262,   "ctx":"initandlisten","msg":"Timestamp monitor starting"}
+2025-06-29T15:13:08.3042062Z  {"t":{"$date":"2025-06-29T15:12:23.445+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"LogicalSessionCacheRefresh","msg":"createCollection","attr":{"namespace":"config.system.sessions","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"9ebb25ff-4edf-463a-9a36-53f2189167df"}},"options":{}}}
+2025-06-29T15:13:08.3044634Z  {"t":{"$date":"2025-06-29T15:12:23.446+00:00"},"s":"I",  "c":"CONTROL",  "id":20712,   "ctx":"LogicalSessionCacheReap","msg":"Sessions collection is not set up; waiting until next sessions reap interval","attr":{"error":"NamespaceNotFound: config.system.sessions does not exist"}}
+2025-06-29T15:13:08.3046493Z  {"t":{"$date":"2025-06-29T15:12:23.446+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"/tmp/mongodb-27017.sock"}}
+2025-06-29T15:13:08.3047598Z  {"t":{"$date":"2025-06-29T15:12:23.446+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"127.0.0.1"}}
+2025-06-29T15:13:08.3048966Z  {"t":{"$date":"2025-06-29T15:12:23.446+00:00"},"s":"I",  "c":"NETWORK",  "id":23016,   "ctx":"listener","msg":"Waiting for connections","attr":{"port":27017,"ssl":"off"}}
+2025-06-29T15:13:08.3055875Z  {"t":{"$date":"2025-06-29T15:12:23.447+00:00"},"s":"I",  "c":"CONTROL",  "id":8423403, "ctx":"initandlisten","msg":"mongod startup complete","attr":{"Summary of time elapsed":{"Startup from clean shutdown?":true,"Statistics":{"Transport layer setup":"0 ms","Run initial syncer crash recovery":"0 ms","Create storage engine lock file in the data directory":"0 ms","Create storage engine lock file in the data directory":"0 ms","Get metadata describing storage engine":"0 ms","Get metadata describing storage engine":"0 ms","Create storage engine":"0 ms","Create storage engine":"166 ms","Write current PID to file":"0 ms","Write current PID to file":"0 ms","Write a new metadata for storage engine":"0 ms","Write a new metadata for storage engine":"0 ms","Initialize FCV before rebuilding indexes":"0 ms","Initialize FCV before rebuilding indexes":"0 ms","Drop abandoned idents and get back indexes that need to be rebuilt or builds that need to be restarted":"0 ms","Drop abandoned idents and get back indexes that need to be rebuilt or builds that need to be restarted":"0 ms","Rebuild indexes for collections":"0 ms","Rebuild indexes for collections":"0 ms","Build user and roles graph":"0 ms","Set up the background thread pool responsible for waiting for opTimes to be majority committed":"0 ms","Start up the replication coordinator":"0 ms","Start transport layer":"0 ms","_initAndListen total elapsed time":"194 ms"}}}}
+2025-06-29T15:13:08.3062819Z  child process started successfully, parent exiting
+2025-06-29T15:13:08.3064968Z  {"t":{"$date":"2025-06-29T15:12:23.468+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"LogicalSessionCacheRefresh","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"9ebb25ff-4edf-463a-9a36-53f2189167df"}},"namespace":"config.system.sessions","index":"_id_","ident":"index-5-5538546344267218422","collectionIdent":"collection-4-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3068959Z  {"t":{"$date":"2025-06-29T15:12:23.468+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"LogicalSessionCacheRefresh","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"9ebb25ff-4edf-463a-9a36-53f2189167df"}},"namespace":"config.system.sessions","index":"lsidTTLIndex","ident":"index-6-5538546344267218422","collectionIdent":"collection-4-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3070906Z  {"t":{"$date":"2025-06-29T15:12:23.731+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45768","uuid":"634eaeaf-e450-4026-a251-b66a21e9327c","connectionId":1,"connectionCount":1}}
+2025-06-29T15:13:08.3072531Z  {"t":{"$date":"2025-06-29T15:12:23.735+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1","msg":"client metadata","attr":{"remote":"127.0.0.1:45768","client":"conn1","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3074112Z  {"t":{"$date":"2025-06-29T15:12:23.785+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45780","uuid":"99ff1cbb-3bf6-43f7-a2e0-056fc4581e6b","connectionId":2,"connectionCount":2}}
+2025-06-29T15:13:08.3075235Z  {"t":{"$date":"2025-06-29T15:12:23.786+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45794","uuid":"31674ce1-4df8-4969-b926-339322080afb","connectionId":3,"connectionCount":3}}
+2025-06-29T15:13:08.3076795Z  {"t":{"$date":"2025-06-29T15:12:23.787+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn2","msg":"client metadata","attr":{"remote":"127.0.0.1:45780","client":"conn2","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3079327Z  {"t":{"$date":"2025-06-29T15:12:23.788+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn3","msg":"client metadata","attr":{"remote":"127.0.0.1:45794","client":"conn3","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3081227Z  {"t":{"$date":"2025-06-29T15:12:23.790+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45798","uuid":"5775337d-b3af-4d73-bf08-e8b7d57174be","connectionId":4,"connectionCount":4}}
+2025-06-29T15:13:08.3082308Z  {"t":{"$date":"2025-06-29T15:12:23.791+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1","msg":"Connection ended","attr":{"remote":"127.0.0.1:45768","uuid":"634eaeaf-e450-4026-a251-b66a21e9327c","connectionId":1,"connectionCount":3}}
+2025-06-29T15:13:08.3083353Z  {"t":{"$date":"2025-06-29T15:12:23.792+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn2","msg":"Connection ended","attr":{"remote":"127.0.0.1:45780","uuid":"99ff1cbb-3bf6-43f7-a2e0-056fc4581e6b","connectionId":2,"connectionCount":2}}
+2025-06-29T15:13:08.3084396Z  {"t":{"$date":"2025-06-29T15:12:23.792+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn4","msg":"Connection ended","attr":{"remote":"127.0.0.1:45798","uuid":"5775337d-b3af-4d73-bf08-e8b7d57174be","connectionId":4,"connectionCount":1}}
+2025-06-29T15:13:08.3085440Z  {"t":{"$date":"2025-06-29T15:12:23.795+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn3","msg":"Connection ended","attr":{"remote":"127.0.0.1:45794","uuid":"31674ce1-4df8-4969-b926-339322080afb","connectionId":3,"connectionCount":0}}
+2025-06-29T15:13:08.3086506Z  {"t":{"$date":"2025-06-29T15:12:24.140+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45810","uuid":"c3dce0ba-fa8d-4342-bd5e-c3f610adc99b","connectionId":5,"connectionCount":1}}
+2025-06-29T15:13:08.3088416Z  {"t":{"$date":"2025-06-29T15:12:24.143+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn5","msg":"client metadata","attr":{"remote":"127.0.0.1:45810","client":"conn5","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3090010Z  {"t":{"$date":"2025-06-29T15:12:24.175+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45826","uuid":"89fcd9cd-ce57-4f76-9d5f-2a559fde4912","connectionId":6,"connectionCount":2}}
+2025-06-29T15:13:08.3091136Z  {"t":{"$date":"2025-06-29T15:12:24.176+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45836","uuid":"f043280a-64fe-4d5c-aba4-26b78dca7165","connectionId":7,"connectionCount":3}}
+2025-06-29T15:13:08.3092690Z  {"t":{"$date":"2025-06-29T15:12:24.177+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn6","msg":"client metadata","attr":{"remote":"127.0.0.1:45826","client":"conn6","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3094709Z  {"t":{"$date":"2025-06-29T15:12:24.178+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn7","msg":"client metadata","attr":{"remote":"127.0.0.1:45836","client":"conn7","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3096285Z  {"t":{"$date":"2025-06-29T15:12:24.181+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:45848","uuid":"19a81f7d-7354-4df7-b7db-aaf84503f932","connectionId":8,"connectionCount":4}}
+2025-06-29T15:13:08.3097842Z  {"t":{"$date":"2025-06-29T15:12:24.184+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn8","msg":"client metadata","attr":{"remote":"127.0.0.1:45848","client":"conn8","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3099850Z  admin> ... ... ... ... {"t":{"$date":"2025-06-29T15:12:24.457+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"conn8","msg":"createCollection","attr":{"namespace":"admin.system.users","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"cdce3b97-bcf9-461a-b8f2-9530d7bae1c3"}},"options":{}}}
+2025-06-29T15:13:08.3101514Z  {"t":{"$date":"2025-06-29T15:12:24.471+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"conn8","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"cdce3b97-bcf9-461a-b8f2-9530d7bae1c3"}},"namespace":"admin.system.users","index":"_id_","ident":"index-8-5538546344267218422","collectionIdent":"collection-7-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3103455Z  {"t":{"$date":"2025-06-29T15:12:24.471+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"conn8","msg":"Index build: done building","attr":{"buildUUID":null,"collectionUUID":{"uuid":{"$uuid":"cdce3b97-bcf9-461a-b8f2-9530d7bae1c3"}},"namespace":"admin.system.users","index":"user_1_db_1","ident":"index-9-5538546344267218422","collectionIdent":"collection-7-5538546344267218422","commitTimestamp":null}}
+2025-06-29T15:13:08.3104542Z  { ok: 1 }
+2025-06-29T15:13:08.3105285Z  admin> {"t":{"$date":"2025-06-29T15:12:24.481+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn5","msg":"Connection ended","attr":{"remote":"127.0.0.1:45810","uuid":"c3dce0ba-fa8d-4342-bd5e-c3f610adc99b","connectionId":5,"connectionCount":3}}
+2025-06-29T15:13:08.3106399Z  {"t":{"$date":"2025-06-29T15:12:24.482+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn8","msg":"Connection ended","attr":{"remote":"127.0.0.1:45848","uuid":"19a81f7d-7354-4df7-b7db-aaf84503f932","connectionId":8,"connectionCount":2}}
+2025-06-29T15:13:08.3107477Z  {"t":{"$date":"2025-06-29T15:12:24.482+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn7","msg":"Connection ended","attr":{"remote":"127.0.0.1:45836","uuid":"f043280a-64fe-4d5c-aba4-26b78dca7165","connectionId":7,"connectionCount":1}}
+2025-06-29T15:13:08.3108792Z  {"t":{"$date":"2025-06-29T15:12:24.482+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn6","msg":"Connection ended","attr":{"remote":"127.0.0.1:45826","uuid":"89fcd9cd-ce57-4f76-9d5f-2a559fde4912","connectionId":6,"connectionCount":0}}
+2025-06-29T15:13:08.3109442Z  
+2025-06-29T15:13:08.3109744Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2025-06-29T15:13:08.3110096Z  
+2025-06-29T15:13:08.3110247Z  
+2025-06-29T15:13:08.3110562Z  {"t":{"$date":"2025-06-29T15:12:24.507+00:00"},"s":"I",  "c":"CONTROL",  "id":20698,   "ctx":"-","msg":"***** SERVER RESTARTED *****"}
+2025-06-29T15:13:08.3111772Z  {"t":{"$date":"2025-06-29T15:12:24.508+00:00"},"s":"I",  "c":"NETWORK",  "id":4915701, "ctx":"-","msg":"Initialized wire specification","attr":{"spec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":0,"maxWireVersion":17},"outgoing":{"minWireVersion":6,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.3113120Z  {"t":{"$date":"2025-06-29T15:12:24.508+00:00"},"s":"I",  "c":"CONTROL",  "id":23285,   "ctx":"-","msg":"Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'"}
+2025-06-29T15:13:08.3114144Z  {"t":{"$date":"2025-06-29T15:12:24.509+00:00"},"s":"I",  "c":"NETWORK",  "id":4648601, "ctx":"main","msg":"Implicit TCP FastOpen unavailable. If TCP FastOpen is required, set tcpFastOpenServer, tcpFastOpenClient, and tcpFastOpenQueueSize."}
+2025-06-29T15:13:08.3115333Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationDonorService","namespace":"config.tenantMigrationDonors"}}
+2025-06-29T15:13:08.3116677Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationRecipientService","namespace":"config.tenantMigrationRecipients"}}
+2025-06-29T15:13:08.3117855Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"ShardSplitDonorService","namespace":"config.tenantSplitDonors"}}
+2025-06-29T15:13:08.3118760Z  Killing process with pid: 27
+2025-06-29T15:13:08.3119236Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"CONTROL",  "id":23377,   "ctx":"SignalHandler","msg":"Received signal","attr":{"signal":15,"error":"Terminated"}}
+2025-06-29T15:13:08.3119998Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"CONTROL",  "id":23378,   "ctx":"SignalHandler","msg":"Signal was sent by kill(2)","attr":{"pid":97,"uid":999}}
+2025-06-29T15:13:08.3120689Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"CONTROL",  "id":23381,   "ctx":"SignalHandler","msg":"will terminate after current cmd ends"}
+2025-06-29T15:13:08.3121475Z  {"t":{"$date":"2025-06-29T15:12:24.510+00:00"},"s":"I",  "c":"REPL",     "id":4784900, "ctx":"SignalHandler","msg":"Stepping down the ReplicationCoordinator for shutdown","attr":{"waitTimeMillis":15000}}
+2025-06-29T15:13:08.3122366Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"REPL",     "id":4794602, "ctx":"SignalHandler","msg":"Attempting to enter quiesce mode"}
+2025-06-29T15:13:08.3122998Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"-",        "id":6371601, "ctx":"SignalHandler","msg":"Shutting down the FLE Crud thread pool"}
+2025-06-29T15:13:08.3123639Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"COMMAND",  "id":4784901, "ctx":"SignalHandler","msg":"Shutting down the MirrorMaestro"}
+2025-06-29T15:13:08.3124292Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"SHARDING", "id":4784902, "ctx":"SignalHandler","msg":"Shutting down the WaitForMajorityService"}
+2025-06-29T15:13:08.3124965Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"CONTROL",  "id":4784903, "ctx":"SignalHandler","msg":"Shutting down the LogicalSessionCache"}
+2025-06-29T15:13:08.3125626Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"NETWORK",  "id":20562,   "ctx":"SignalHandler","msg":"Shutdown: going to close listening sockets"}
+2025-06-29T15:13:08.3126324Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"NETWORK",  "id":23017,   "ctx":"listener","msg":"removing socket file","attr":{"path":"/tmp/mongodb-27017.sock"}}
+2025-06-29T15:13:08.3127022Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"NETWORK",  "id":4784905, "ctx":"SignalHandler","msg":"Shutting down the global connection pool"}
+2025-06-29T15:13:08.3127705Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"CONTROL",  "id":4784906, "ctx":"SignalHandler","msg":"Shutting down the FlowControlTicketholder"}
+2025-06-29T15:13:08.3128578Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"-",        "id":20520,   "ctx":"SignalHandler","msg":"Stopping further Flow Control ticket acquisitions."}
+2025-06-29T15:13:08.3129314Z  {"t":{"$date":"2025-06-29T15:12:24.511+00:00"},"s":"I",  "c":"CONTROL",  "id":4784908, "ctx":"SignalHandler","msg":"Shutting down the PeriodicThreadToAbortExpiredTransactions"}
+2025-06-29T15:13:08.3130048Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"REPL",     "id":4784909, "ctx":"SignalHandler","msg":"Shutting down the ReplicationCoordinator"}
+2025-06-29T15:13:08.3130752Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"SHARDING", "id":4784910, "ctx":"SignalHandler","msg":"Shutting down the ShardingInitializationMongoD"}
+2025-06-29T15:13:08.3131663Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"REPL",     "id":4784911, "ctx":"SignalHandler","msg":"Enqueuing the ReplicationStateTransitionLock for shutdown"}
+2025-06-29T15:13:08.3132358Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"-",        "id":4784912, "ctx":"SignalHandler","msg":"Killing all operations for shutdown"}
+2025-06-29T15:13:08.3133045Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"-",        "id":4695300, "ctx":"SignalHandler","msg":"Interrupted all currently running operations","attr":{"opsKilled":3}}
+2025-06-29T15:13:08.3133855Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"TENANT_M", "id":5093807, "ctx":"SignalHandler","msg":"Shutting down all TenantMigrationAccessBlockers on global shutdown"}
+2025-06-29T15:13:08.3134589Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"COMMAND",  "id":4784913, "ctx":"SignalHandler","msg":"Shutting down all open transactions"}
+2025-06-29T15:13:08.3135310Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"REPL",     "id":4784914, "ctx":"SignalHandler","msg":"Acquiring the ReplicationStateTransitionLock for shutdown"}
+2025-06-29T15:13:08.3136028Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"INDEX",    "id":4784915, "ctx":"SignalHandler","msg":"Shutting down the IndexBuildsCoordinator"}
+2025-06-29T15:13:08.3136676Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"NETWORK",  "id":4784918, "ctx":"SignalHandler","msg":"Shutting down the ReplicaSetMonitor"}
+2025-06-29T15:13:08.3137440Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"SHARDING", "id":4784921, "ctx":"SignalHandler","msg":"Shutting down the MigrationUtilExecutor"}
+2025-06-29T15:13:08.3138384Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"ASIO",     "id":22582,   "ctx":"MigrationUtil-TaskExecutor","msg":"Killing all outstanding egress activity."}
+2025-06-29T15:13:08.3139090Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"COMMAND",  "id":4784923, "ctx":"SignalHandler","msg":"Shutting down the ServiceEntryPoint"}
+2025-06-29T15:13:08.3139714Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"CONTROL",  "id":4784927, "ctx":"SignalHandler","msg":"Shutting down the HealthLog"}
+2025-06-29T15:13:08.3140314Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"CONTROL",  "id":4784928, "ctx":"SignalHandler","msg":"Shutting down the TTL monitor"}
+2025-06-29T15:13:08.3140950Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"INDEX",    "id":3684100, "ctx":"SignalHandler","msg":"Shutting down TTL collection monitor thread"}
+2025-06-29T15:13:08.3141642Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"INDEX",    "id":3684101, "ctx":"SignalHandler","msg":"Finished shutting down TTL collection monitor thread"}
+2025-06-29T15:13:08.3142392Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"CONTROL",  "id":6278511, "ctx":"SignalHandler","msg":"Shutting down the Change Stream Expired Pre-images Remover"}
+2025-06-29T15:13:08.3143112Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"CONTROL",  "id":4784929, "ctx":"SignalHandler","msg":"Acquiring the global lock for shutdown"}
+2025-06-29T15:13:08.3143762Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"CONTROL",  "id":4784930, "ctx":"SignalHandler","msg":"Shutting down the storage engine"}
+2025-06-29T15:13:08.3144396Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22320,   "ctx":"SignalHandler","msg":"Shutting down journal flusher thread"}
+2025-06-29T15:13:08.3145054Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22321,   "ctx":"SignalHandler","msg":"Finished shutting down journal flusher thread"}
+2025-06-29T15:13:08.3145700Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22322,   "ctx":"SignalHandler","msg":"Shutting down checkpoint thread"}
+2025-06-29T15:13:08.3146479Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22323,   "ctx":"SignalHandler","msg":"Finished shutting down checkpoint thread"}
+2025-06-29T15:13:08.3147108Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22261,   "ctx":"SignalHandler","msg":"Timestamp monitor shutting down"}
+2025-06-29T15:13:08.3147721Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":20282,   "ctx":"SignalHandler","msg":"Deregistering all the collections"}
+2025-06-29T15:13:08.3148537Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22317,   "ctx":"SignalHandler","msg":"WiredTigerKVEngine shutting down"}
+2025-06-29T15:13:08.3149160Z  {"t":{"$date":"2025-06-29T15:12:24.512+00:00"},"s":"I",  "c":"STORAGE",  "id":22318,   "ctx":"SignalHandler","msg":"Shutting down session sweeper thread"}
+2025-06-29T15:13:08.3149822Z  {"t":{"$date":"2025-06-29T15:12:24.513+00:00"},"s":"I",  "c":"STORAGE",  "id":22319,   "ctx":"SignalHandler","msg":"Finished shutting down session sweeper thread"}
+2025-06-29T15:13:08.3150553Z  {"t":{"$date":"2025-06-29T15:12:24.513+00:00"},"s":"I",  "c":"STORAGE",  "id":4795902, "ctx":"SignalHandler","msg":"Closing WiredTiger","attr":{"closeConfig":"leak_memory=true,"}}
+2025-06-29T15:13:08.3152307Z  {"t":{"$date":"2025-06-29T15:12:24.514+00:00"},"s":"I",  "c":"WTCHKPT",  "id":22430,   "ctx":"SignalHandler","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209944,"ts_usec":514612,"thread":"27:0x7f25f8639640","session_name":"close_ckpt","category":"WT_VERB_CHECKPOINT_PROGRESS","category_id":6,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"saving checkpoint snapshot min: 46, snapshot max: 46 snapshot count: 0, oldest timestamp: (0, 0) , meta checkpoint timestamp: (0, 0) base write gen: 1"}}}
+2025-06-29T15:13:08.3154655Z  {"t":{"$date":"2025-06-29T15:12:24.531+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"SignalHandler","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209944,"ts_usec":531442,"thread":"27:0x7f25f8639640","session_name":"WT_CONNECTION.close","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"shutdown checkpoint has successfully finished and ran for 17 milliseconds"}}}
+2025-06-29T15:13:08.3156941Z  {"t":{"$date":"2025-06-29T15:12:24.531+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"SignalHandler","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209944,"ts_usec":531608,"thread":"27:0x7f25f8639640","session_name":"WT_CONNECTION.close","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"shutdown was completed successfully and took 18ms, including 0ms for the rollback to stable, and 17ms for the checkpoint."}}}
+2025-06-29T15:13:08.3158592Z  {"t":{"$date":"2025-06-29T15:12:24.535+00:00"},"s":"I",  "c":"STORAGE",  "id":4795901, "ctx":"SignalHandler","msg":"WiredTiger closed","attr":{"durationMillis":22}}
+2025-06-29T15:13:08.3159249Z  {"t":{"$date":"2025-06-29T15:12:24.535+00:00"},"s":"I",  "c":"STORAGE",  "id":22279,   "ctx":"SignalHandler","msg":"shutdown: removing fs lock..."}
+2025-06-29T15:13:08.3159855Z  {"t":{"$date":"2025-06-29T15:12:24.535+00:00"},"s":"I",  "c":"-",        "id":4784931, "ctx":"SignalHandler","msg":"Dropping the scope cache for shutdown"}
+2025-06-29T15:13:08.3160496Z  {"t":{"$date":"2025-06-29T15:12:24.535+00:00"},"s":"I",  "c":"FTDC",     "id":20626,   "ctx":"SignalHandler","msg":"Shutting down full-time diagnostic data capture"}
+2025-06-29T15:13:08.3161100Z  {"t":{"$date":"2025-06-29T15:12:24.537+00:00"},"s":"I",  "c":"CONTROL",  "id":20565,   "ctx":"SignalHandler","msg":"Now exiting"}
+2025-06-29T15:13:08.3164359Z  {"t":{"$date":"2025-06-29T15:12:24.537+00:00"},"s":"I",  "c":"CONTROL",  "id":8423404, "ctx":"SignalHandler","msg":"mongod shutdown complete","attr":{"Summary of time elapsed":{"Statistics":{"Enter terminal shutdown":"0 ms","Step down the replication coordinator for shutdown":"1 ms","Time spent in quiesce mode":"0 ms","Shut down FLE Crud subsystem":"0 ms","Shut down MirrorMaestro":"0 ms","Shut down WaitForMajorityService":"0 ms","Shut down the logical session cache":"0 ms","Shut down the transport layer":"0 ms","Shut down the global connection pool":"0 ms","Shut down the flow control ticket holder":"0 ms","Kill all operations for shutdown":"0 ms","Shut down all tenant migration access blockers on global shutdown":"0 ms","Shut down all open transactions":"0 ms","Acquire the RSTL for shutdown":"0 ms","Shut down the IndexBuildsCoordinator and wait for index builds to finish":"0 ms","Shut down the replica set monitor":"0 ms","Shut down the migration util executor":"0 ms","Shut down the health log":"0 ms","Shut down the TTL monitor":"0 ms","Shut down expired pre-images remover":"0 ms","Shut down the storage engine":"23 ms","Shut down full-time data capture":"0 ms","shutdownTask total elapsed time":"27 ms"}}}}
+2025-06-29T15:13:08.3167937Z  {"t":{"$date":"2025-06-29T15:12:24.537+00:00"},"s":"I",  "c":"CONTROL",  "id":23138,   "ctx":"SignalHandler","msg":"Shutting down","attr":{"exitCode":0}}
+2025-06-29T15:13:08.3168460Z  
+2025-06-29T15:13:08.3168654Z  MongoDB init process complete; ready for start up.
+2025-06-29T15:13:08.3168916Z  
+2025-06-29T15:13:08.3169398Z  {"t":{"$date":"2025-06-29T15:12:25.551+00:00"},"s":"I",  "c":"CONTROL",  "id":23285,   "ctx":"-","msg":"Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'"}
+2025-06-29T15:13:08.3170870Z  {"t":{"$date":"2025-06-29T15:12:25.554+00:00"},"s":"I",  "c":"NETWORK",  "id":4915701, "ctx":"main","msg":"Initialized wire specification","attr":{"spec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":0,"maxWireVersion":17},"outgoing":{"minWireVersion":6,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.3172454Z  {"t":{"$date":"2025-06-29T15:12:25.554+00:00"},"s":"I",  "c":"NETWORK",  "id":4648601, "ctx":"main","msg":"Implicit TCP FastOpen unavailable. If TCP FastOpen is required, set tcpFastOpenServer, tcpFastOpenClient, and tcpFastOpenQueueSize."}
+2025-06-29T15:13:08.3173641Z  {"t":{"$date":"2025-06-29T15:12:25.555+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationDonorService","namespace":"config.tenantMigrationDonors"}}
+2025-06-29T15:13:08.3174868Z  {"t":{"$date":"2025-06-29T15:12:25.555+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"TenantMigrationRecipientService","namespace":"config.tenantMigrationRecipients"}}
+2025-06-29T15:13:08.3176054Z  {"t":{"$date":"2025-06-29T15:12:25.555+00:00"},"s":"I",  "c":"REPL",     "id":5123008, "ctx":"main","msg":"Successfully registered PrimaryOnlyService","attr":{"service":"ShardSplitDonorService","namespace":"config.tenantSplitDonors"}}
+2025-06-29T15:13:08.3176899Z  {"t":{"$date":"2025-06-29T15:12:25.555+00:00"},"s":"I",  "c":"CONTROL",  "id":5945603, "ctx":"main","msg":"Multi threading initialized"}
+2025-06-29T15:13:08.3177709Z  {"t":{"$date":"2025-06-29T15:12:25.556+00:00"},"s":"I",  "c":"CONTROL",  "id":4615611, "ctx":"initandlisten","msg":"MongoDB starting","attr":{"pid":1,"port":27017,"dbPath":"/data/db","architecture":"64-bit","host":"04ea6e5db2f0"}}
+2025-06-29T15:13:08.3179243Z  {"t":{"$date":"2025-06-29T15:12:25.556+00:00"},"s":"I",  "c":"CONTROL",  "id":23403,   "ctx":"initandlisten","msg":"Build Info","attr":{"buildInfo":{"version":"6.0.24","gitVersion":"1b052b94a23863fd12be97aaa4e4b1d96456e5cc","openSSLVersion":"OpenSSL 3.0.2 15 Mar 2022","modules":[],"allocator":"tcmalloc","environment":{"distmod":"ubuntu2204","distarch":"x86_64","target_arch":"x86_64"}}}}
+2025-06-29T15:13:08.3180566Z  {"t":{"$date":"2025-06-29T15:12:25.556+00:00"},"s":"I",  "c":"CONTROL",  "id":51765,   "ctx":"initandlisten","msg":"Operating System","attr":{"os":{"name":"Ubuntu","version":"22.04"}}}
+2025-06-29T15:13:08.3181446Z  {"t":{"$date":"2025-06-29T15:12:25.556+00:00"},"s":"I",  "c":"CONTROL",  "id":21951,   "ctx":"initandlisten","msg":"Options set by command line","attr":{"options":{"net":{"bindIp":"*"},"security":{"authorization":"enabled"}}}}
+2025-06-29T15:13:08.3182532Z  {"t":{"$date":"2025-06-29T15:12:25.557+00:00"},"s":"I",  "c":"STORAGE",  "id":22270,   "ctx":"initandlisten","msg":"Storage engine to use detected by data files","attr":{"dbpath":"/data/db","storageEngine":"wiredTiger"}}
+2025-06-29T15:13:08.3183767Z  {"t":{"$date":"2025-06-29T15:12:25.557+00:00"},"s":"I",  "c":"STORAGE",  "id":22297,   "ctx":"initandlisten","msg":"Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem","tags":["startupWarnings"]}
+2025-06-29T15:13:08.3186446Z  {"t":{"$date":"2025-06-29T15:12:25.557+00:00"},"s":"I",  "c":"STORAGE",  "id":22315,   "ctx":"initandlisten","msg":"Opening WiredTiger","attr":{"config":"create,cache_size=3460M,session_max=33000,eviction=(threads_min=4,threads_max=4),config_base=false,statistics=(fast),log=(enabled=true,remove=true,path=journal,compressor=snappy),builtin_extension_config=(zstd=(compression_level=6)),file_manager=(close_idle_time=600,close_scan_interval=10,close_handle_minimum=2000),statistics_log=(wait=0),json_output=(error,message),verbose=[recovery_progress:1,checkpoint_progress:1,compact_progress:1,backup:0,checkpoint:0,compact:0,evict:0,history_store:0,recovery:0,rts:0,salvage:0,tiered:0,timestamp:0,transaction:0,verify:0,log:0],"}}
+2025-06-29T15:13:08.3189600Z  {"t":{"$date":"2025-06-29T15:12:25.757+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":757720,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Recovering log 1 through 2"}}}
+2025-06-29T15:13:08.3191460Z  {"t":{"$date":"2025-06-29T15:12:25.805+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":805223,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Recovering log 2 through 2"}}}
+2025-06-29T15:13:08.3193333Z  {"t":{"$date":"2025-06-29T15:12:25.850+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":850127,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Main recovery loop: starting at 1/31744 to 2/256"}}}
+2025-06-29T15:13:08.3195201Z  {"t":{"$date":"2025-06-29T15:12:25.891+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":891840,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Recovering log 1 through 2"}}}
+2025-06-29T15:13:08.3197015Z  {"t":{"$date":"2025-06-29T15:12:25.921+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":921396,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Recovering log 2 through 2"}}}
+2025-06-29T15:13:08.3199124Z  {"t":{"$date":"2025-06-29T15:12:25.941+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":941774,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery log replay has successfully finished and ran for 184 milliseconds"}}}
+2025-06-29T15:13:08.3201222Z  {"t":{"$date":"2025-06-29T15:12:25.941+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":941857,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Set global recovery timestamp: (0, 0)"}}}
+2025-06-29T15:13:08.3203079Z  {"t":{"$date":"2025-06-29T15:12:25.941+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":941880,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"Set global oldest timestamp: (0, 0)"}}}
+2025-06-29T15:13:08.3205055Z  {"t":{"$date":"2025-06-29T15:12:25.942+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":942269,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery rollback to stable has successfully finished and ran for 0 milliseconds"}}}
+2025-06-29T15:13:08.3207477Z  {"t":{"$date":"2025-06-29T15:12:25.943+00:00"},"s":"I",  "c":"WTCHKPT",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":943407,"thread":"1:0x7fef06577cc0","session_name":"WT_SESSION.checkpoint","category":"WT_VERB_CHECKPOINT_PROGRESS","category_id":6,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"saving checkpoint snapshot min: 1, snapshot max: 1 snapshot count: 0, oldest timestamp: (0, 0) , meta checkpoint timestamp: (0, 0) base write gen: 7"}}}
+2025-06-29T15:13:08.3209875Z  {"t":{"$date":"2025-06-29T15:12:25.947+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":947832,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery checkpoint has successfully finished and ran for 5 milliseconds"}}}
+2025-06-29T15:13:08.3212159Z  {"t":{"$date":"2025-06-29T15:12:25.947+00:00"},"s":"I",  "c":"WTRECOV",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":{"ts_sec":1751209945,"ts_usec":947886,"thread":"1:0x7fef06577cc0","session_name":"txn-recover","category":"WT_VERB_RECOVERY_PROGRESS","category_id":30,"verbose_level":"DEBUG","verbose_level_id":1,"msg":"recovery was completed successfully and took 190ms, including 184ms for the log replay, 0ms for the rollback to stable, and 5ms for the checkpoint."}}}
+2025-06-29T15:13:08.3213760Z  {"t":{"$date":"2025-06-29T15:12:25.948+00:00"},"s":"I",  "c":"STORAGE",  "id":4795906, "ctx":"initandlisten","msg":"WiredTiger opened","attr":{"durationMillis":391}}
+2025-06-29T15:13:08.3214577Z  {"t":{"$date":"2025-06-29T15:12:25.949+00:00"},"s":"I",  "c":"RECOVERY", "id":23987,   "ctx":"initandlisten","msg":"WiredTiger recoveryTimestamp","attr":{"recoveryTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+2025-06-29T15:13:08.3215654Z  {"t":{"$date":"2025-06-29T15:12:25.953+00:00"},"s":"W",  "c":"CONTROL",  "id":22178,   "ctx":"initandlisten","msg":"/sys/kernel/mm/transparent_hugepage/enabled is 'always'. We suggest setting it to 'never' in this binary version","tags":["startupWarnings"]}
+2025-06-29T15:13:08.3216849Z  {"t":{"$date":"2025-06-29T15:12:25.954+00:00"},"s":"W",  "c":"CONTROL",  "id":5123300, "ctx":"initandlisten","msg":"vm.max_map_count is too low","attr":{"currentValue":262144,"recommendedMinimum":1677720,"maxConns":838860},"tags":["startupWarnings"]}
+2025-06-29T15:13:08.3219126Z  {"t":{"$date":"2025-06-29T15:12:25.956+00:00"},"s":"I",  "c":"NETWORK",  "id":4915702, "ctx":"initandlisten","msg":"Updated wire specification","attr":{"oldSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":0,"maxWireVersion":17},"outgoing":{"minWireVersion":6,"maxWireVersion":17},"isInternalClient":true},"newSpec":{"incomingExternalClient":{"minWireVersion":0,"maxWireVersion":17},"incomingInternalClient":{"minWireVersion":17,"maxWireVersion":17},"outgoing":{"minWireVersion":17,"maxWireVersion":17},"isInternalClient":true}}}
+2025-06-29T15:13:08.3221380Z  {"t":{"$date":"2025-06-29T15:12:25.956+00:00"},"s":"I",  "c":"REPL",     "id":5853300, "ctx":"initandlisten","msg":"current featureCompatibilityVersion value","attr":{"featureCompatibilityVersion":"6.0","context":"startup"}}
+2025-06-29T15:13:08.3222217Z  {"t":{"$date":"2025-06-29T15:12:25.956+00:00"},"s":"I",  "c":"STORAGE",  "id":5071100, "ctx":"initandlisten","msg":"Clearing temp directory"}
+2025-06-29T15:13:08.3222850Z  {"t":{"$date":"2025-06-29T15:12:25.957+00:00"},"s":"I",  "c":"CONTROL",  "id":20536,   "ctx":"initandlisten","msg":"Flow Control is enabled on this deployment"}
+2025-06-29T15:13:08.3223718Z  {"t":{"$date":"2025-06-29T15:12:25.958+00:00"},"s":"I",  "c":"FTDC",     "id":20625,   "ctx":"initandlisten","msg":"Initializing full-time diagnostic data capture","attr":{"dataDirectory":"/data/db/diagnostic.data"}}
+2025-06-29T15:13:08.3224713Z  {"t":{"$date":"2025-06-29T15:12:25.960+00:00"},"s":"I",  "c":"REPL",     "id":6015317, "ctx":"initandlisten","msg":"Setting new configuration state","attr":{"newState":"ConfigReplicationDisabled","oldState":"ConfigPreStart"}}
+2025-06-29T15:13:08.3225524Z  {"t":{"$date":"2025-06-29T15:12:25.960+00:00"},"s":"I",  "c":"STORAGE",  "id":22262,   "ctx":"initandlisten","msg":"Timestamp monitor starting"}
+2025-06-29T15:13:08.3226279Z  {"t":{"$date":"2025-06-29T15:12:25.962+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"/tmp/mongodb-27017.sock"}}
+2025-06-29T15:13:08.3226950Z  {"t":{"$date":"2025-06-29T15:12:25.962+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"0.0.0.0"}}
+2025-06-29T15:13:08.3227628Z  {"t":{"$date":"2025-06-29T15:12:25.962+00:00"},"s":"I",  "c":"NETWORK",  "id":23016,   "ctx":"listener","msg":"Waiting for connections","attr":{"port":27017,"ssl":"off"}}
+2025-06-29T15:13:08.3232108Z  {"t":{"$date":"2025-06-29T15:12:25.962+00:00"},"s":"I",  "c":"CONTROL",  "id":8423403, "ctx":"initandlisten","msg":"mongod startup complete","attr":{"Summary of time elapsed":{"Startup from clean shutdown?":true,"Statistics":{"Transport layer setup":"0 ms","Run initial syncer crash recovery":"0 ms","Create storage engine lock file in the data directory":"0 ms","Create storage engine lock file in the data directory":"0 ms","Get metadata describing storage engine":"0 ms","Get metadata describing storage engine":"0 ms","Validate options in metadata against current startup options":"0 ms","Validate options in metadata against current startup options":"0 ms","Create storage engine":"0 ms","Create storage engine":"392 ms","Write current PID to file":"0 ms","Write current PID to file":"0 ms","Initialize FCV before rebuilding indexes":"0 ms","Initialize FCV before rebuilding indexes":"2 ms","Drop abandoned idents and get back indexes that need to be rebuilt or builds that need to be restarted":"0 ms","Drop abandoned idents and get back indexes that need to be rebuilt or builds that need to be restarted":"0 ms","Rebuild indexes for collections":"0 ms","Rebuild indexes for collections":"0 ms","Build user and roles graph":"0 ms","Verify indexes for admin.system.users collection":"0 ms","Verify indexes for admin.system.users collection":"0 ms","Set up the background thread pool responsible for waiting for opTimes to be majority committed":"0 ms","Start up the replication coordinator":"1 ms","Start transport layer":"0 ms","_initAndListen total elapsed time":"406 ms"}}}}
+2025-06-29T15:13:08.3236870Z  {"t":{"$date":"2025-06-29T15:12:33.494+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:50606","uuid":"9849ffd3-a4d6-420f-a948-70a8fc4e88c8","connectionId":1,"connectionCount":1}}
+2025-06-29T15:13:08.3238692Z  {"t":{"$date":"2025-06-29T15:12:33.499+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn1","msg":"client metadata","attr":{"remote":"127.0.0.1:50606","client":"conn1","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3240310Z  {"t":{"$date":"2025-06-29T15:12:33.551+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:50610","uuid":"3269b030-4de0-46ff-b136-4de442028915","connectionId":2,"connectionCount":2}}
+2025-06-29T15:13:08.3241419Z  {"t":{"$date":"2025-06-29T15:12:33.551+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:50618","uuid":"8053d7c2-7808-4055-a45f-d0fa8dec6239","connectionId":3,"connectionCount":3}}
+2025-06-29T15:13:08.3243003Z  {"t":{"$date":"2025-06-29T15:12:33.553+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn2","msg":"client metadata","attr":{"remote":"127.0.0.1:50610","client":"conn2","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3245162Z  {"t":{"$date":"2025-06-29T15:12:33.554+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn3","msg":"client metadata","attr":{"remote":"127.0.0.1:50618","client":"conn3","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3246745Z  {"t":{"$date":"2025-06-29T15:12:33.556+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:50632","uuid":"90875131-9a67-4d84-b1e5-06dc5697f157","connectionId":4,"connectionCount":4}}
+2025-06-29T15:13:08.3247865Z  {"t":{"$date":"2025-06-29T15:12:33.559+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:50638","uuid":"e6755aba-4e4b-4426-b7ec-b3889eae7e9a","connectionId":5,"connectionCount":5}}
+2025-06-29T15:13:08.3249543Z  {"t":{"$date":"2025-06-29T15:12:33.560+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn4","msg":"client metadata","attr":{"remote":"127.0.0.1:50632","client":"conn4","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3251596Z  {"t":{"$date":"2025-06-29T15:12:33.562+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn5","msg":"client metadata","attr":{"remote":"127.0.0.1:50638","client":"conn5","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3253153Z  {"t":{"$date":"2025-06-29T15:12:33.578+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn4","msg":"Connection ended","attr":{"remote":"127.0.0.1:50632","uuid":"90875131-9a67-4d84-b1e5-06dc5697f157","connectionId":4,"connectionCount":4}}
+2025-06-29T15:13:08.3254333Z  {"t":{"$date":"2025-06-29T15:12:33.578+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn3","msg":"Connection ended","attr":{"remote":"127.0.0.1:50618","uuid":"8053d7c2-7808-4055-a45f-d0fa8dec6239","connectionId":3,"connectionCount":1}}
+2025-06-29T15:13:08.3255391Z  {"t":{"$date":"2025-06-29T15:12:33.578+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn1","msg":"Connection ended","attr":{"remote":"127.0.0.1:50606","uuid":"9849ffd3-a4d6-420f-a948-70a8fc4e88c8","connectionId":1,"connectionCount":2}}
+2025-06-29T15:13:08.3256456Z  {"t":{"$date":"2025-06-29T15:12:33.578+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn5","msg":"Connection ended","attr":{"remote":"127.0.0.1:50638","uuid":"e6755aba-4e4b-4426-b7ec-b3889eae7e9a","connectionId":5,"connectionCount":3}}
+2025-06-29T15:13:08.3257521Z  {"t":{"$date":"2025-06-29T15:12:33.579+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn2","msg":"Connection ended","attr":{"remote":"127.0.0.1:50610","uuid":"3269b030-4de0-46ff-b136-4de442028915","connectionId":2,"connectionCount":0}}
+2025-06-29T15:13:08.3258697Z  {"t":{"$date":"2025-06-29T15:12:43.972+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47072","uuid":"56d039f4-d72b-4a20-bdd2-8b0bbd795c4c","connectionId":6,"connectionCount":1}}
+2025-06-29T15:13:08.3260392Z  {"t":{"$date":"2025-06-29T15:12:43.976+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn6","msg":"client metadata","attr":{"remote":"127.0.0.1:47072","client":"conn6","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3261985Z  {"t":{"$date":"2025-06-29T15:12:44.057+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47082","uuid":"dbdc9643-0cb5-400a-82eb-9015b0d07c77","connectionId":7,"connectionCount":2}}
+2025-06-29T15:13:08.3263118Z  {"t":{"$date":"2025-06-29T15:12:44.058+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47088","uuid":"abe6cf4c-38cb-4446-b5c1-8a861cdcbcad","connectionId":8,"connectionCount":3}}
+2025-06-29T15:13:08.3264721Z  {"t":{"$date":"2025-06-29T15:12:44.060+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn7","msg":"client metadata","attr":{"remote":"127.0.0.1:47082","client":"conn7","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3266766Z  {"t":{"$date":"2025-06-29T15:12:44.061+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn8","msg":"client metadata","attr":{"remote":"127.0.0.1:47088","client":"conn8","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3268438Z  {"t":{"$date":"2025-06-29T15:12:44.066+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47098","uuid":"100f63e7-577a-40f0-8015-374639a2eb1b","connectionId":9,"connectionCount":4}}
+2025-06-29T15:13:08.3269550Z  {"t":{"$date":"2025-06-29T15:12:44.067+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47114","uuid":"8d6d4a1c-5152-4d96-a472-e745a0e85d85","connectionId":10,"connectionCount":5}}
+2025-06-29T15:13:08.3271133Z  {"t":{"$date":"2025-06-29T15:12:44.071+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn9","msg":"client metadata","attr":{"remote":"127.0.0.1:47098","client":"conn9","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3273313Z  {"t":{"$date":"2025-06-29T15:12:44.073+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn10","msg":"client metadata","attr":{"remote":"127.0.0.1:47114","client":"conn10","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3274883Z  {"t":{"$date":"2025-06-29T15:12:44.098+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn6","msg":"Connection ended","attr":{"remote":"127.0.0.1:47072","uuid":"56d039f4-d72b-4a20-bdd2-8b0bbd795c4c","connectionId":6,"connectionCount":4}}
+2025-06-29T15:13:08.3275950Z  {"t":{"$date":"2025-06-29T15:12:44.098+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn7","msg":"Connection ended","attr":{"remote":"127.0.0.1:47082","uuid":"dbdc9643-0cb5-400a-82eb-9015b0d07c77","connectionId":7,"connectionCount":3}}
+2025-06-29T15:13:08.3277104Z  {"t":{"$date":"2025-06-29T15:12:44.099+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn9","msg":"Connection ended","attr":{"remote":"127.0.0.1:47098","uuid":"100f63e7-577a-40f0-8015-374639a2eb1b","connectionId":9,"connectionCount":2}}
+2025-06-29T15:13:08.3278257Z  {"t":{"$date":"2025-06-29T15:12:44.099+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn10","msg":"Connection ended","attr":{"remote":"127.0.0.1:47114","uuid":"8d6d4a1c-5152-4d96-a472-e745a0e85d85","connectionId":10,"connectionCount":1}}
+2025-06-29T15:13:08.3279329Z  {"t":{"$date":"2025-06-29T15:12:44.100+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn8","msg":"Connection ended","attr":{"remote":"127.0.0.1:47088","uuid":"abe6cf4c-38cb-4446-b5c1-8a861cdcbcad","connectionId":8,"connectionCount":0}}
+2025-06-29T15:13:08.3280426Z  {"t":{"$date":"2025-06-29T15:12:54.551+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47068","uuid":"3bab5b71-3520-4301-8aad-affded19f76b","connectionId":11,"connectionCount":1}}
+2025-06-29T15:13:08.3282026Z  {"t":{"$date":"2025-06-29T15:12:54.556+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn11","msg":"client metadata","attr":{"remote":"127.0.0.1:47068","client":"conn11","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3283625Z  {"t":{"$date":"2025-06-29T15:12:54.632+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47070","uuid":"71c991f1-aa28-4b32-bc0c-4a041709e06c","connectionId":12,"connectionCount":2}}
+2025-06-29T15:13:08.3284735Z  {"t":{"$date":"2025-06-29T15:12:54.632+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47082","uuid":"b9512152-b375-4e9f-9fc0-4172031847ba","connectionId":13,"connectionCount":3}}
+2025-06-29T15:13:08.3286322Z  {"t":{"$date":"2025-06-29T15:12:54.635+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn12","msg":"client metadata","attr":{"remote":"127.0.0.1:47070","client":"conn12","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3288626Z  {"t":{"$date":"2025-06-29T15:12:54.636+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn13","msg":"client metadata","attr":{"remote":"127.0.0.1:47082","client":"conn13","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3290246Z  {"t":{"$date":"2025-06-29T15:12:54.639+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47098","uuid":"2466a2dd-bfd1-41c3-a936-2b3f17a0a0bc","connectionId":14,"connectionCount":4}}
+2025-06-29T15:13:08.3291374Z  {"t":{"$date":"2025-06-29T15:12:54.641+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:47108","uuid":"7e54ab76-b6fe-43f5-9611-142db2e0a160","connectionId":15,"connectionCount":5}}
+2025-06-29T15:13:08.3293092Z  {"t":{"$date":"2025-06-29T15:12:54.646+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn14","msg":"client metadata","attr":{"remote":"127.0.0.1:47098","client":"conn14","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3295151Z  {"t":{"$date":"2025-06-29T15:12:54.647+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn15","msg":"client metadata","attr":{"remote":"127.0.0.1:47108","client":"conn15","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3296722Z  {"t":{"$date":"2025-06-29T15:12:54.665+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn15","msg":"Connection ended","attr":{"remote":"127.0.0.1:47108","uuid":"7e54ab76-b6fe-43f5-9611-142db2e0a160","connectionId":15,"connectionCount":4}}
+2025-06-29T15:13:08.3297799Z  {"t":{"$date":"2025-06-29T15:12:54.665+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn13","msg":"Connection ended","attr":{"remote":"127.0.0.1:47082","uuid":"b9512152-b375-4e9f-9fc0-4172031847ba","connectionId":13,"connectionCount":3}}
+2025-06-29T15:13:08.3298957Z  {"t":{"$date":"2025-06-29T15:12:54.665+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn14","msg":"Connection ended","attr":{"remote":"127.0.0.1:47098","uuid":"2466a2dd-bfd1-41c3-a936-2b3f17a0a0bc","connectionId":14,"connectionCount":2}}
+2025-06-29T15:13:08.3300041Z  {"t":{"$date":"2025-06-29T15:12:54.666+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn11","msg":"Connection ended","attr":{"remote":"127.0.0.1:47068","uuid":"3bab5b71-3520-4301-8aad-affded19f76b","connectionId":11,"connectionCount":0}}
+2025-06-29T15:13:08.3301114Z  {"t":{"$date":"2025-06-29T15:12:54.666+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn12","msg":"Connection ended","attr":{"remote":"127.0.0.1:47070","uuid":"71c991f1-aa28-4b32-bc0c-4a041709e06c","connectionId":12,"connectionCount":1}}
+2025-06-29T15:13:08.3302216Z  {"t":{"$date":"2025-06-29T15:13:05.058+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:57848","uuid":"57cc4304-e4e2-4553-b7ee-35afdec2587d","connectionId":16,"connectionCount":1}}
+2025-06-29T15:13:08.3303810Z  {"t":{"$date":"2025-06-29T15:13:05.063+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn16","msg":"client metadata","attr":{"remote":"127.0.0.1:57848","client":"conn16","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3305522Z  {"t":{"$date":"2025-06-29T15:13:05.135+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:57856","uuid":"b390bfdc-3938-4671-8510-e89b8cb93bc9","connectionId":17,"connectionCount":2}}
+2025-06-29T15:13:08.3306646Z  {"t":{"$date":"2025-06-29T15:13:05.136+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:57868","uuid":"166b07bb-6f4f-40a7-a92e-7b5c8ac9197a","connectionId":18,"connectionCount":3}}
+2025-06-29T15:13:08.3308332Z  {"t":{"$date":"2025-06-29T15:13:05.138+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn17","msg":"client metadata","attr":{"remote":"127.0.0.1:57856","client":"conn17","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3310506Z  {"t":{"$date":"2025-06-29T15:13:05.139+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn18","msg":"client metadata","attr":{"remote":"127.0.0.1:57868","client":"conn18","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3312099Z  {"t":{"$date":"2025-06-29T15:13:05.142+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:57874","uuid":"8d5469d2-5097-4d8a-9b71-de83b37ca024","connectionId":19,"connectionCount":4}}
+2025-06-29T15:13:08.3313222Z  {"t":{"$date":"2025-06-29T15:13:05.146+00:00"},"s":"I",  "c":"NETWORK",  "id":22943,   "ctx":"listener","msg":"Connection accepted","attr":{"remote":"127.0.0.1:57878","uuid":"a94e3a84-a872-4df4-9d81-9ec9249a5649","connectionId":20,"connectionCount":5}}
+2025-06-29T15:13:08.3314814Z  {"t":{"$date":"2025-06-29T15:13:05.147+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn19","msg":"client metadata","attr":{"remote":"127.0.0.1:57874","client":"conn19","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3316876Z  {"t":{"$date":"2025-06-29T15:13:05.151+00:00"},"s":"I",  "c":"NETWORK",  "id":51800,   "ctx":"conn20","msg":"client metadata","attr":{"remote":"127.0.0.1:57878","client":"conn20","negotiatedCompressors":[],"doc":{"application":{"name":"mongosh 2.5.2"},"driver":{"name":"nodejs|mongosh","version":"6.16.0|2.5.2"},"platform":"Node.js v20.19.2, LE","os":{"name":"linux","architecture":"x64","version":"3.10.0-327.22.2.el7.x86_64","type":"Linux"},"env":{"container":{"runtime":"docker"}}}}}
+2025-06-29T15:13:08.3318570Z  {"t":{"$date":"2025-06-29T15:13:05.171+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn20","msg":"Connection ended","attr":{"remote":"127.0.0.1:57878","uuid":"a94e3a84-a872-4df4-9d81-9ec9249a5649","connectionId":20,"connectionCount":4}}
+2025-06-29T15:13:08.3319647Z  {"t":{"$date":"2025-06-29T15:13:05.171+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn19","msg":"Connection ended","attr":{"remote":"127.0.0.1:57874","uuid":"8d5469d2-5097-4d8a-9b71-de83b37ca024","connectionId":19,"connectionCount":3}}
+2025-06-29T15:13:08.3320880Z  {"t":{"$date":"2025-06-29T15:13:05.171+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn18","msg":"Connection ended","attr":{"remote":"127.0.0.1:57868","uuid":"166b07bb-6f4f-40a7-a92e-7b5c8ac9197a","connectionId":18,"connectionCount":2}}
+2025-06-29T15:13:08.3321956Z  {"t":{"$date":"2025-06-29T15:13:05.171+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn17","msg":"Connection ended","attr":{"remote":"127.0.0.1:57856","uuid":"b390bfdc-3938-4671-8510-e89b8cb93bc9","connectionId":17,"connectionCount":1}}
+2025-06-29T15:13:08.3323031Z  {"t":{"$date":"2025-06-29T15:13:05.171+00:00"},"s":"I",  "c":"NETWORK",  "id":22944,   "ctx":"conn16","msg":"Connection ended","attr":{"remote":"127.0.0.1:57848","uuid":"57cc4304-e4e2-4553-b7ee-35afdec2587d","connectionId":16,"connectionCount":0}}
+2025-06-29T15:13:08.3330885Z Stop and remove container: 0ab0a83b01934ee9921f000fcc7b9bc2_mongo60_8967ec
+2025-06-29T15:13:08.3335601Z ##[command]/usr/bin/docker rm --force 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:13:09.7563452Z 04ea6e5db2f00216319800df120faf338f348bc9c1fe64bc374d7c853ad52add
+2025-06-29T15:13:09.7588544Z Print service container logs: 8727ee8476ad4934b8a3fd4bb3261e12_redis7alpine_f81dd1
+2025-06-29T15:13:09.7590309Z ##[command]/usr/bin/docker logs --details 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:13:09.7725558Z  1:C 29 Jun 2025 15:12:25.620 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2025-06-29T15:13:09.7728478Z  1:C 29 Jun 2025 15:12:25.620 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2025-06-29T15:13:09.7729280Z  1:C 29 Jun 2025 15:12:25.620 * Redis version=7.4.4, bits=64, commit=00000000, modified=0, pid=1, just started
+2025-06-29T15:13:09.7730462Z  1:C 29 Jun 2025 15:12:25.620 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+2025-06-29T15:13:09.7731509Z  1:M 29 Jun 2025 15:12:25.621 * monotonic clock: POSIX clock_gettime
+2025-06-29T15:13:09.7732101Z  1:M 29 Jun 2025 15:12:25.621 * Running mode=standalone, port=6379.
+2025-06-29T15:13:09.7732618Z  1:M 29 Jun 2025 15:12:25.626 * Server initialized
+2025-06-29T15:13:09.7733129Z  1:M 29 Jun 2025 15:12:25.627 * Ready to accept connections tcp
+2025-06-29T15:13:09.7747112Z Stop and remove container: 8727ee8476ad4934b8a3fd4bb3261e12_redis7alpine_f81dd1
+2025-06-29T15:13:09.7747900Z ##[command]/usr/bin/docker rm --force 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:13:09.8930200Z 28b6385bbe954044919530c410cc700b75c2a14f635c52523944b3f021a908a4
+2025-06-29T15:13:09.8962897Z Remove container network: github_network_6871343b0c714c9687f7d6284042dbd1
+2025-06-29T15:13:09.8967476Z ##[command]/usr/bin/docker network rm github_network_6871343b0c714c9687f7d6284042dbd1
+2025-06-29T15:13:09.9828726Z github_network_6871343b0c714c9687f7d6284042dbd1
+2025-06-29T15:13:09.9885355Z Cleaning up orphan processes
