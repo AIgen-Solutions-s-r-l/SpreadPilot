@@ -5,6 +5,39 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.15.0] - 2025-06-29
+
+### Added
+- **Redis Stream Alert Subscription**: Replaced Pub/Sub with Redis stream consumer
+  - Consumer groups for at-least-once delivery guarantees
+  - Automatic message acknowledgment after successful processing
+  - Graceful shutdown handling
+- **Exponential Backoff with MongoDB Tracking**: 3-stride retry mechanism
+  - Configurable base delay and backoff factor (default: 1s, 2s, 4s)
+  - MongoDB `alert_attempts` collection for attempt history
+  - MongoDB `failed_alerts` collection for permanently failed alerts
+  - Detailed attempt tracking with timestamps and error messages
+- **Async Email Support**: Upgraded to aiosmtplib
+  - Non-blocking email sending
+  - Support for both TLS and non-TLS connections
+  - Multipart MIME messages with plain text and HTML
+- **Comprehensive Test Coverage**: Added 18 new tests
+  - Redis subscriber tests with mocked Redis client
+  - Backoff router tests with mocked MongoDB
+  - Updated alert router tests for aiosmtplib
+
+### Changed
+- **Alert Router Architecture**: From Pub/Sub to Redis streams
+  - Removed Pub/Sub HTTP endpoint
+  - Added Redis subscriber in lifespan startup
+  - Configuration for Redis URL with default `redis://localhost:6379`
+- **Email Sending**: From synchronous to asynchronous
+  - Replaced `spreadpilot_core.utils.email.send_email` with `aiosmtplib`
+  - Improved performance for multi-recipient alerts
+
+### Fixed
+- **DateTime Deprecation**: Updated from `datetime.utcnow()` to `datetime.now(timezone.utc)`
+
 ## [v1.1.14.0] - 2025-06-29
 
 ### Added
