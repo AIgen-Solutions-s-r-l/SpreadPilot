@@ -66,6 +66,8 @@ ignore = [
     "S110",  # try-except-pass detected
     "F821",  # Undefined name
     "N803",  # Argument name should be lowercase
+    "RUF005", # Consider iterable unpacking instead of concatenation
+    "DTZ011", # datetime.date.today() used
 ]
 
 # Allow autofix for all enabled rules
