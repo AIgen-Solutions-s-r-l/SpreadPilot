@@ -28,6 +28,14 @@ class AssignmentState(str, Enum):
     COMPENSATED = "COMPENSATED"
 
 
+class PositionState(str, Enum):
+    """Position state enum."""
+
+    OPEN = "OPEN"
+    CLOSING = "CLOSING"
+    CLOSED = "CLOSED"
+
+
 class Position(BaseModel):
     """Position model.
 
@@ -42,12 +50,20 @@ class Position(BaseModel):
     )
     follower_id: str = Field(..., description="Follower ID (Index this field)")
     date: str = Field(..., description="Position date (YYYYMMDD) (Index this field)")
+    symbol: str = Field(..., description="Position symbol (e.g., QQQ 240103P440/445)")
+    strategy_type: str = Field(..., description="Strategy type (e.g., BULL_PUT, BEAR_CALL)")
+    position_type: str = Field(default="SPREAD", description="Position type")
+    quantity: int = Field(default=1, description="Position quantity")
+    state: PositionState = Field(default=PositionState.OPEN, description="Position state")
     short_qty: int = Field(default=0, description="Short quantity")
     long_qty: int = Field(default=0, description="Long quantity")
     pnl_realized: float = Field(default=0.0, description="Realized P&L")
     pnl_mtm: float = Field(default=0.0, description="Mark-to-market P&L")
     assignment_state: AssignmentState = Field(
         default=AssignmentState.NONE, description="Assignment state"
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
     )
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="Last update timestamp"
