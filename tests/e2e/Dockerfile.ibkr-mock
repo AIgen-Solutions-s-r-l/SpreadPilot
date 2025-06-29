@@ -1,0 +1,152 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install fastapi uvicorn httpx
+
+# Create mock IBKR gateway server
+COPY <<EOF /app/mock_ibkr_gateway.py
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Dict, List, Optional
+import random
+import time
+from datetime import datetime
+
+app = FastAPI()
+
+# Mock data storage
+orders = {}
+positions = {}
+account_info = {
+    "NetLiquidation": 100000.0,
+    "AvailableFunds": 50000.0,
+    "BuyingPower": 50000.0,
+    "DailyPnL": 0.0
+}
+
+class OrderRequest(BaseModel):
+    symbol: str
+    action: str  # BUY or SELL
+    quantity: int
+    order_type: str = "MKT"
+    limit_price: Optional[float] = None
+
+class Position(BaseModel):
+    symbol: str
+    quantity: int
+    avg_cost: float
+    current_price: float
+    unrealized_pnl: float
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "IBKR Gateway Mock"}
+
+@app.post("/api/v1/orders")
+async def place_order(order: OrderRequest) -> Dict:
+    """Mock order placement."""
+    order_id = f"MOCK_{int(time.time() * 1000)}"
+    
+    # Simulate order execution
+    fill_price = order.limit_price or (random.uniform(99, 101) * order.quantity)
+    
+    order_data = {
+        "order_id": order_id,
+        "symbol": order.symbol,
+        "action": order.action,
+        "quantity": order.quantity,
+        "status": "FILLED",
+        "fill_price": fill_price,
+        "filled_quantity": order.quantity,
+        "commission": 1.0,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    orders[order_id] = order_data
+    
+    # Update positions
+    if order.symbol not in positions:
+        positions[order.symbol] = {
+            "symbol": order.symbol,
+            "quantity": 0,
+            "avg_cost": 0.0
+        }
+    
+    pos = positions[order.symbol]
+    if order.action == "BUY":
+        total_cost = (pos["quantity"] * pos["avg_cost"]) + (order.quantity * fill_price)
+        pos["quantity"] += order.quantity
+        pos["avg_cost"] = total_cost / pos["quantity"] if pos["quantity"] > 0 else 0
+    else:  # SELL
+        pos["quantity"] -= order.quantity
+        if pos["quantity"] <= 0:
+            del positions[order.symbol]
+    
+    return order_data
+
+@app.get("/api/v1/orders/{order_id}")
+async def get_order(order_id: str) -> Dict:
+    """Get order status."""
+    if order_id not in orders:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return orders[order_id]
+
+@app.get("/api/v1/positions")
+async def get_positions() -> List[Dict]:
+    """Get all positions."""
+    result = []
+    for symbol, pos in positions.items():
+        current_price = pos["avg_cost"] * random.uniform(0.98, 1.02)
+        unrealized_pnl = (current_price - pos["avg_cost"]) * pos["quantity"]
+        
+        result.append({
+            "symbol": symbol,
+            "quantity": pos["quantity"],
+            "avg_cost": pos["avg_cost"],
+            "current_price": current_price,
+            "unrealized_pnl": unrealized_pnl
+        })
+    
+    return result
+
+@app.get("/api/v1/account")
+async def get_account_info() -> Dict:
+    """Get account information."""
+    # Update account with position values
+    total_value = sum(
+        pos["quantity"] * pos["avg_cost"] * random.uniform(0.98, 1.02)
+        for pos in positions.values()
+    )
+    
+    account_info["NetLiquidation"] = 100000.0 + total_value
+    account_info["DailyPnL"] = random.uniform(-500, 500)
+    
+    return account_info
+
+@app.post("/api/v1/positions/{symbol}/close")
+async def close_position(symbol: str) -> Dict:
+    """Close a position."""
+    if symbol not in positions:
+        raise HTTPException(status_code=404, detail="Position not found")
+    
+    pos = positions[symbol]
+    
+    # Create closing order
+    order = OrderRequest(
+        symbol=symbol,
+        action="SELL" if pos["quantity"] > 0 else "BUY",
+        quantity=abs(pos["quantity"]),
+        order_type="MKT"
+    )
+    
+    return await place_order(order)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5001)
+EOF
+
+# Run the mock server
+CMD ["python", "/app/mock_ibkr_gateway.py"]

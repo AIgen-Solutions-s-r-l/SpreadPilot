@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  # MongoDB for test data
+  mongodb-test:
+    image: mongo:6.0
+    container_name: spreadpilot-mongodb-test
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: spreadpilot_test
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-test-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test
+
+  # Mock IBKR Gateway
+  ibkr-gateway-mock:
+    build:
+      context: ./tests/e2e
+      dockerfile: Dockerfile.ibkr-mock
+    container_name: spreadpilot-ibkr-mock
+    ports:
+      - "5001:5001"
+    environment:
+      MOCK_MODE: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test
+
+  # MailHog for email testing
+  mailhog:
+    image: mailhog/mailhog
+    container_name: spreadpilot-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI
+    networks:
+      - e2e-test
+
+  # Admin API
+  admin-api-test:
+    build:
+      context: .
+      dockerfile: admin-api/Dockerfile
+    container_name: spreadpilot-admin-api-test
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
+      IBKR_GATEWAY_URL: http://ibkr-gateway-mock:5001
+      JWT_SECRET: test_secret_123
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD_HASH: $$2b$$12$$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCsuBKQLi
+      LOG_LEVEL: DEBUG
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      ibkr-gateway-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e-test
+
+  # Trading Bot
+  trading-bot-test:
+    build:
+      context: .
+      dockerfile: trading-bot/Dockerfile
+    container_name: spreadpilot-trading-bot-test
+    environment:
+      MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
+      IBKR_GATEWAY_URL: http://ibkr-gateway-mock:5001
+      ADMIN_API_URL: http://admin-api-test:8000
+      GOOGLE_SHEET_ID: test_sheet_12345
+      POLLING_INTERVAL: 5
+      LOG_LEVEL: DEBUG
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      ibkr-gateway-mock:
+        condition: service_healthy
+      admin-api-test:
+        condition: service_healthy
+    networks:
+      - e2e-test
+
+  # Report Worker
+  report-worker-test:
+    build:
+      context: .
+      dockerfile: report-worker/Dockerfile
+    container_name: spreadpilot-report-worker-test
+    environment:
+      MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
+      SMTP_SERVER: mailhog
+      SMTP_PORT: 1025
+      SMTP_USERNAME: test@example.com
+      SMTP_PASSWORD: test_password
+      SMTP_USE_TLS: "false"
+      GCS_BUCKET: test-reports
+      LOG_LEVEL: DEBUG
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    networks:
+      - e2e-test
+
+  # Alert Router
+  alert-router-test:
+    build:
+      context: .
+      dockerfile: alert-router/Dockerfile
+    container_name: spreadpilot-alert-router-test
+    environment:
+      MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
+      TELEGRAM_BOT_TOKEN: test_bot_token
+      TELEGRAM_CHAT_ID: test_chat_id
+      SMTP_SERVER: mailhog
+      SMTP_PORT: 1025
+      SMTP_USERNAME: test@example.com
+      SMTP_PASSWORD: test_password
+      SMTP_USE_TLS: "false"
+      LOG_LEVEL: DEBUG
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    networks:
+      - e2e-test
+
+networks:
+  e2e-test:
+    driver: bridge
+
+volumes:
+  mongodb-test-data:

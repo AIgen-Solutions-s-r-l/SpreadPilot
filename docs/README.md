@@ -16,6 +16,7 @@ Welcome to the SpreadPilot documentation center! This collection provides everyt
 | 🚀 [**Deployment Guide**](./02-deployment-guide.md) | Production deployment to Google Cloud Platform | DevOps, SREs, Deployment Engineers |
 | 🛠️ [**Development Guide**](./03-development-guide.md) | Local development, testing, and code organization | Developers, Contributors |
 | 🔧 [**Operations Guide**](./04-operations-guide.md) | Monitoring, maintenance, and troubleshooting | SREs, Operations Teams |
+| 🧪 [**Testing Guide**](./05-testing-guide.md) | Comprehensive testing strategy including E2E tests | Developers, QA Engineers |
 
 ### 🎯 **Specialized Guides**
 
@@ -74,6 +75,7 @@ graph TB
 
 #### 👨‍💻 **Developers**
 - 🛠️ [Development Guide](./03-development-guide.md) - Local setup and coding standards
+- 🧪 [Testing Guide](./05-testing-guide.md) - Testing strategy and E2E tests
 - 🏗️ [System Architecture](./01-system-architecture.md) - Component understanding
 - 📚 [Service READMEs](../README.md#architecture) - Individual service documentation
 
