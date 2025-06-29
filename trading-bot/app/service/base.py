@@ -28,6 +28,7 @@ from .ibkr import IBKRManager
 from .positions import PositionManager
 from .signals import SignalProcessor
 from .pnl_service import PnLService
+from .time_value_monitor import TimeValueMonitor
 from .original_strategy_handler import OriginalStrategyHandler
 from .vertical_spreads_strategy_handler import VerticalSpreadsStrategyHandler
 
@@ -80,6 +81,7 @@ class TradingService:
         self.alert_manager = AlertManager(self)
         self.signal_processor = SignalProcessor(self)
         self.pnl_service = PnLService(self)
+        self.time_value_monitor = TimeValueMonitor(self)
         self.original_strategy_handler = OriginalStrategyHandler(self, ORIGINAL_EMA_STRATEGY)
         self.vertical_spreads_strategy_handler = VerticalSpreadsStrategyHandler(self, VERTICAL_SPREADS_STRATEGY)
         
@@ -144,6 +146,11 @@ class TradingService:
             # Start P&L monitoring service
             pnl_monitoring_task = asyncio.create_task(
                 self.pnl_service.start_monitoring(shutdown_event)
+            )
+            
+            # Start time value monitoring service
+            time_value_monitor_task = asyncio.create_task(
+                self.time_value_monitor.start_monitoring()
             )
             
             # Start the Vertical Spreads Strategy handler
@@ -237,12 +244,17 @@ class TradingService:
             pnl_monitoring_task.cancel()
             vertical_spreads_task.cancel()
             
+            # Stop time value monitor
+            await self.time_value_monitor.stop_monitoring()
+            time_value_monitor_task.cancel()
+            
             # Wait for background tasks to complete
             try:
                 await asyncio.gather(
                     position_check_task,
                     pnl_monitoring_task,
                     vertical_spreads_task,
+                    time_value_monitor_task,
                     return_exceptions=True # Don't let one cancelled task stop others
                 )
             except asyncio.CancelledError:

@@ -13,7 +13,11 @@ The Trading Bot is the heart of SpreadPilot, responsible for automated strategy 
 - 🎯 **Multi-Follower**: Isolated execution for multiple trading accounts
 
 ### 🛡️ **Risk Management**
-- ⚠️ **Time Value Monitor**: Automatic liquidation when TV < $0.10
+- ⚠️ **Time Value Monitor**: Automatic liquidation when TV <= $0.10
+  - 60-second monitoring cycle for all open QQQ option positions
+  - Calculates time value (market price - intrinsic value)
+  - Publishes SAFE/RISK/CRITICAL alerts to Redis stream
+  - Auto-closes positions via market orders when TV <= $0.10
 - 📋 **Position Tracking**: Real-time position monitoring and assignment handling
 - 💰 **P&L Calculation**: 30-second MTM updates with PostgreSQL storage
 - 🔒 **Margin Validation**: Pre-trade margin checks and position limits
@@ -54,6 +58,9 @@ graph LR
     F --> G[🐘 PostgreSQL]
     E --> H[🍃 MongoDB]
     C --> I[🔔 Alert Manager]
+    E --> J[⚠️ Time Value Monitor]
+    J --> K[🔴 Redis Alerts]
+    J --> D
 ```
 
 ---
