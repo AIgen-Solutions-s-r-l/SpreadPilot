@@ -9,7 +9,7 @@ from ib_insync import Contract, MarketOrder, Stock, Ticker
 
 from spreadpilot_core.models.alert import AlertType
 from spreadpilot_core.models.position import Position, PositionState
-from trading_bot.app.services.time_value_monitor import TimeValueMonitor
+from trading_bot.app.service.time_value_monitor import TimeValueMonitor
 
 
 class FakeIB:
