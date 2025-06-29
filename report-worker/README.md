@@ -14,7 +14,8 @@ The Report Worker is a specialized microservice responsible for generating compr
 
 ### ☁️ **Cloud Integration**
 - 🗄️ **GCS Storage**: Secure file storage in Google Cloud Storage
-- 🔗 **Signed URLs**: Time-limited secure access links
+- 🔗 **MinIO/S3 Support**: Alternative object storage with 180-day lifecycle
+- 📎 **Pre-signed URLs**: 30-day secure download links
 - 📨 **Email Delivery**: Automated report distribution via SendGrid
 - 🔐 **Secret Management**: Secure credential loading from MongoDB
 
@@ -72,6 +73,14 @@ SENDGRID_API_KEY=your_sendgrid_api_key
 # ☁️ GCS Settings (for report file storage)
 GCS_BUCKET_NAME=spreadpilot-reports
 GCS_SERVICE_ACCOUNT_KEY_PATH=/path/to/service-account.json
+
+# 🔗 MinIO/S3 Settings (Alternative to GCS - Optional)
+MINIO_ENDPOINT_URL=https://minio.example.com
+MINIO_ACCESS_KEY=your-access-key
+MINIO_SECRET_KEY=your-secret-key
+MINIO_BUCKET_NAME=spreadpilot-reports
+MINIO_REGION=us-east-1
+MINIO_SECURE=true
 
 # 🐘 PostgreSQL Settings (for P&L data)
 POSTGRES_URI=postgresql+asyncpg://user:password@localhost:5432/spreadpilot_pnl
@@ -156,9 +165,10 @@ The Report Worker handles two main job types triggered via Google Cloud Pub/Sub:
 
 - ☁️ **Processing Flow**:
   - 🏗️ Generate PDF/Excel reports using ReportLab and pandas
-  - 📤 Upload to Google Cloud Storage
-  - 🔗 Create signed URLs (24-hour expiration)
-  - 📧 Email reports to followers
+  - 📤 Upload to MinIO/S3 or Google Cloud Storage
+  - 🔗 Create pre-signed URLs (30-day expiration for MinIO, 24-hour for GCS)
+  - 📧 Email reports with download links or attachments
+  - 💾 Update database with report_sent status
   - 🔔 Send admin notifications
 
 ### 📧 **Weekly Commission Email Reports**
@@ -180,6 +190,27 @@ The Report Worker includes a cron job for automated weekly commission report ema
   # Manual execution
   python app/cron_email_reports.py
   ```
+
+---
+
+## 🔗 MinIO/S3 Integration
+
+The Report Worker supports MinIO as an alternative to Google Cloud Storage for report storage:
+
+### **Features**:
+- 📁 **Object Storage**: Store PDF/Excel reports in MinIO buckets
+- ⏳ **Lifecycle Management**: Automatic 180-day object expiration
+- 🔐 **Pre-signed URLs**: 30-day secure download links
+- 🔄 **Fallback Support**: Seamless fallback to email attachments if MinIO is unavailable
+
+### **Configuration**:
+When MinIO environment variables are configured, the service will:
+1. Upload generated reports to MinIO with 180-day lifecycle
+2. Generate pre-signed URLs valid for 30 days
+3. Send emails with download links instead of attachments
+4. Store URLs in database for tracking
+
+If MinIO is not configured or upload fails, the service automatically falls back to sending reports as email attachments.
 
 ---
 
