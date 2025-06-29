@@ -5,6 +5,23 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.24.0] - 2025-06-29
+
+### Fixed
+- **Import Issues**: Resolved import errors in admin-api health endpoint
+  - Fixed `get_current_user` import path from incorrect module
+  - Added proper path setup for test imports
+- **Code Quality**: Applied consistent code formatting
+  - Applied black and isort formatting across entire codebase
+  - Fixed syntax error in test_time_value_monitor.py
+  - Resolved unused variable warning in health.py
+- **Dependencies**: Ensured all required packages are available
+  - Verified hvac and redis dependencies
+  - Added gspread dependency for Google Sheets integration
+
+### Changed
+- **Version Bump**: Updated version to v1.1.24.0 in core library
+
 ## [v1.1.23.0] - 2025-06-29
 
 ### Added
