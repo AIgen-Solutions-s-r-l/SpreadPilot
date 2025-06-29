@@ -5,6 +5,34 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.20.0] - 2025-06-29
+
+### Added
+- **MinIO/S3 Integration for Report Storage**: Alternative object storage support for report files
+  - Automatic upload of PDF/Excel reports to MinIO with 180-day lifecycle
+  - Pre-signed URL generation with 30-day expiration for secure downloads
+  - Email delivery with download links instead of attachments when MinIO is configured
+  - Database tracking of report URLs and delivery status in `report_sent` collection
+- **Enhanced Report Service**: New `EnhancedReportService` with MinIO integration
+  - Seamless fallback to email attachments if MinIO is unavailable
+  - Comprehensive error handling and logging for upload failures
+- **MinIO Configuration**: New environment variables for MinIO/S3 settings
+  - Support for custom endpoints, access keys, and bucket configuration
+  - Secure HTTPS connections with configurable SSL settings
+
+### Changed
+- **Report Email Delivery**: Reports now sent as download links when MinIO is configured
+- **Database Schema**: Added `report_sent` collection to track delivery status and URLs
+
+### Testing
+- **Unit Tests**: Added comprehensive tests for MinIO service with moto-s3-server
+- **Integration Tests**: Enhanced notifier tests covering MinIO upload scenarios
+
+### Documentation
+- Updated report-worker README with MinIO integration details
+- Enhanced environment templates with MinIO configuration examples
+- Added MinIO setup instructions for development and production
+
 ## [v1.1.18.0] - 2025-06-29
 
 ### Added
