@@ -5,6 +5,39 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.21.0] - 2025-06-29
+
+### Added
+- **Admin API P&L Endpoints**: New endpoints for profit and loss data access
+  - `GET /api/v1/pnl/today` - Retrieve today's P&L data
+  - `GET /api/v1/pnl/month` - Get monthly P&L data with optional year/month parameters
+  - Real-time data from MongoDB with automatic NY timezone handling
+- **System Log Access**: New endpoint for querying system logs
+  - `GET /api/v1/logs/recent` - Query recent logs with filtering capabilities
+  - Support for filtering by service, log level, and search text
+  - Configurable limit (1-1000 entries) with default of 200
+- **Manual Operations Endpoint**: Emergency position closing capability
+  - `POST /api/v1/manual-close` - Manually close positions for a follower
+  - PIN verification required (0312) for additional security
+  - Creates operation records for trading bot execution
+  - Supports closing all positions or specific position IDs
+
+### Security
+- All new endpoints require JWT authentication
+- Manual close endpoint requires additional PIN verification
+- Proper error handling and validation for all inputs
+
+### Testing
+- **Unit Tests**: Comprehensive test coverage for all new endpoints
+- **Authentication Tests**: Verify JWT requirements
+- **Error Handling Tests**: Test validation and error scenarios
+
+### Documentation
+- Enhanced OpenAPI/Swagger documentation with detailed endpoint descriptions
+- Updated admin-api README with new endpoint examples
+- Updated system architecture documentation
+- Added API usage examples in setup guide
+
 ## [v1.1.20.0] - 2025-06-29
 
 ### Added
