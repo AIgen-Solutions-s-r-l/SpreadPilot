@@ -86,8 +86,18 @@ logs:
 
 # Run e2e tests
 e2e:
+	@echo "Starting E2E test environment..."
+	docker-compose -f docker-compose.e2e.yml up -d
+	@echo "Waiting for services to be ready..."
+	sleep 30
 	@echo "Running e2e tests..."
-	pytest -m e2e
+	pytest -m e2e tests/e2e/e2e_test.py -v
+	@echo "E2E tests completed. View emails at http://localhost:8025"
+
+# Clean up e2e test environment
+e2e-clean:
+	@echo "Cleaning up E2E test environment..."
+	docker-compose -f docker-compose.e2e.yml down -v
 
 # Generate requirements.txt from setup.py
 requirements:
@@ -127,6 +137,7 @@ help:
 	@echo "  down             Stop services"
 	@echo "  logs             View logs"
 	@echo "  e2e              Run e2e tests"
+	@echo "  e2e-clean        Clean up e2e test environment"
 	@echo "  requirements     Generate requirements.txt"
 	@echo "  requirements-dev Generate requirements-dev.txt"
 	@echo "  deploy-dev       Deploy to dev environment"

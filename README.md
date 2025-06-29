@@ -220,9 +220,38 @@ pytest tests/unit/
 # 🔗 Integration tests only
 pytest tests/integration/
 
+# 🌐 End-to-End tests (requires Docker)
+pytest -m e2e tests/e2e/
+
 # 📊 Coverage report
 make test-coverage
 ```
+
+#### 🌐 End-to-End Testing
+
+SpreadPilot includes comprehensive E2E tests that validate the complete workflow:
+
+```bash
+# Start E2E test environment
+docker-compose -f docker-compose.e2e.yml up -d
+
+# Run E2E tests
+pytest -m e2e tests/e2e/e2e_test.py -v
+
+# View email capture UI
+open http://localhost:8025
+
+# Clean up
+docker-compose -f docker-compose.e2e.yml down -v
+```
+
+The E2E test suite validates:
+- ✅ Signal ingestion from Google Sheets
+- ✅ Trade execution through IBKR
+- ✅ Position management and tracking
+- ✅ PDF report generation and email delivery
+- ✅ Error handling and retry mechanisms
+- ✅ Performance metrics calculation
 
 ### 🐳 Docker Development
 
