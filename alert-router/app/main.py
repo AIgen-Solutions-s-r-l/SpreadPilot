@@ -176,9 +176,31 @@ logger.info(
 @app.get("/health")
 async def health_check():
     """
-    Simple health check endpoint.
+    Health check endpoint with Redis connectivity status.
     """
-    return {"status": "healthy"}
+    health_status = {
+        "status": "healthy",
+        "service": "alert-router",
+        "redis_subscriber": {
+            "connected": False,
+            "running": False
+        }
+    }
+    
+    # Check Redis subscriber status
+    if redis_subscriber:
+        health_status["redis_subscriber"]["connected"] = redis_subscriber.redis_client is not None
+        health_status["redis_subscriber"]["running"] = redis_subscriber._running
+        
+        # If not running, set overall status to unhealthy
+        if not redis_subscriber._running:
+            health_status["status"] = "unhealthy"
+            health_status["error"] = "Redis subscriber not running"
+    else:
+        health_status["status"] = "unhealthy"
+        health_status["error"] = "Redis subscriber not initialized"
+    
+    return health_status
 
 
 # For local development
