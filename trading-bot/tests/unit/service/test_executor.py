@@ -32,8 +32,8 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
         self.mock_ibkr_client.get_market_price = AsyncMock()
         self.mock_ibkr_client.get_account_summary = AsyncMock()
         
-        # Create executor instance
-        self.executor = VerticalSpreadExecutor(self.mock_ibkr_client)
+        # Create executor instance with fake Redis URL
+        self.executor = VerticalSpreadExecutor(self.mock_ibkr_client, redis_url="redis://fake")
         
         # Test signal
         self.test_signal = {

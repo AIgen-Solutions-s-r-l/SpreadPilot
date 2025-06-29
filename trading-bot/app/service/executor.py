@@ -2,15 +2,17 @@
 
 import asyncio
 import datetime
+import json
 import time
 from typing import Dict, Any, Optional, Tuple
 
 import ib_insync
 from ib_insync import Order, MarketOrder, LimitOrder
+import redis.asyncio as redis
 
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
-from spreadpilot_core.models.alert import Alert, AlertType, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertType, AlertSeverity, AlertEvent
 
 logger = get_logger(__name__)
 
@@ -18,14 +20,54 @@ logger = get_logger(__name__)
 class VerticalSpreadExecutor:
     """Executes vertical spread orders with limit-ladder strategy and margin checks."""
 
-    def __init__(self, ibkr_client: IBKRClient):
+    def __init__(self, ibkr_client: IBKRClient, redis_url: str = "redis://localhost:6379"):
         """Initialize the executor.
         
         Args:
             ibkr_client: Connected IBKR client instance
+            redis_url: Redis connection URL
         """
         self.ibkr_client = ibkr_client
+        self.redis_url = redis_url
+        self.redis_client: Optional[redis.Redis] = None
         logger.info("VerticalSpreadExecutor initialized")
+    
+    async def connect_redis(self):
+        """Connect to Redis if not already connected."""
+        if not self.redis_client:
+            self.redis_client = redis.from_url(self.redis_url, decode_responses=True)
+            logger.info(f"Connected to Redis at {self.redis_url}")
+    
+    async def disconnect_redis(self):
+        """Disconnect from Redis."""
+        if self.redis_client:
+            await self.redis_client.close()
+            self.redis_client = None
+            logger.info("Disconnected from Redis")
+    
+    async def _publish_alert(self, alert_event: AlertEvent):
+        """Publish an alert event to Redis alerts stream.
+        
+        Args:
+            alert_event: Alert event to publish
+        """
+        try:
+            # Ensure Redis is connected
+            await self.connect_redis()
+            
+            # Serialize the alert event
+            alert_data = alert_event.model_dump(mode="json")
+            alert_json = json.dumps(alert_data)
+            
+            # Add to Redis stream
+            await self.redis_client.xadd(
+                "alerts",
+                {"alert": alert_json}
+            )
+            
+            logger.info(f"Published alert to Redis: {alert_event.event_type.value}")
+        except Exception as e:
+            logger.error(f"Failed to publish alert to Redis: {e}")
 
     async def execute_vertical_spread(
         self,
@@ -83,8 +125,12 @@ class VerticalSpreadExecutor:
             if not margin_check_result["success"]:
                 await self._send_alert(
                     f"Margin check failed for follower {follower_id}: {margin_check_result['error']}",
-                    AlertSeverity.HIGH,
-                    follower_id
+                    AlertType.NO_MARGIN,
+                    params={
+                        "follower_id": follower_id,
+                        "error": margin_check_result['error'],
+                        "margin_details": margin_check_result
+                    }
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -109,8 +155,15 @@ class VerticalSpreadExecutor:
             if abs(mid_price) < min_price_threshold:
                 await self._send_alert(
                     f"MID price {mid_price:.3f} below threshold {min_price_threshold} for follower {follower_id}",
-                    AlertSeverity.MEDIUM,
-                    follower_id
+                    AlertType.MID_TOO_LOW,
+                    params={
+                        "follower_id": follower_id,
+                        "mid_price": mid_price,
+                        "threshold": min_price_threshold,
+                        "strategy": strategy,
+                        "strike_long": strike_long,
+                        "strike_short": strike_short
+                    }
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -141,8 +194,12 @@ class VerticalSpreadExecutor:
             logger.error(f"Error executing vertical spread for follower {follower_id}: {e}")
             await self._send_alert(
                 f"Execution error for follower {follower_id}: {str(e)}",
-                AlertSeverity.HIGH,
-                follower_id
+                AlertType.GATEWAY_UNREACHABLE,  # Generic IB rejection/error
+                params={
+                    "follower_id": follower_id,
+                    "error": str(e),
+                    "signal": signal
+                }
             )
             return {
                 "status": OrderStatus.REJECTED,
@@ -387,8 +444,14 @@ class VerticalSpreadExecutor:
                 if abs(current_limit_price) < min_price_threshold:
                     await self._send_alert(
                         f"Limit price {current_limit_price:.3f} fell below threshold {min_price_threshold} for follower {follower_id}",
-                        AlertSeverity.MEDIUM,
-                        follower_id
+                        AlertType.MID_TOO_LOW,
+                        params={
+                            "follower_id": follower_id,
+                            "limit_price": current_limit_price,
+                            "threshold": min_price_threshold,
+                            "attempt": attempt,
+                            "strategy": strategy
+                        }
                     )
                     return {
                         "status": OrderStatus.CANCELED,
@@ -485,8 +548,16 @@ class VerticalSpreadExecutor:
             # All attempts exhausted
             await self._send_alert(
                 f"All {max_attempts} attempts exhausted for follower {follower_id}",
-                AlertSeverity.MEDIUM,
-                follower_id
+                AlertType.LIMIT_REACHED,
+                params={
+                    "follower_id": follower_id,
+                    "max_attempts": max_attempts,
+                    "final_limit": current_limit_price,
+                    "initial_limit": initial_mid_price,
+                    "strategy": strategy,
+                    "strike_long": strike_long,
+                    "strike_short": strike_short
+                }
             )
             
             return {
@@ -506,31 +577,38 @@ class VerticalSpreadExecutor:
                 "follower_id": follower_id
             }
 
-    async def _send_alert(self, message: str, severity: AlertSeverity, follower_id: str):
+    async def _send_alert(self, message: str, alert_type: AlertType, params: Optional[Dict[str, Any]] = None):
         """Send an alert about execution events.
         
         Args:
             message: Alert message
-            severity: Alert severity level
-            follower_id: Follower ID
+            alert_type: Type of alert
+            params: Optional parameters for the alert
         """
         try:
-            # This would typically integrate with the alert system
-            # For now, just log the alert
-            logger.warning(f"ALERT [{severity.value}] {follower_id}: {message}")
+            # Log the alert
+            logger.warning(f"ALERT [{alert_type.value}]: {message}")
             
-            # TODO: Integrate with actual alert routing system
-            # alert = Alert(
-            #     type=AlertType.TRADING,
-            #     severity=severity,
-            #     message=message,
-            #     follower_id=follower_id,
-            #     timestamp=datetime.datetime.now()
-            # )
-            # await self.alert_service.send_alert(alert)
+            # Create and publish alert event to Redis
+            alert_event = AlertEvent(
+                event_type=alert_type,
+                message=message,
+                params=params or {}
+            )
+            
+            await self._publish_alert(alert_event)
             
         except Exception as e:
             logger.error(f"Error sending alert: {e}")
+    
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.connect_redis()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.disconnect_redis()
 
 
 # Convenience function that matches the task requirements
