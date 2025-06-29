@@ -64,11 +64,15 @@ except ImportError as e:
 
 # Get specific imports
 SignalProcessor = trading_bot_service.SignalProcessor if trading_bot_service else None
-GoogleSheetsClient = trading_bot_sheets.GoogleSheetsClient if trading_bot_sheets else None
+GoogleSheetsClient = (
+    trading_bot_sheets.GoogleSheetsClient if trading_bot_sheets else None
+)
 route_alert = alert_router_service.route_alert if alert_router_service else None
 # calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl # Removed
 admin_app = admin_api_main.app if admin_api_main else None
-get_mongo_db = admin_api_mongodb_db.get_mongo_db if admin_api_mongodb_db else None  # Get the function to override
+get_mongo_db = (
+    admin_api_mongodb_db.get_mongo_db if admin_api_mongodb_db else None
+)  # Get the function to override
 
 
 # ---- Environment Setup ----

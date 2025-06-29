@@ -88,6 +88,8 @@ fastapi==0.110.3
     # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
 firebase-admin==6.8.0
     # via -r requirements-dev.in
+freezegun==1.6.0
+    # via -r requirements-dev.in
 flake8==7.2.0
     # via -r requirements-dev.in
 frozenlist==1.6.0
