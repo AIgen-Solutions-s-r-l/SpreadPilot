@@ -5,6 +5,38 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.26.0] - 2025-06-29
+
+### Added
+- **CI/CD Pipeline Enhancements**:
+  - Docker layer caching for faster builds using buildx
+  - Parallel E2E test image builds for improved performance
+  - 15-minute timeout for E2E tests to prevent hanging
+  - Cleanup step to remove E2E containers after tests
+  - Pip caching for integration tests job
+  - Comprehensive CI/CD documentation in `.github/workflows/README.md`
+- **Integration Tests**:
+  - New test `test_position_update_existing()` for updating existing positions
+  - Comprehensive Time Value Monitor integration tests in `test_time_value_monitor_alerts.py`
+  - Tests for critical alert publishing when TV ≤ $0.10
+  - Tests for risk alert publishing when $0.10 < TV ≤ $1.00
+  - Complete integration test with Redis stream
+  - Error handling and error alert publishing tests
+
+### Fixed
+- **Integration Tests**:
+  - Fixed async mocking in `test_monthly_pnl_calculation()` with proper `MockAsyncCursor` class
+  - Removed `@pytest.mark.skip` decorator from monthly P&L test
+  - Updated dashboard API test assertions to match actual response structure
+  - Corrected import error in admin-api health endpoint (`get_database` → `get_db`)
+- **Test Placeholders**:
+  - Replaced placeholder assertions in `test_admin_api_dashboard.py`
+  - Updated to match `follower_stats` and `system_status` response format
+  - Removed references to non-existent `total_positions` field
+
+### Changed
+- **Testing Strategy**: All integration tests now have proper assertions with no placeholders or xfail markers
+
 ## [v1.1.25.0] - 2025-06-29
 
 ### Fixed
