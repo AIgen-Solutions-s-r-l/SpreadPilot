@@ -130,6 +130,23 @@ class GatewayManager:
             logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
             return None
 
+    async def _pull_vault_credentials(self, follower: Follower) -> dict[str, str] | None:
+        """Pull IBKR credentials from Vault for a follower.
+
+        This is an async wrapper around _get_ibkr_credentials_from_vault for consistency.
+
+        Args:
+            follower: Follower object with vault_secret_ref
+
+        Returns:
+            Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
+        """
+        if not hasattr(follower, "vault_secret_ref") or not follower.vault_secret_ref:
+            logger.warning(f"No Vault secret reference for follower {follower.id}")
+            return None
+
+        return self._get_ibkr_credentials_from_vault(follower.vault_secret_ref)
+
     async def start(self) -> None:
         """Start the gateway manager and load enabled followers."""
         logger.info("Starting IBGateway Manager")
@@ -147,24 +164,57 @@ class GatewayManager:
             raise
 
     async def stop(self) -> None:
-        """Stop the gateway manager and all containers."""
+        """Stop the gateway manager and all containers with clean shutdown."""
         logger.info("Stopping IBGateway Manager")
 
+        # Set shutdown flag first
         self._shutdown = True
 
         # Cancel monitoring task
-        if self._monitor_task:
+        if self._monitor_task and not self._monitor_task.done():
+            logger.debug("Cancelling monitoring task")
             self._monitor_task.cancel()
             try:
-                await self._monitor_task
+                await asyncio.wait_for(self._monitor_task, timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Monitoring task did not complete within timeout")
             except asyncio.CancelledError:
-                pass
+                logger.debug("Monitoring task cancelled successfully")
+            except Exception as e:
+                logger.error(f"Error stopping monitoring task: {e}")
 
-        # Stop all gateways
-        for follower_id in list(self.gateways.keys()):
-            await self._stop_gateway(follower_id)
+        # Stop all gateways concurrently for faster shutdown
+        if self.gateways:
+            logger.info(f"Stopping {len(self.gateways)} gateway containers")
+            stop_tasks = []
+            for follower_id in list(self.gateways.keys()):
+                stop_tasks.append(asyncio.create_task(self._stop_gateway(follower_id)))
+            
+            if stop_tasks:
+                # Wait for all gateways to stop with timeout
+                done, pending = await asyncio.wait(
+                    stop_tasks, timeout=60.0, return_when=asyncio.ALL_COMPLETED
+                )
+                
+                if pending:
+                    logger.warning(f"{len(pending)} gateways did not stop within timeout")
+                    # Cancel pending tasks
+                    for task in pending:
+                        task.cancel()
 
-        logger.info("Gateway Manager stopped")
+        # Clear internal state
+        self.gateways.clear()
+        self.used_ports.clear()
+        self.used_client_ids.clear()
+        
+        # Close Docker client
+        if hasattr(self, "docker_client"):
+            try:
+                self.docker_client.close()
+            except Exception as e:
+                logger.error(f"Error closing Docker client: {e}")
+
+        logger.info("Gateway Manager stopped successfully")
 
     async def get_client(self, follower_id: str) -> IB | None:
         """Get a ready IB client instance for the follower.
