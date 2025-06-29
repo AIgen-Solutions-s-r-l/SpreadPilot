@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -24,6 +24,8 @@ import {
   useTheme,
   alpha,
   Tooltip as MuiTooltip,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams, GridActionsCellItem } from '@mui/x-data-grid';
@@ -44,33 +46,49 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Close as CloseIcon,
+  Refresh as RefreshIcon,
+  RestartAlt as RestartIcon,
 } from '@mui/icons-material';
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
+import { useFollowers } from '../hooks/useFollowers';
+import { usePnl } from '../hooks/usePnl';
+import { TimeValueBadge } from '../components/common/TimeValueBadge';
+import * as followerService from '../services/followerService';
+import apiClient from '../services/api';
+import type { Follower } from '../schemas/follower.schema';
 
 
-// Mock Data Type
-interface Follower {
-  // id is already string
-  id: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'WARN' | 'ERROR';
-  botStatus: 'ONLINE' | 'OFFLINE' | 'WARN' | 'ERROR';
-  ibgwStatus: 'CONN' | 'DISC' | 'WARN' | 'ERROR';
-  positions: {
-    count: number;
-    value: string;
-  };
-  pnlToday: string;
-  accountId: string;
-  created: string;
-  lastActive: string;
-  pnlMtd: string;
-  pnlYtd: string;
-  currentPositions: { symbol: string; shares: number; price: string }[];
-}
+// Service status mapping
+const mapBotStatus = (status: string): 'ONLINE' | 'OFFLINE' | 'WARN' | 'ERROR' => {
+  switch (status) {
+    case 'RUNNING': return 'ONLINE';
+    case 'STOPPED': return 'OFFLINE';
+    case 'STARTING': return 'WARN';
+    case 'ERROR': return 'ERROR';
+    default: return 'OFFLINE';
+  }
+};
 
-type FollowerStatus = Follower['status'];
-type BotStatus = Follower['botStatus'];
-type IBGWStatus = Follower['ibgwStatus'];
+const mapIbGwStatus = (status: string): 'CONN' | 'DISC' | 'WARN' | 'ERROR' => {
+  switch (status) {
+    case 'CONNECTED': return 'CONN';
+    case 'DISCONNECTED': return 'DISC';
+    case 'CONNECTING': return 'WARN';
+    case 'ERROR': return 'ERROR';
+    default: return 'DISC';
+  }
+};
+
+const mapFollowerStatus = (enabled: boolean, botStatus: string): 'ACTIVE' | 'INACTIVE' | 'WARN' | 'ERROR' => {
+  if (!enabled) return 'INACTIVE';
+  if (botStatus === 'ERROR') return 'ERROR';
+  if (botStatus === 'STARTING') return 'WARN';
+  return 'ACTIVE';
+};
+
+type FollowerStatus = 'ACTIVE' | 'INACTIVE' | 'WARN' | 'ERROR';
+type BotStatus = 'ONLINE' | 'OFFLINE' | 'WARN' | 'ERROR';
+type IBGWStatus = 'CONN' | 'DISC' | 'WARN' | 'ERROR';
 
 const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, theme: any) => {
   switch (status) {
@@ -114,19 +132,20 @@ const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, the
 
 const FollowersPage: React.FC = () => {
   const theme = useTheme();
-  const [followers] = useState<Follower[]>([
-    { id: 'Follower_001', status: 'ACTIVE', botStatus: 'ONLINE', ibgwStatus: 'CONN', positions: { count: 3, value: '$12.5K' }, pnlToday: '+$1,245.67', accountId: 'IB12345678', created: '2025-01-15', lastActive: '2 min ago', pnlMtd: '+$5,678.90', pnlYtd: '+$12,345.67', currentPositions: [{ symbol: 'SOXL', shares: 100, price: '$45.67' }] },
-    { id: 'Follower_002', status: 'INACTIVE', botStatus: 'OFFLINE', ibgwStatus: 'DISC', positions: { count: 0, value: '$0' }, pnlToday: '$0.00', accountId: 'IB87654321', created: '2024-11-20', lastActive: '5 days ago', pnlMtd: '-$250.00', pnlYtd: '+$1,200.00', currentPositions: [] },
-    { id: 'Follower_003', status: 'ACTIVE', botStatus: 'WARN', ibgwStatus: 'CONN', positions: { count: 1, value: '$5.1K' }, pnlToday: '-$123.45', accountId: 'IB11223344', created: '2025-03-01', lastActive: '1 hour ago', pnlMtd: '+$1,200.50', pnlYtd: '+$3,500.75', currentPositions: [{ symbol: 'QQQ', shares: 50, price: '$410.25' }] },
-    { id: 'Follower_004', status: 'ACTIVE', botStatus: 'ONLINE', ibgwStatus: 'ERROR', positions: { count: 2, value: '$8.2K' }, pnlToday: '+$867.45', accountId: 'IB55667788', created: '2025-02-10', lastActive: '15 min ago', pnlMtd: '+$2,100.00', pnlYtd: '+$6,800.20', currentPositions: [{ symbol: 'TQQQ', shares: 30, price: '$55.12' }, { symbol: 'SPY', shares: 10, price: '$500.50' }] },
-  ]);
+  const { followers, loading, error, refresh } = useFollowers();
+  const { todayPnl, monthlyPnl } = usePnl();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-  const [actionFollower, setActionFollower] = useState<Follower | null>(null);
+  const [actionFollower, setActionFollower] = useState<any>(null);
   const [actionType, setActionType] = useState<string | null>(null);
+  const [pinValue, setPinValue] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [restartDialogOpen, setRestartDialogOpen] = useState(false);
+  const [restartService, setRestartService] = useState<string | null>(null);
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openActionMenu = Boolean(anchorEl);
@@ -159,21 +178,68 @@ const FollowersPage: React.FC = () => {
     setActionFollower(null);
     setActionType(null);
   };
-  const executeConfirmedAction = () => {
-    console.log(`Executing ${actionType} for ${actionFollower?.id}`);
-    // Add actual logic here
-    handleCloseConfirmDialog();
+  const executeConfirmedAction = async () => {
+    if (!actionFollower || !actionType) return;
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      switch (actionType) {
+        case 'DISABLE':
+          await followerService.disableFollower(actionFollower.id);
+          await refresh();
+          break;
+        case 'CLOSE_POSITIONS':
+          if (!pinValue || pinValue !== '0312') {
+            setActionError('Invalid PIN');
+            return;
+          }
+          await followerService.closeFollowerPosition(actionFollower.id, pinValue);
+          break;
+      }
+      handleCloseConfirmDialog();
+    } catch (error: any) {
+      setActionError(error.message || 'Action failed');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
+  const handleServiceRestart = async () => {
+    if (!restartService) return;
+    
+    try {
+      await apiClient.post(`/service/${restartService}/restart`);
+      setRestartDialogOpen(false);
+      setRestartService(null);
+      // Refresh data after restart
+      setTimeout(refresh, 3000);
+    } catch (error) {
+      console.error('Failed to restart service:', error);
+    }
+  };
+
+  // Transform API data to display format
+  const displayFollowers = followers.map(f => ({
+    ...f,
+    status: mapFollowerStatus(f.enabled, f.botStatus),
+    botStatus: mapBotStatus(f.botStatus),
+    ibgwStatus: mapIbGwStatus(f.ibGwStatus),
+    pnlToday: f.pnlToday ? `${f.pnlToday >= 0 ? '+' : ''}$${f.pnlToday.toFixed(2)}` : '$0.00',
+    pnlMtd: f.pnlMonth ? `${f.pnlMonth >= 0 ? '+' : ''}$${f.pnlMonth.toFixed(2)}` : '$0.00',
+    positions: f.positions || { count: 0, value: 0 },
+  }));
 
 
-  const columns: GridColDef<Follower>[] = [
+
+  const columns: GridColDef[] = [
     {
       field: 'id',
       headerName: 'ID',
       flex: 1,
       minWidth: 150,
-      renderCell: (params: GridRenderCellParams<any, Follower>) => (
+      renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton size="small" onClick={() => handleRowClick(params.row.id)} sx={{ mr: 1 }}>
             {expandedRow === params.row.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -187,9 +253,9 @@ const FollowersPage: React.FC = () => {
       headerName: 'Status',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, FollowerStatus>) => {
-        if (params.value === undefined) return null; // Handle undefined case
-        const chipProps = getStatusChipProps(params.value, theme);
+      renderCell: (params: GridRenderCellParams) => {
+        if (params.value === undefined) return null;
+        const chipProps = getStatusChipProps(params.value as FollowerStatus, theme);
         return <Chip {...chipProps} size="small" />;
       },
     },
@@ -198,10 +264,27 @@ const FollowersPage: React.FC = () => {
       headerName: 'Bot',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, BotStatus>) => {
-        if (params.value === undefined) return null; // Handle undefined case
-        const chipProps = getStatusChipProps(params.value, theme);
-        return <Chip {...chipProps} size="small" />;
+      renderCell: (params: GridRenderCellParams) => {
+        if (params.value === undefined) return null;
+        const chipProps = getStatusChipProps(params.value as BotStatus, theme);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip {...chipProps} size="small" />
+            {params.value === 'ERROR' && (
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRestartService('trading-bot');
+                  setRestartDialogOpen(true);
+                }}
+                sx={{ padding: 0.5 }}
+              >
+                <RestartIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        );
       },
     },
     {
@@ -209,10 +292,27 @@ const FollowersPage: React.FC = () => {
       headerName: 'IBGW',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, IBGWStatus>) => {
-        if (params.value === undefined) return null; // Handle undefined case
-        const chipProps = getStatusChipProps(params.value, theme);
-        return <Chip {...chipProps} size="small" />;
+      renderCell: (params: GridRenderCellParams) => {
+        if (params.value === undefined) return null;
+        const chipProps = getStatusChipProps(params.value as IBGWStatus, theme);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip {...chipProps} size="small" />
+            {params.value === 'ERROR' && (
+              <IconButton 
+                size="small" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRestartService('gateway');
+                  setRestartDialogOpen(true);
+                }}
+                sx={{ padding: 0.5 }}
+              >
+                <RestartIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        );
       },
     },
     {
@@ -220,24 +320,41 @@ const FollowersPage: React.FC = () => {
       headerName: 'Positions',
       flex: 1.2,
       minWidth: 150,
-      valueGetter: (value: Follower['positions'] | undefined) => value ? `${value.count} (${value.value})` : '',
-      renderCell: (params: GridRenderCellParams<any, Follower['positions']>) => (
+      valueGetter: (value: any) => value ? `${value.count} ($${value.value.toFixed(0)})` : '',
+      renderCell: (params: GridRenderCellParams) => (
         params.value ? (
           <Box>
             <Typography variant="body2" component="span" fontWeight="medium">{params.value.count}</Typography>
-            <Typography variant="caption" color="text.secondary" component="span" sx={{ml: 0.5}}>({params.value.value})</Typography>
+            <Typography variant="caption" color="text.secondary" component="span" sx={{ml: 0.5}}>($${params.value.value.toFixed(0)})</Typography>
           </Box>
         ) : null
       )
+    },
+    {
+      field: 'timeValue',
+      headerName: 'Time Value',
+      flex: 1,
+      minWidth: 120,
+      renderCell: (params: GridRenderCellParams) => (
+        <TimeValueBadge timeValue={params.value as number} />
+      ),
     },
     {
       field: 'pnlToday',
       headerName: 'P&L Today',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, string>) => (
+      renderCell: (params: GridRenderCellParams) => (
         params.value ? (
-          <Typography variant="body2" fontWeight="medium" sx={{ color: params.value.startsWith('-') ? theme.palette.trading.loss : theme.palette.trading.profit }}>
+          <Typography 
+            variant="body2" 
+            fontWeight="medium" 
+            sx={{ 
+              color: (params.value as string).startsWith('-') 
+                ? theme.palette.error.main 
+                : theme.palette.success.main 
+            }}
+          >
             {params.value}
           </Typography>
         ) : null
@@ -249,7 +366,7 @@ const FollowersPage: React.FC = () => {
       headerName: 'Actions',
       width: 100,
       cellClassName: 'actions',
-      getActions: ({ row }: { row: Follower }) => [
+      getActions: ({ row }: { row: any }) => [
         <GridActionsCellItem
           icon={<EditIcon />}
           label="Edit"
@@ -331,9 +448,31 @@ const FollowersPage: React.FC = () => {
         </Grid2>
       </Paper>
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Paper sx={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
+        {loading && (
+          <Box sx={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            zIndex: 1
+          }}>
+            <CircularProgress />
+          </Box>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {error}
+            <Button size="small" onClick={refresh} sx={{ ml: 2 }}>Retry</Button>
+          </Alert>
+        )}
         <DataGrid
-          rows={followers}
+          rows={displayFollowers}
           columns={columns}
           autoHeight
           pageSizeOptions={[5, 10, 25]}
@@ -353,23 +492,31 @@ const FollowersPage: React.FC = () => {
           }}
           sx={{
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: alpha(theme.palette.primary.light, 0.1),
+              backgroundColor: alpha(theme.palette.primary.main, 0.05),
             },
             '& .MuiDataGrid-row': {
-              // cursor: 'pointer', // Click handled by IconButton in ID cell
               '&:hover': {
                 backgroundColor: alpha(theme.palette.primary.main, 0.05)
               }
             }
           }}
-          // Removed isRowExpandable and renderDetailPanel, will use Collapse below
           getRowId={(row) => row.id}
         />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1, borderTop: 1, borderColor: 'divider' }}>
+          <Button 
+            startIcon={<RefreshIcon />} 
+            size="small" 
+            onClick={refresh}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        </Box>
       </Paper>
 
-      {expandedRow && followers.find(f => f.id === expandedRow) && (
+      {expandedRow && displayFollowers.find(f => f.id === expandedRow) && (
         <Collapse in={!!expandedRow} timeout="auto" unmountOnExit sx={{mt: 1}}>
-            <ExpandedFollowerDetail follower={followers.find(f => f.id === expandedRow)!} />
+            <ExpandedFollowerDetail follower={displayFollowers.find(f => f.id === expandedRow)!} />
         </Collapse>
       )}
       
@@ -423,13 +570,44 @@ const FollowersPage: React.FC = () => {
             {actionType === 'CLOSE_POSITIONS' && " This action cannot be undone."}
           </Typography>
           {actionType === 'CLOSE_POSITIONS' && (
-            <TextField margin="dense" label="PIN" type="password" fullWidth variant="outlined" sx={{mt:2}}/>
+            <TextField 
+              margin="dense" 
+              label="PIN" 
+              type="password" 
+              fullWidth 
+              variant="outlined" 
+              sx={{mt:2}}
+              value={pinValue}
+              onChange={(e) => setPinValue(e.target.value)}
+              error={!!actionError}
+              helperText={actionError}
+            />
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseConfirmDialog}>Cancel</Button>
-          <Button onClick={executeConfirmedAction} variant="contained" color={actionType === 'CLOSE_POSITIONS' ? "error" : "primary"}>
-            Confirm {actionType?.toLowerCase().replace('_', ' ')}
+          <Button onClick={handleCloseConfirmDialog} disabled={actionLoading}>Cancel</Button>
+          <Button 
+            onClick={executeConfirmedAction} 
+            variant="contained" 
+            color={actionType === 'CLOSE_POSITIONS' ? "error" : "primary"}
+            disabled={actionLoading}
+          >
+            {actionLoading ? <CircularProgress size={20} /> : `Confirm ${actionType?.toLowerCase().replace('_', ' ')}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={restartDialogOpen} onClose={() => setRestartDialogOpen(false)}>
+        <DialogTitle>Restart Service</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to restart the {restartService} service?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestartDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleServiceRestart} variant="contained" color="warning">
+            Restart
           </Button>
         </DialogActions>
       </Dialog>
@@ -440,7 +618,7 @@ const FollowersPage: React.FC = () => {
 
 export default FollowersPage;
 
-const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) => {
+const ExpandedFollowerDetail: React.FC<{ follower: any }> = ({ follower }) => {
   const theme = useTheme();
   const chartData = [
     { name: 'Jan', pnl: Math.random() * 2000 + 1000 }, { name: 'Feb', pnl: Math.random() * 2000 + 1000 },
@@ -454,9 +632,9 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
         <Grid2 size={{xs: 12, md: 4}}>
           <Typography variant="subtitle2" gutterBottom color="text.secondary">ACCOUNT DETAILS</Typography>
           <Paper variant="outlined" sx={{p:2}}>
-            <Typography variant="body2"><strong>Account ID:</strong> {follower.accountId}</Typography>
-            <Typography variant="body2"><strong>Created:</strong> {follower.created}</Typography>
-            <Typography variant="body2"><strong>Last Active:</strong> {follower.lastActive}</Typography>
+            <Typography variant="body2"><strong>Name:</strong> {follower.name || 'N/A'}</Typography>
+            <Typography variant="body2"><strong>Email:</strong> {follower.email || 'N/A'}</Typography>
+            <Typography variant="body2"><strong>Commission:</strong> {follower.commission_pct || 0}%</Typography>
           </Paper>
         </Grid2>
         <Grid2 size={{xs: 12, md: 4}}>
@@ -468,8 +646,8 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
             <Typography variant="body2"><strong>P&L MTD:</strong>
               <Typography component="span" sx={{ color: follower.pnlMtd.startsWith('-') ? theme.palette.trading.loss : theme.palette.trading.profit, fontWeight: 'medium' }}> {follower.pnlMtd}</Typography>
             </Typography>
-            <Typography variant="body2"><strong>P&L YTD:</strong>
-              <Typography component="span" sx={{ color: follower.pnlYtd.startsWith('-') ? theme.palette.trading.loss : theme.palette.trading.profit, fontWeight: 'medium' }}> {follower.pnlYtd}</Typography>
+            <Typography variant="body2"><strong>P&L Total:</strong>
+              <Typography component="span" sx={{ color: follower.pnlTotal < 0 ? theme.palette.error.main : theme.palette.success.main, fontWeight: 'medium' }}> ${follower.pnlTotal?.toFixed(2) || '0.00'}</Typography>
             </Typography>
             <Box sx={{ height: 100, mt: 1 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -482,14 +660,10 @@ const ExpandedFollowerDetail: React.FC<{ follower: Follower }> = ({ follower }) 
           </Paper>
         </Grid2>
         <Grid2 size={{xs: 12, md: 4}}>
-          <Typography variant="subtitle2" gutterBottom color="text.secondary">CURRENT POSITIONS ({follower.currentPositions.length})</Typography>
-          <Paper variant="outlined" sx={{p:2, maxHeight: 200, overflowY: 'auto'}}>
-            {follower.currentPositions.length > 0 ? follower.currentPositions.map(p => (
-              <Box key={p.symbol} sx={{display: 'flex', justifyContent: 'space-between', mb: 0.5}}>
-                <Typography variant="caption"><strong>{p.symbol}</strong> ({p.shares})</Typography>
-                <Typography variant="caption">{p.price}</Typography>
-              </Box>
-            )) : <Typography variant="caption">No active positions</Typography>}
+          <Typography variant="subtitle2" gutterBottom color="text.secondary">POSITIONS ({follower.positions?.count || 0})</Typography>
+          <Paper variant="outlined" sx={{p:2}}>
+            <Typography variant="body2"><strong>Count:</strong> {follower.positions?.count || 0}</Typography>
+            <Typography variant="body2"><strong>Value:</strong> ${follower.positions?.value?.toFixed(2) || '0.00'}</Typography>
           </Paper>
         </Grid2>
       </Grid2>

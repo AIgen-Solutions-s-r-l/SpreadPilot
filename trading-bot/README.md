@@ -168,6 +168,12 @@ ADMIN_EMAIL=admin@example.com
 
 # 🔴 Redis
 REDIS_URL=redis://localhost:6379
+
+# 🔐 HashiCorp Vault (for secrets)
+VAULT_ENABLED=true
+VAULT_ADDR=http://vault:8200
+VAULT_TOKEN=your_vault_token
+VAULT_MOUNT_POINT=secret
 ```
 
 ---
