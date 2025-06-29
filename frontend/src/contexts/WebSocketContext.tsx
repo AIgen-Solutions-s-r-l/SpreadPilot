@@ -1,11 +1,12 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext'; // To potentially use auth token for connection
+import { WebSocketMessage } from '../types/websocket';
 
 // Define the shape of the context data
 interface WebSocketContextType {
   isConnected: boolean;
-  lastMessage: any | null; // Store the last received message
-  sendMessage: (message: any) => void; // Function to send messages
+  lastMessage: WebSocketMessage | null; // Store the last received message
+  sendMessage: (message: WebSocketMessage | string) => void; // Function to send messages
 }
 
 // Create the context
@@ -20,7 +21,7 @@ interface WebSocketProviderProps {
 // Create the provider component
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, url }) => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [lastMessage, setLastMessage] = useState<any | null>(null);
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const { token } = useAuth(); // Get token if needed for authentication
 
@@ -79,7 +80,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     };
   }, [connectWebSocket]); // Dependency array includes the memoized connect function
 
-  const sendMessage = useCallback((message: any) => {
+  const sendMessage = useCallback((message: WebSocketMessage | string) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       try {
         const messageString = JSON.stringify(message);

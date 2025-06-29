@@ -1,14 +1,15 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { User, LoginCredentials } from '../types/auth';
 // Placeholder for API service - will be created later
 // import * as authService from '../services/authService';
 
 // Define the shape of the context data
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { username: string; email: string } | null; // Proper User type
+  user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (/* credentials */) => Promise<void>; // Define credentials type later
+  login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
 }
 
@@ -23,7 +24,7 @@ interface AuthProviderProps {
 // Create the provider component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<any>(null); // Replace 'any'
+  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading initially
 
@@ -40,7 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false); // Finished initial check
   }, []);
 
-  const login = async (/* credentials */) => {
+  const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
       // TODO: Call actual authService.login(credentials)

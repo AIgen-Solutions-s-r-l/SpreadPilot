@@ -6,6 +6,7 @@ import {
   Warning as RiskIcon,
   Error as CriticalIcon,
 } from '@mui/icons-material';
+import { getTimeValueStatus } from '../../utils/timeValue';
 
 interface TimeValueBadgeProps {
   timeValue?: number;
@@ -19,14 +20,7 @@ export const TimeValueBadge: React.FC<TimeValueBadgeProps> = ({ timeValue, size 
     return null;
   }
 
-  // Determine status based on time value
-  const getStatus = (tv: number) => {
-    if (tv > 1.0) return 'safe';
-    if (tv > 0.1) return 'risk';
-    return 'critical';
-  };
-
-  const status = getStatus(timeValue);
+  const status = getTimeValueStatus(timeValue) || 'critical';
 
   const statusConfig = {
     safe: {
@@ -71,12 +65,4 @@ export const TimeValueBadge: React.FC<TimeValueBadgeProps> = ({ timeValue, size 
       />
     </Tooltip>
   );
-};
-
-// Export status calculation for use elsewhere
-export const getTimeValueStatus = (timeValue?: number): 'safe' | 'risk' | 'critical' | null => {
-  if (timeValue === undefined || timeValue === null) return null;
-  if (timeValue > 1.0) return 'safe';
-  if (timeValue > 0.1) return 'risk';
-  return 'critical';
 };

@@ -62,7 +62,7 @@ const ServiceHealthWidget: React.FC<ServiceHealthWidgetProps> = ({
         await restartService(selectedService.name);
         setRestartDialogOpen(false);
         setSelectedService(null);
-      } catch (_error) {
+      } catch {
         // Error is handled in the hook
       }
     }

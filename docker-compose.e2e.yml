@@ -147,6 +147,30 @@ services:
     networks:
       - e2e-test
 
+  # E2E Test Runner
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: spreadpilot-e2e-tests
+    environment:
+      ADMIN_API_URL: http://admin-api-test:8000
+      MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
+      PYTEST_ARGS: "-v --tb=short tests/e2e/"
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+      admin-api-test:
+        condition: service_healthy
+      trading-bot-test:
+        condition: service_started
+      report-worker-test:
+        condition: service_started
+      alert-router-test:
+        condition: service_started
+    networks:
+      - e2e-test
+
 networks:
   e2e-test:
     driver: bridge
