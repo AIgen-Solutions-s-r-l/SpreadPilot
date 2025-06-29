@@ -20,6 +20,9 @@ preload_logger = logging.getLogger(__name__ + ".preload")
 SECRETS_TO_FETCH = [
     "REPORT_SENDER_EMAIL",
     "ADMIN_EMAIL",
+    # MinIO credentials
+    "MINIO_ACCESS_KEY",
+    "MINIO_SECRET_KEY",
     # Add SMTP credentials here if needed in the future
 ]
 
@@ -73,7 +76,7 @@ elif os.getenv("TESTING"):
 
 # --- Regular Application Setup ---
 
-from .service.report_service import ReportService
+from .service.report_service_enhanced import EnhancedReportService
 from . import config
 
 # --- Initialization ---
@@ -92,7 +95,7 @@ if config.GCP_PROJECT_ID:
         logger.warning(f"Failed to setup Cloud Logging: {e}", exc_info=True)
 
 app = Flask(__name__)
-report_service = ReportService()
+report_service = EnhancedReportService()
 
 # --- Utility ---
 
