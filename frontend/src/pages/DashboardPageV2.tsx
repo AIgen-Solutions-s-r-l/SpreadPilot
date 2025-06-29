@@ -14,9 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import StatusBanner from '../components/dashboard/StatusBanner';
 import MetricCard from '../components/dashboard/MetricCard';
 import PerformanceChart from '../components/dashboard/PerformanceChart';
-import ActiveFollowersList from '../components/dashboard/ActiveFollowersList';
+import ActiveFollowersListV2 from '../components/dashboard/ActiveFollowersListV2';
 import TradingActivityTimeline from '../components/dashboard/TradingActivityTimeline';
-import RecentAlerts from '../components/dashboard/RecentAlerts';
+import RecentAlertsV2 from '../components/dashboard/RecentAlertsV2';
 
 // Hooks
 import { useDashboard } from '../hooks/useDashboard';
@@ -134,7 +134,11 @@ const DashboardPageV2: React.FC = () => {
             <PerformanceChart />
           </Box>
           <Box>
-            <ActiveFollowersList onViewAll={handleViewAllFollowers} />
+            <ActiveFollowersListV2 
+              followers={activeFollowers} 
+              loading={loading}
+              onViewAll={handleViewAllFollowers} 
+            />
           </Box>
         </Box>
         
@@ -143,7 +147,11 @@ const DashboardPageV2: React.FC = () => {
             <TradingActivityTimeline onViewAll={handleViewAllActivity} />
           </Box>
           <Box>
-            <RecentAlerts onViewAll={handleViewAllAlerts} />
+            <RecentAlertsV2 
+              logs={recentLogs} 
+              loading={loading}
+              onViewAll={handleViewAllAlerts} 
+            />
           </Box>
         </Box>
       </Container>

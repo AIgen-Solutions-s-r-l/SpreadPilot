@@ -5,6 +5,12 @@ export const BotStatusSchema = z.enum(['RUNNING', 'STOPPED', 'ERROR', 'STARTING'
 export const IbGwStatusSchema = z.enum(['CONNECTED', 'DISCONNECTED', 'CONNECTING', 'ERROR']);
 export const AssignmentStateSchema = z.enum(['ASSIGNED', 'UNASSIGNED', 'PENDING']);
 
+// Positions schema
+export const PositionsSchema = z.object({
+  count: z.number(),
+  value: z.number(),
+});
+
 // Follower schema
 export const FollowerSchema = z.object({
   id: z.string(),
@@ -21,6 +27,7 @@ export const FollowerSchema = z.object({
   iban: z.string().optional(),
   commission_pct: z.number().optional(),
   timeValue: z.number().optional(), // For TV badge colors
+  positions: PositionsSchema.optional(), // Optional positions data
 });
 
 // Array of followers
