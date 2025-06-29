@@ -31,7 +31,7 @@ class VaultClient:
             verify_ssl: Whether to verify SSL certificates
         """
         self.vault_url = vault_url or os.getenv("VAULT_ADDR", "http://vault:8200")
-        self.vault_token = vault_token or os.getenv("VAULT_TOKEN", "dev-only-token")
+        self.vault_token = vault_token or os.getenv("VAULT_TOKEN")
         self.mount_point = mount_point
         self.verify_ssl = verify_ssl
         

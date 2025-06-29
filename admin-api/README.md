@@ -109,6 +109,14 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 |--------|----------|-------------|
 | 🚨 POST | `/api/v1/manual-close` | Manually close positions (PIN: 0312) |
 
+### 🏥 **Health Monitoring**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 🟢 GET | `/api/v1/health` | Comprehensive health status (GREEN/YELLOW/RED) |
+| 🔄 POST | `/api/v1/service/{name}/restart` | Restart a specific service |
+| 📋 GET | `/api/v1/services` | List all monitored services |
+
 ### 🔌 **Real-time Data**
 
 | Method | Endpoint | Description |
@@ -210,6 +218,48 @@ curl -X POST "http://localhost:8002/api/v1/manual-close" \
     "position_ids": ["pos1", "pos2"],
     "reason": "Risk management"
   }'
+```
+
+### 🏥 Health Monitoring
+
+```bash
+# Get comprehensive health status
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/health"
+
+# Response
+{
+  "overall_status": "GREEN",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "database": {
+    "status": "healthy",
+    "type": "mongodb"
+  },
+  "system": {
+    "cpu_percent": 45.5,
+    "memory_percent": 60.2,
+    "disk_percent": 70.8,
+    "status": "healthy"
+  },
+  "services": [
+    {
+      "name": "trading-bot",
+      "status": "healthy",
+      "response_time_ms": 150,
+      "critical": true
+    },
+    {
+      "name": "watchdog",
+      "status": "healthy",
+      "response_time_ms": 100,
+      "critical": false
+    }
+  ]
+}
+
+# Restart a service
+curl -X POST "http://localhost:8002/api/v1/service/trading-bot/restart" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### 🔌 WebSocket Connection

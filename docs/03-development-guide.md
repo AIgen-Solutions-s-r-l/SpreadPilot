@@ -307,6 +307,27 @@ SignalProcessor = trading_bot_service.SignalProcessor
 route_alert = alert_router_service.route_alert
 ```
 
+### 🔗 Integration Tests
+
+```bash
+# Run all integration tests
+pytest tests/integration/ -v
+
+# Run specific integration test files
+pytest tests/integration/test_vault_minio_flows.py -v
+pytest tests/integration/test_follower_vault_integration.py -v
+pytest tests/integration/test_report_minio_integration.py -v
+
+# Run MongoDB-specific tests
+pytest tests/integration/ -k "mongo" -v
+
+# Run Vault-specific tests  
+pytest tests/integration/ -k "vault" -v
+
+# Run MinIO-specific tests
+pytest tests/integration/ -k "minio" -v
+```
+
 ### 🔄 End-to-End Tests
 
 ```bash
@@ -746,6 +767,71 @@ def test_security_headers():
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-Frame-Options"] == "DENY"
 ```
+
+## 🚦 CI/CD Integration
+
+### 🔄 Continuous Integration
+
+Every code change triggers automated checks through GitHub Actions:
+
+#### 🎨 **Code Quality**
+```bash
+# Run locally before pushing
+ruff check .                    # Linting
+black --check .                  # Formatting
+mypy . --ignore-missing-imports  # Type checking
+```
+
+#### 🧪 **Automated Testing**
+```bash
+# Unit tests
+pytest tests/unit/ -v
+
+# Integration tests
+pytest tests/integration/ -v
+
+# E2E tests
+docker-compose -f docker-compose.e2e.yml up --exit-code-from e2e-tests
+```
+
+#### 🔒 **Security Scanning**
+```bash
+# Scan for vulnerabilities
+trivy fs . --severity HIGH,CRITICAL
+
+# Scan Docker images
+trivy image spreadpilot/trading-bot:latest
+```
+
+### 📋 **Pre-Push Checklist**
+
+Before pushing code:
+
+1. **Format Code**: `make format`
+2. **Run Linters**: `make lint`
+3. **Run Tests**: `make test`
+4. **Update Docs**: Update relevant documentation
+5. **Commit Message**: Use conventional commits format
+
+### 🏷️ **Branch Protection**
+
+Main branches are protected with:
+
+- ✅ Required status checks (CI must pass)
+- ✅ Require branches to be up to date
+- ✅ Require code owner reviews
+- ✅ Dismiss stale reviews on new commits
+- ✅ No force pushes allowed
+
+### 🔄 **Pull Request Workflow**
+
+1. **Create Feature Branch**: `git checkout -b feature/your-feature`
+2. **Make Changes**: Implement feature with tests
+3. **Push Branch**: `git push origin feature/your-feature`
+4. **Open PR**: Use PR template
+5. **CI Runs**: Automated checks execute
+6. **Code Review**: Reviewers check code
+7. **Merge**: Squash and merge when approved
 
 ### 📋 Security Checklist for PRs
 

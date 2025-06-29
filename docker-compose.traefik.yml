@@ -25,7 +25,7 @@ services:
       # Let's Encrypt configuration (optional)
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       # Logging
       - "--log.level=INFO"
@@ -47,7 +47,7 @@ services:
       - "traefik.http.routers.traefik.tls=true"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.middlewares=auth"
-      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH:-admin:$$2y$$10$$8fmHMC0Y0n3Y3ZvPxof6e.CQB9XxejqYwV7DlRcUoKSUqzM0MjEKm}"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH}"
     restart: unless-stopped
 
   # Admin API with Traefik labels

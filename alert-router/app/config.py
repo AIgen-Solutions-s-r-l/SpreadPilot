@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     """Application configuration settings."""
 
     # General Settings
-    GCP_PROJECT_ID: str = Field("spreadpilot-test", env="GCP_PROJECT_ID")
-    DASHBOARD_BASE_URL: str = Field("http://localhost:3000", env="DASHBOARD_BASE_URL")  # Default for local dev
+    GCP_PROJECT_ID: str = Field(..., env="GCP_PROJECT_ID")
+    DASHBOARD_BASE_URL: str = Field(..., env="DASHBOARD_BASE_URL")
 
     # Telegram Settings
     TELEGRAM_BOT_TOKEN: Optional[str] = Field(None, env="TELEGRAM_BOT_TOKEN")
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     MONGO_DB_NAME_SECRETS: Optional[str] = Field(None, env="MONGO_DB_NAME_SECRETS")
     
     # Redis Settings
-    REDIS_URL: str = Field("redis://localhost:6379", env="REDIS_URL")
+    REDIS_URL: str = Field(..., env="REDIS_URL")
 
     @validator("TELEGRAM_ADMIN_IDS", "EMAIL_ADMIN_RECIPIENTS", pre=True)
     def split_string(cls, v):

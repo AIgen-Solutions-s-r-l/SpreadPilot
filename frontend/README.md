@@ -13,6 +13,8 @@ This is the web-based admin dashboard for SpreadPilot, providing real-time monit
 - **Log Console**: Live streaming logs with filtering and search capabilities
 - **Trading Activity**: Monitor trades and positions across all followers
 - **Manual Commands**: Execute manual operations with PIN authentication
+- **Service Health Monitoring**: RED/YELLOW/GREEN status indicators with system metrics
+- **Service Management**: Restart unhealthy services directly from dashboard
 
 ## Tech Stack
 
@@ -66,6 +68,7 @@ The frontend integrates with the admin-api backend service:
 - `useLogs`: Handles log streaming and filtering
 - `useDashboard`: Aggregates dashboard metrics
 - `useAuth`: Authentication state management
+- `useServiceHealth`: Polls health endpoint with configurable intervals
 
 ### Schema Validation
 All API responses are validated using Zod schemas to ensure type safety:
@@ -85,6 +88,7 @@ All API responses are validated using Zod schemas to ensure type safety:
 - `TimeValueBadge`: Visual indicator for time value status
 - `ActiveFollowersListV2`: Dashboard follower summary
 - `RecentAlertsV2`: System alerts display
+- `ServiceHealthWidget`: Comprehensive health monitoring with restart actions
 
 ## Authentication
 

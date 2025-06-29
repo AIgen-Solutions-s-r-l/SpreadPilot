@@ -27,6 +27,8 @@ SpreadPilot is a modern microservices-based trading platform designed for scalab
 - 🎛️ Real-time admin dashboard with live logs and system status
 - 🔔 Flexible alerting via Telegram and email
 - 📧 Automated weekly commission report emails with PDF attachments
+- 🏥 Service health monitoring with RED/YELLOW/GREEN status indicators
+- 🔄 One-click service restart capability from dashboard
 
 ### 🏗️ **Architecture**
 - 🐳 Containerized microservices with Docker
@@ -227,6 +229,27 @@ pytest -m e2e tests/e2e/
 make test-coverage
 ```
 
+#### 🔗 Integration Testing
+
+SpreadPilot includes comprehensive integration tests for all major components:
+
+```bash
+# Run all integration tests
+pytest tests/integration/ -v
+
+# Run specific integration test suites
+pytest tests/integration/test_vault_minio_flows.py -v
+pytest tests/integration/test_follower_vault_integration.py -v
+pytest tests/integration/test_report_minio_integration.py -v
+```
+
+The integration test suite validates:
+- ✅ **MongoDB Operations**: Follower CRUD, position updates, trade records
+- ✅ **Vault Integration**: Secret storage/retrieval, credential rotation
+- ✅ **MinIO/S3 Storage**: Report upload/download, pre-signed URLs
+- ✅ **Service Interactions**: Cross-service communication flows
+- ✅ **Error Handling**: Graceful degradation when services unavailable
+
 #### 🌐 End-to-End Testing
 
 SpreadPilot includes comprehensive E2E tests that validate the complete workflow:
@@ -274,6 +297,35 @@ docker-compose restart trading-bot
 # 🧹 Clean up
 docker-compose down
 ```
+
+### 🚦 CI/CD Pipeline
+
+SpreadPilot includes a comprehensive CI/CD pipeline that runs on every pull request:
+
+#### 🔍 Automated Checks
+
+- **🎨 Code Quality**: Ruff linting and Black formatting
+- **🧪 Testing**: Unit tests with pytest and coverage reporting
+- **🌐 E2E Tests**: Full integration testing with docker-compose
+- **🔒 Security Scans**: Trivy vulnerability scanning for dependencies and containers
+- **📦 Build Verification**: Frontend and backend build validation
+
+#### 🛡️ Security Features
+
+- **Container Scanning**: All Docker images are scanned for vulnerabilities
+- **Dependency Checks**: Regular security updates via Dependabot
+- **SARIF Reports**: Security findings integrated with GitHub Security tab
+- **License Compliance**: Automated license compatibility checks
+
+#### 📊 Quality Gates
+
+All pull requests must pass:
+- ✅ Python linting (Ruff) and formatting (Black)
+- ✅ Unit tests with >80% coverage
+- ✅ Integration and E2E tests
+- ✅ Security scans (no HIGH/CRITICAL vulnerabilities)
+- ✅ Conventional commit message format
+- ✅ Documentation updates when needed
 
 ---
 

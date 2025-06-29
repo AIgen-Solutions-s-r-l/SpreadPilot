@@ -11,13 +11,13 @@ class Settings(BaseModel):
     cors_origins: str = "*"
     
     # MongoDB configuration
-    mongo_uri: str = os.getenv("MONGO_URI", "mongodb://admin:password@mongodb:27017")
+    mongo_uri: str = os.getenv("MONGO_URI", "")
     mongo_db_name: str = os.getenv("MONGO_DB_NAME", "spreadpilot_admin")
     
     # Authentication configuration
-    admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
+    admin_username: str = os.getenv("ADMIN_USERNAME", "")
     admin_password_hash: str = os.getenv("ADMIN_PASSWORD_HASH", "")
-    jwt_secret: str = os.getenv("JWT_SECRET", "testsecret")
+    jwt_secret: str = os.getenv("JWT_SECRET", "")
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 60 * 24  # 24 hours
     

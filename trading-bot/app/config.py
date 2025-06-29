@@ -137,7 +137,7 @@ class Settings(BaseSettings):
         description="HashiCorp Vault server URL",
     )
     vault_token: str = Field(
-        default="dev-only-token",
+        ...,
         env="VAULT_TOKEN",
         description="HashiCorp Vault authentication token",
     )

@@ -1,0 +1,28 @@
+# Code Owners for SpreadPilot
+# These owners will be requested for review when someone opens a pull request
+
+# Default owners for everything in the repo
+* @blackms
+
+# Trading bot - critical component
+/trading-bot/ @blackms
+/spreadpilot-core/spreadpilot_core/ibkr/ @blackms
+
+# Security-sensitive files
+/.github/workflows/ @blackms
+/deploy/ @blackms
+**/config.py @blackms
+**/*secret* @blackms
+**/*vault* @blackms
+
+# Documentation
+/docs/ @blackms
+*.md @blackms
+
+# Frontend
+/frontend/ @blackms
+
+# Infrastructure
+/infra/ @blackms
+docker-compose*.yml @blackms
+**/Dockerfile @blackms

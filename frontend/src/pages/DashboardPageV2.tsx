@@ -17,6 +17,7 @@ import PerformanceChart from '../components/dashboard/PerformanceChart';
 import ActiveFollowersListV2 from '../components/dashboard/ActiveFollowersListV2';
 import TradingActivityTimeline from '../components/dashboard/TradingActivityTimeline';
 import RecentAlertsV2 from '../components/dashboard/RecentAlertsV2';
+import ServiceHealthWidget from '../components/dashboard/ServiceHealthWidget';
 
 // Hooks
 import { useDashboard } from '../hooks/useDashboard';
@@ -142,7 +143,7 @@ const DashboardPageV2: React.FC = () => {
           </Box>
         </Box>
         
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, mb: 3 }}>
           <Box>
             <TradingActivityTimeline onViewAll={handleViewAllActivity} />
           </Box>
@@ -152,6 +153,12 @@ const DashboardPageV2: React.FC = () => {
               loading={loading}
               onViewAll={handleViewAllAlerts} 
             />
+          </Box>
+        </Box>
+        
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr' }, gap: 3 }}>
+          <Box>
+            <ServiceHealthWidget />
           </Box>
         </Box>
       </Container>

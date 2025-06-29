@@ -341,8 +341,29 @@ async def test_position_update_after_trade(
     # Reset find_one mock state if needed for update path test
     # await position_manager.update_position(test_follower.id, trade2)
 
-    # Verify position was updated with both trades (Logic needs update for MongoDB)
-    # TODO: Add MongoDB verification here for the update scenario
+    # Verify position was updated with both trades in MongoDB
+    # Reset mocks for second trade
+    mock_positions_collection.update_one.reset_mock()
+    
+    # Configure find_one to return the position after first trade
+    mock_positions_collection.find_one.return_value = {
+        "_id": uuid.uuid4().hex,
+        "follower_id": test_follower.id,
+        "date": trading_date,
+        "long_qty": 2,
+        "short_qty": 0,
+        "assignment_state": AssignmentState.NONE.value
+    }
+    
+    await position_manager.update_position(test_follower.id, trade2)
+    
+    # Verify position was updated with short trade
+    mock_positions_collection.update_one.assert_called_once()
+    call_args, call_kwargs = mock_positions_collection.update_one.call_args
+    assert call_args[0] == {"follower_id": test_follower.id, "date": trading_date}
+    assert "$set" in call_args[1]
+    assert call_args[1]["$set"]["short_qty"] == 1  # Now has 1 short
+    assert call_args[1]["$set"]["long_qty"] == 2  # Still has 2 long
 
 
 @pytest.mark.asyncio

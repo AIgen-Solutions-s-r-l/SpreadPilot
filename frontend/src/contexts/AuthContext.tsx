@@ -45,13 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // TODO: Call actual authService.login(credentials)
       // const { token: newToken, user: loggedInUser } = await authService.login(credentials);
-      const newToken = 'fake-jwt-token'; // Placeholder
-      const loggedInUser = { username: 'admin' }; // Placeholder
-
-      localStorage.setItem('authToken', newToken);
-      setToken(newToken);
-      setUser(loggedInUser);
-      setIsAuthenticated(true);
+      throw new Error('Authentication service not implemented');
     } catch (error) {
       console.error('Login failed:', error);
       // Handle login error (e.g., show message to user)
