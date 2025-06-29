@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 from ib_insync import BarData, Stock
+from trading_bot.app.service.original_strategy_handler import OriginalStrategyHandler
 
 from spreadpilot_core.ibkr.client import IBKRClient
-from trading_bot.app.service.original_strategy_handler import OriginalStrategyHandler
 
 # Mock data
 MOCK_CONFIG = {

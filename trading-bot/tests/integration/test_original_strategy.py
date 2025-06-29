@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from ib_insync import BarData, Stock
-
-from spreadpilot_core.ibkr.client import IBKRClient
 from trading_bot.app.config import ORIGINAL_EMA_STRATEGY, Settings
 from trading_bot.app.service.base import TradingService
 from trading_bot.app.sheets import GoogleSheetsClient
+
+from spreadpilot_core.ibkr.client import IBKRClient
 
 # Mock data
 MOCK_STOCK_CONTRACT = Stock(symbol="SOXS", exchange="SMART", currency="USD", conId=123)

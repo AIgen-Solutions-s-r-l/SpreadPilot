@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
-
 from watchdog import MAX_CONSECUTIVE_FAILURES, SERVICES, ServiceWatchdog
 
 

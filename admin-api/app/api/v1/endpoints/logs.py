@@ -1,9 +1,9 @@
 from datetime import datetime
 
+from app.api.v1.endpoints.auth import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.v1.endpoints.auth import get_current_user
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 

@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from trading_bot.app.config import VERTICAL_SPREADS_STRATEGY, Settings
 from trading_bot.app.service.base import TradingService
 from trading_bot.app.sheets import GoogleSheetsClient

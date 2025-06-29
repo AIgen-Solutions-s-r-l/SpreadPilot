@@ -82,10 +82,10 @@ class ServiceWatchdog:
     async def check_service_health(self, service_name: str) -> bool:
         """
         Check the health of a service by calling its health endpoint.
-        
+
         Args:
             service_name: Name of the service to check
-            
+
         Returns:
             True if service is healthy, False otherwise
         """
@@ -115,10 +115,10 @@ class ServiceWatchdog:
     def restart_service(self, service_name: str) -> bool:
         """
         Restart a Docker container using subprocess.
-        
+
         Args:
             service_name: Name of the service to restart
-            
+
         Returns:
             True if restart was successful, False otherwise
         """
@@ -137,9 +137,7 @@ class ServiceWatchdog:
                 logger.info(f"Successfully restarted {container_name}")
                 return True
             else:
-                logger.error(
-                    f"Failed to restart {container_name}: {result.stderr}"
-                )
+                logger.error(f"Failed to restart {container_name}: {result.stderr}")
                 return False
 
         except subprocess.TimeoutExpired:
@@ -152,7 +150,7 @@ class ServiceWatchdog:
     async def publish_alert(self, service_name: str, action: str, success: bool):
         """
         Publish an alert about service status.
-        
+
         Args:
             service_name: Name of the service
             action: Action taken (e.g., "restart")
@@ -198,7 +196,7 @@ class ServiceWatchdog:
     async def monitor_service(self, service_name: str):
         """
         Monitor a single service and take action if unhealthy.
-        
+
         Args:
             service_name: Name of the service to monitor
         """
@@ -207,7 +205,9 @@ class ServiceWatchdog:
         if is_healthy:
             # Reset failure count on successful health check
             if self.failure_counts[service_name] > 0:
-                logger.info(f"{service_name} recovered after {self.failure_counts[service_name]} failures")
+                logger.info(
+                    f"{service_name} recovered after {self.failure_counts[service_name]} failures"
+                )
                 await self.publish_alert(service_name, "recovery", True)
             self.failure_counts[service_name] = 0
         else:
@@ -240,14 +240,15 @@ class ServiceWatchdog:
         logger.info("Watchdog service starting...")
         logger.info(f"Monitoring services: {', '.join(SERVICES.keys())}")
         logger.info(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
-        logger.info(f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}")
+        logger.info(
+            f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}"
+        )
 
         while True:
             try:
                 # Check all services concurrently
                 tasks = [
-                    self.monitor_service(service_name)
-                    for service_name in SERVICES
+                    self.monitor_service(service_name) for service_name in SERVICES
                 ]
                 await asyncio.gather(*tasks)
 

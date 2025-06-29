@@ -1,5 +1,3 @@
-from fastapi import APIRouter
-
 from app.api.v1.endpoints import (
     auth,
     dashboard,
@@ -10,6 +8,7 @@ from app.api.v1.endpoints import (
     pnl,
     websocket,
 )
+from fastapi import APIRouter
 
 # Create the main API router
 api_router = APIRouter()

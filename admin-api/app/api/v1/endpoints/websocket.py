@@ -1,8 +1,8 @@
 import json
 
+from app.core.config import get_settings
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.core.config import get_settings
 from spreadpilot_core.logging.logger import get_logger
 
 router = APIRouter()

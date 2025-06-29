@@ -65,10 +65,10 @@ class ContainerWatchdog:
     async def check_container_health(self, container) -> bool:
         """
         Check the health of a container by calling its /health endpoint.
-        
+
         Args:
             container: Docker container object
-            
+
         Returns:
             True if container is healthy, False otherwise
         """
@@ -117,10 +117,10 @@ class ContainerWatchdog:
     def restart_container(self, container) -> bool:
         """
         Restart a Docker container.
-        
+
         Args:
             container: Docker container object
-            
+
         Returns:
             True if restart was successful, False otherwise
         """
@@ -136,25 +136,35 @@ class ContainerWatchdog:
             logger.error(f"Error restarting {container_name}: {e}")
             return False
 
-    async def publish_critical_alert(self, container_name: str, action: str, success: bool):
+    async def publish_critical_alert(
+        self, container_name: str, action: str, success: bool
+    ):
         """
         Publish a critical alert to Redis stream.
-        
+
         Args:
             container_name: Name of the container
             action: Action taken (e.g., "restart")
             success: Whether the action was successful
         """
         alert_event = AlertEvent(
-            event_type=AlertType.COMPONENT_DOWN if not success else AlertType.COMPONENT_RECOVERED,
+            event_type=(
+                AlertType.COMPONENT_DOWN
+                if not success
+                else AlertType.COMPONENT_RECOVERED
+            ),
             message=f"Container {container_name} {action} {'succeeded' if success else 'failed'}",
             params={
                 "container_name": container_name,
                 "action": action,
                 "success": success,
                 "consecutive_failures": self.failure_counts.get(container_name, 0),
-                "severity": AlertSeverity.CRITICAL.value if not success else AlertSeverity.INFO.value
-            }
+                "severity": (
+                    AlertSeverity.CRITICAL.value
+                    if not success
+                    else AlertSeverity.INFO.value
+                ),
+            },
         )
 
         try:
@@ -170,7 +180,7 @@ class ContainerWatchdog:
     async def monitor_container(self, container):
         """
         Monitor a single container and take action if unhealthy.
-        
+
         Args:
             container: Docker container object
         """
@@ -185,7 +195,9 @@ class ContainerWatchdog:
         if is_healthy:
             # Reset failure count on successful health check
             if self.failure_counts[container_name] > 0:
-                logger.info(f"{container_name} recovered after {self.failure_counts[container_name]} failures")
+                logger.info(
+                    f"{container_name} recovered after {self.failure_counts[container_name]} failures"
+                )
                 await self.publish_critical_alert(container_name, "recovery", True)
             self.failure_counts[container_name] = 0
         else:
@@ -207,7 +219,9 @@ class ContainerWatchdog:
                 restart_success = self.restart_container(container)
 
                 # Publish critical alert about the restart attempt
-                await self.publish_critical_alert(container_name, "restart", restart_success)
+                await self.publish_critical_alert(
+                    container_name, "restart", restart_success
+                )
 
                 # Reset failure count after restart attempt
                 if restart_success:
@@ -226,7 +240,9 @@ class ContainerWatchdog:
         """Main monitoring loop"""
         logger.info("Container watchdog service starting...")
         logger.info(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
-        logger.info(f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}")
+        logger.info(
+            f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}"
+        )
         logger.info("Monitoring all containers labeled 'spreadpilot'")
 
         while True:
@@ -238,7 +254,9 @@ class ContainerWatchdog:
                 current_names = {c.name for c in containers}
                 new_containers = current_names - self.monitored_containers
                 if new_containers:
-                    logger.info(f"Discovered new containers: {', '.join(new_containers)}")
+                    logger.info(
+                        f"Discovered new containers: {', '.join(new_containers)}"
+                    )
                 self.monitored_containers = current_names
 
                 if not containers:
@@ -246,8 +264,7 @@ class ContainerWatchdog:
                 else:
                     # Check all containers concurrently
                     tasks = [
-                        self.monitor_container(container)
-                        for container in containers
+                        self.monitor_container(container) for container in containers
                     ]
                     await asyncio.gather(*tasks)
 

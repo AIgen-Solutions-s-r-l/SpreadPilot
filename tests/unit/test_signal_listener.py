@@ -9,7 +9,14 @@ import pytz
 from freezegun import freeze_time
 
 from spreadpilot_core.models import Signal
-from trading_bot.app.signal_listener import SignalListener
+import sys
+from pathlib import Path
+
+# Add trading-bot to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / "trading-bot"))
+
+from app.signal_listener import SignalListener
 
 
 class TestSignalListener:

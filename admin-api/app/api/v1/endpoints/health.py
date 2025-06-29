@@ -4,11 +4,11 @@ from typing import Any
 
 import httpx
 import psutil
+from app.api.v1.endpoints.auth import get_current_user
+from app.db.mongodb import get_database
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from app.core.security import get_current_user
-from app.db.mongodb import get_database
 from spreadpilot_core.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -163,7 +163,7 @@ async def restart_service(
             detail=f"Service '{service_name}' not found",
         )
 
-    service_config = SERVICES[service_name]
+    # service_config = SERVICES[service_name]  # Not used in simulated restart
 
     try:
         # In production, this would execute the restart command
