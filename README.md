@@ -277,6 +277,35 @@ docker-compose restart trading-bot
 docker-compose down
 ```
 
+### 🚦 CI/CD Pipeline
+
+SpreadPilot includes a comprehensive CI/CD pipeline that runs on every pull request:
+
+#### 🔍 Automated Checks
+
+- **🎨 Code Quality**: Ruff linting and Black formatting
+- **🧪 Testing**: Unit tests with pytest and coverage reporting
+- **🌐 E2E Tests**: Full integration testing with docker-compose
+- **🔒 Security Scans**: Trivy vulnerability scanning for dependencies and containers
+- **📦 Build Verification**: Frontend and backend build validation
+
+#### 🛡️ Security Features
+
+- **Container Scanning**: All Docker images are scanned for vulnerabilities
+- **Dependency Checks**: Regular security updates via Dependabot
+- **SARIF Reports**: Security findings integrated with GitHub Security tab
+- **License Compliance**: Automated license compatibility checks
+
+#### 📊 Quality Gates
+
+All pull requests must pass:
+- ✅ Python linting (Ruff) and formatting (Black)
+- ✅ Unit tests with >80% coverage
+- ✅ Integration and E2E tests
+- ✅ Security scans (no HIGH/CRITICAL vulnerabilities)
+- ✅ Conventional commit message format
+- ✅ Documentation updates when needed
+
 ---
 
 ## 🌐 API Documentation

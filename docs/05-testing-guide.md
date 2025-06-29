@@ -497,46 +497,147 @@ directory = htmlcov
 
 ## 🚀 CI/CD Integration
 
-### 🔄 **GitHub Actions**
+SpreadPilot uses GitHub Actions for continuous integration and deployment. The pipeline automatically runs on every pull request and push to main branches.
+
+### 🔄 **Automated Pipeline**
+
+The CI/CD pipeline includes multiple stages that run in parallel for faster feedback:
+
+#### 🎨 **Code Quality Checks**
+- **Ruff**: Fast Python linter with extensive rule sets
+- **Black**: Opinionated code formatter
+- **Type Checking**: MyPy static type analysis
+
+#### 🧪 **Test Execution**
+- **Unit Tests**: Fast, isolated component tests
+- **Integration Tests**: Database and service integration
+- **E2E Tests**: Complete workflow validation using `docker-compose`
+
+#### 🔒 **Security Scanning**
+- **Trivy**: Vulnerability scanning for dependencies and containers
+- **Container Scanning**: All Docker images scanned before deployment
+- **SARIF Reports**: Security findings integrated with GitHub Security tab
+
+### 📋 **CI Configuration**
 
 ```yaml
-# .github/workflows/test.yml
-name: Tests
+# .github/workflows/ci.yml
+name: CI Pipeline
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
 
 jobs:
-  test:
+  python-lint:
+    name: Python Linting (Ruff & Black)
     runs-on: ubuntu-latest
-    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install ruff black
+          ruff check . --output-format=github
+          black --check --diff .
+
+  python-tests:
+    name: Python Unit Tests (Pytest)
+    runs-on: ubuntu-latest
     services:
       mongodb:
         image: mongo:6.0
         options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
+          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
+      redis:
+        image: redis:7-alpine
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - run: |
+          make init-dev
+          pytest tests/unit/ -v --cov=. --cov-report=xml
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          docker-compose -f docker-compose.e2e.yml up \
+            --exit-code-from e2e-tests --abort-on-container-exit
+
+  security-scan:
+    name: Security Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
         with:
-          python-version: '3.11'
-      
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio
-      
-      - name: Run unit tests
-        run: pytest tests/unit/ -v
-      
-      - name: Run integration tests
-        run: pytest tests/integration/ -v
-        env:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+```
+
+### 🛡️ **Quality Gates**
+
+All pull requests must pass these checks before merging:
+
+1. **Code Quality**
+   - ✅ No linting errors (Ruff)
+   - ✅ Code properly formatted (Black)
+   - ✅ Conventional commit messages
+
+2. **Testing**
+   - ✅ All unit tests passing
+   - ✅ Integration tests passing
+   - ✅ E2E tests passing
+   - ✅ Code coverage >80%
+
+3. **Security**
+   - ✅ No HIGH or CRITICAL vulnerabilities
+   - ✅ Container images scanned
+   - ✅ Dependencies up to date
+
+4. **Build Verification**
+   - ✅ All services build successfully
+   - ✅ Frontend builds without errors
+
+### 📊 **Coverage Integration**
+
+Test coverage is automatically reported to pull requests:
+
+```yaml
+- name: Upload coverage reports
+  uses: codecov/codecov-action@v4
+  with:
+    token: ${{ secrets.CODECOV_TOKEN }}
+    file: ./coverage.xml
+    flags: unittests
+```
+
+### 🔄 **Scheduled Scans**
+
+Additional security and quality checks run on schedule:
+
+```yaml
+# .github/workflows/code-quality.yml
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Mondays
+
+jobs:
+  code-quality:
+    steps:
+      - run: |
+          bandit -r . -f json -o bandit-report.json
+          safety check --json --output safety-report.json
+```
           MONGO_URI: mongodb://localhost:27017/test
       
       - name: Generate coverage report
