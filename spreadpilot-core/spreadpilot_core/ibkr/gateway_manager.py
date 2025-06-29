@@ -12,6 +12,7 @@ from ib_insync import IB
 
 from ..logging import get_logger
 from ..models.follower import Follower, FollowerState
+from ..models.alert import Alert, AlertSeverity
 from ..utils.vault import get_vault_client
 
 
@@ -47,6 +48,7 @@ class GatewayInstance:
     container: docker.models.containers.Container | None = None
     ib_client: IB | None = None
     last_healthcheck: float | None = None
+    connection_failures: int = 0
 
 
 class GatewayManager:
@@ -96,13 +98,16 @@ class GatewayManager:
         self._monitor_task: asyncio.Task | None = None
         self._shutdown = False
 
-    def _get_ibkr_credentials_from_vault(
-        self, secret_ref: str
+    @backoff.on_exception(
+        backoff.expo, Exception, max_tries=3, max_time=30
+    )
+    async def _get_ibkr_credentials_from_vault(
+        self, follower: Follower
     ) -> dict[str, str] | None:
-        """Get IBKR credentials from Vault.
+        """Get IBKR credentials from Vault with retry logic.
 
         Args:
-            secret_ref: Secret reference/path for IBKR credentials
+            follower: The follower object
 
         Returns:
             Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
@@ -113,6 +118,16 @@ class GatewayManager:
 
         try:
             vault_client = get_vault_client()
+            secret_ref = getattr(follower, "vault_secret_ref", None)
+            
+            if not secret_ref:
+                await self._publish_alert(
+                    follower_id=follower.id,
+                    reason=f"No vault_secret_ref configured for follower {follower.id}",
+                    severity=AlertSeverity.CRITICAL
+                )
+                return None
+                
             credentials = vault_client.get_ibkr_credentials(secret_ref)
 
             if credentials:
@@ -124,11 +139,17 @@ class GatewayManager:
                 logger.warning(
                     f"No IBKR credentials found in Vault for secret: {secret_ref}"
                 )
+                await self._publish_alert(
+                    follower_id=follower.id,
+                    reason=f"No IBKR credentials found in Vault for secret: {secret_ref}",
+                    severity=AlertSeverity.CRITICAL
+                )
                 return None
 
         except Exception as e:
             logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
-            return None
+            # Will retry due to @backoff decorator
+            raise
 
     async def start(self) -> None:
         """Start the gateway manager and load enabled followers."""
@@ -252,28 +273,36 @@ class GatewayManager:
             except docker.errors.NotFound:
                 pass
 
-            # Get IBKR credentials from Vault
-            if hasattr(follower, "vault_secret_ref") and follower.vault_secret_ref:
-                # Try to get credentials from Vault using follower's secret reference
-                credentials = self._get_ibkr_credentials_from_vault(
-                    follower.vault_secret_ref
-                )
-                if credentials:
-                    ibkr_username = credentials.get("IB_USER", follower.ibkr_username)
-                    ibkr_password = credentials.get("IB_PASS")
-                    if not ibkr_password:
-                        raise ValueError(
-                            f"No password found in Vault for follower {follower.id}"
-                        )
-                    logger.info(f"Using Vault credentials for follower {follower.id}")
-                else:
+            # Get IBKR credentials from Vault with retry
+            try:
+                credentials = await self._get_ibkr_credentials_from_vault(follower)
+                if not credentials:
                     raise ValueError(
                         f"Failed to retrieve Vault credentials for follower {follower.id}"
                     )
-            else:
-                raise ValueError(
-                    f"No Vault secret reference configured for follower {follower.id}"
+                    
+                ibkr_username = credentials.get("IB_USER")
+                ibkr_password = credentials.get("IB_PASS")
+                
+                if not ibkr_username or not ibkr_password:
+                    await self._publish_alert(
+                        follower_id=follower.id,
+                        reason=f"Missing IB_USER or IB_PASS in Vault credentials for follower {follower.id}",
+                        severity=AlertSeverity.CRITICAL
+                    )
+                    raise ValueError(
+                        f"Missing credentials in Vault for follower {follower.id}"
+                    )
+                    
+                logger.info(f"Using Vault credentials for follower {follower.id}")
+            except Exception as e:
+                # Final failure after retries
+                await self._publish_alert(
+                    follower_id=follower.id,
+                    reason=f"Failed to retrieve IBKR credentials from Vault after retries: {str(e)}",
+                    severity=AlertSeverity.CRITICAL
                 )
+                raise
 
             # Start container
             container = self.docker_client.containers.run(
@@ -304,6 +333,9 @@ class GatewayManager:
             )
 
             self.gateways[follower.id] = gateway
+            
+            # Store gateway mapping in MongoDB
+            await self._store_gateway_mapping(gateway)
 
             logger.info(
                 f"Started IBGateway container {container_name} for follower {follower.id} on port {host_port}"
@@ -390,6 +422,9 @@ class GatewayManager:
 
         # Remove from tracking
         del self.gateways[follower_id]
+        
+        # Clean MongoDB record
+        await self._remove_gateway_mapping(follower_id)
 
         logger.info(f"Stopped IBGateway for follower {follower_id}")
 
@@ -534,19 +569,35 @@ class GatewayManager:
                         # Verify IB connection is still alive using isConnected()
                         if gateway.ib_client:
                             if not gateway.ib_client.isConnected():
+                                gateway.connection_failures += 1
                                 logger.warning(
-                                    f"IB client disconnected for follower {gateway.follower_id}, attempting reconnect"
+                                    f"IB client disconnected for follower {gateway.follower_id}, failure count: {gateway.connection_failures}"
                                 )
-                                try:
-                                    await self._connect_ib_client(gateway)
+                                
+                                # Trigger reconnect after 2 failures
+                                if gateway.connection_failures >= 2:
                                     logger.info(
-                                        f"Successfully reconnected IB client for follower {gateway.follower_id}"
+                                        f"Triggering reconnect for follower {gateway.follower_id} after {gateway.connection_failures} failures"
                                     )
-                                except Exception as e:
-                                    logger.error(
-                                        f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}"
-                                    )
-                                    gateway.status = GatewayStatus.FAILED
+                                    try:
+                                        await self._reconnect(gateway)
+                                        gateway.connection_failures = 0
+                                        logger.info(
+                                            f"Successfully reconnected IB client for follower {gateway.follower_id}"
+                                        )
+                                    except Exception as e:
+                                        logger.error(
+                                            f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}"
+                                        )
+                                        gateway.status = GatewayStatus.FAILED
+                                        await self._publish_alert(
+                                            follower_id=gateway.follower_id,
+                                            reason=f"Failed to reconnect after {gateway.connection_failures} failures: {str(e)}",
+                                            severity=AlertSeverity.CRITICAL
+                                        )
+                            else:
+                                # Connection is good, reset failure counter
+                                gateway.connection_failures = 0
                         else:
                             # No client connection exists, try to establish one
                             logger.warning(
@@ -554,6 +605,7 @@ class GatewayManager:
                             )
                             try:
                                 await self._connect_ib_client(gateway)
+                                gateway.connection_failures = 0
                                 logger.info(
                                     f"Successfully connected IB client for follower {gateway.follower_id}"
                                 )
@@ -676,3 +728,99 @@ class GatewayManager:
                 ),
             }
         return result
+    
+    async def _reconnect(self, gateway: GatewayInstance) -> None:
+        """Reconnect to IBGateway after connection failures.
+        
+        Args:
+            gateway: Gateway instance to reconnect
+        """
+        logger.info(f"Reconnecting gateway for follower {gateway.follower_id}")
+        
+        # Disconnect existing client
+        if gateway.ib_client:
+            try:
+                gateway.ib_client.disconnect()
+            except Exception:
+                pass
+            gateway.ib_client = None
+            
+        # Wait a moment before reconnecting
+        await asyncio.sleep(2)
+        
+        # Attempt to reconnect
+        await self._connect_ib_client(gateway)
+        
+    async def _store_gateway_mapping(self, gateway: GatewayInstance) -> None:
+        """Store gateway mapping in MongoDB.
+        
+        Args:
+            gateway: Gateway instance to store
+        """
+        try:
+            db = await get_mongo_db()
+            if db:
+                gateways_collection = db["gateway_mappings"]
+                await gateways_collection.update_one(
+                    {"follower_id": gateway.follower_id},
+                    {
+                        "$set": {
+                            "follower_id": gateway.follower_id,
+                            "container_id": gateway.container_id,
+                            "container_name": f"ibgw-{gateway.follower_id}",
+                            "host_port": gateway.host_port,
+                            "client_id": gateway.client_id,
+                            "status": gateway.status.value,
+                            "last_updated": time.time()
+                        }
+                    },
+                    upsert=True
+                )
+                logger.debug(f"Stored gateway mapping for follower {gateway.follower_id}")
+        except Exception as e:
+            logger.error(f"Failed to store gateway mapping: {e}")
+            
+    async def _remove_gateway_mapping(self, follower_id: str) -> None:
+        """Remove gateway mapping from MongoDB.
+        
+        Args:
+            follower_id: Follower ID to remove
+        """
+        try:
+            db = await get_mongo_db()
+            if db:
+                gateways_collection = db["gateway_mappings"]
+                await gateways_collection.delete_one({"follower_id": follower_id})
+                logger.debug(f"Removed gateway mapping for follower {follower_id}")
+        except Exception as e:
+            logger.error(f"Failed to remove gateway mapping: {e}")
+            
+    async def _publish_alert(self, follower_id: str, reason: str, severity: AlertSeverity) -> None:
+        """Publish an alert for gateway issues.
+        
+        Args:
+            follower_id: Follower ID
+            reason: Alert reason
+            severity: Alert severity
+        """
+        try:
+            # Import here to avoid circular dependency
+            from ..utils.redis_client import get_redis_client
+            
+            redis_client = await get_redis_client()
+            if redis_client:
+                alert = Alert(
+                    follower_id=follower_id,
+                    reason=reason,
+                    severity=severity,
+                    service="gateway_manager",
+                    timestamp=time.time()
+                )
+                
+                await redis_client.xadd(
+                    "alerts",
+                    {"data": alert.model_dump_json()}
+                )
+                logger.info(f"Published alert for follower {follower_id}: {reason}")
+        except Exception as e:
+            logger.error(f"Failed to publish alert: {e}")

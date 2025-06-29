@@ -12,7 +12,7 @@ from ib_insync import LimitOrder
 
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.alert import AlertEvent, AlertType
+from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 logger = get_logger(__name__)
 
@@ -47,24 +47,41 @@ class VerticalSpreadExecutor:
             self.redis_client = None
             logger.info("Disconnected from Redis")
 
-    async def _publish_alert(self, alert_event: AlertEvent):
-        """Publish an alert event to Redis alerts stream.
+    async def _publish_alert(
+        self,
+        follower_id: str,
+        reason: str,
+        severity: AlertSeverity = AlertSeverity.CRITICAL
+    ):
+        """Publish an alert to Redis alerts stream.
 
         Args:
-            alert_event: Alert event to publish
+            follower_id: Follower ID
+            reason: Alert reason
+            severity: Alert severity level
         """
         try:
             # Ensure Redis is connected
             await self.connect_redis()
 
-            # Serialize the alert event
-            alert_data = alert_event.model_dump(mode="json")
-            alert_json = json.dumps(alert_data)
+            # Create alert object
+            alert = Alert(
+                follower_id=follower_id,
+                reason=reason,
+                severity=severity,
+                service="executor",
+                timestamp=time.time()
+            )
 
             # Add to Redis stream
-            await self.redis_client.xadd("alerts", {"alert": alert_json})
+            await self.redis_client.xadd(
+                "alerts",
+                {"data": alert.model_dump_json()}
+            )
 
-            logger.info(f"Published alert to Redis: {alert_event.event_type.value}")
+            logger.info(
+                f"Published {severity.value} alert to Redis for follower {follower_id}: {reason}"
+            )
         except Exception as e:
             logger.error(f"Failed to publish alert to Redis: {e}")
 
@@ -122,14 +139,11 @@ class VerticalSpreadExecutor:
             )
 
             if not margin_check_result["success"]:
-                await self._send_alert(
-                    f"Margin check failed for follower {follower_id}: {margin_check_result['error']}",
-                    AlertType.NO_MARGIN,
-                    params={
-                        "follower_id": follower_id,
-                        "error": margin_check_result["error"],
-                        "margin_details": margin_check_result,
-                    },
+                # Publish alert for margin failure
+                await self._publish_alert(
+                    follower_id=follower_id,
+                    reason=f"NO_MARGIN: {margin_check_result['error']}",
+                    severity=AlertSeverity.CRITICAL
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -154,17 +168,11 @@ class VerticalSpreadExecutor:
 
             # Phase 3: Check if MID price meets minimum threshold
             if abs(mid_price) < min_price_threshold:
-                await self._send_alert(
-                    f"MID price {mid_price:.3f} below threshold {min_price_threshold} for follower {follower_id}",
-                    AlertType.MID_TOO_LOW,
-                    params={
-                        "follower_id": follower_id,
-                        "mid_price": mid_price,
-                        "threshold": min_price_threshold,
-                        "strategy": strategy,
-                        "strike_long": strike_long,
-                        "strike_short": strike_short,
-                    },
+                # Publish alert for MID too low
+                await self._publish_alert(
+                    follower_id=follower_id,
+                    reason=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold}",
+                    severity=AlertSeverity.CRITICAL
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -195,10 +203,11 @@ class VerticalSpreadExecutor:
             logger.error(
                 f"Error executing vertical spread for follower {follower_id}: {e}"
             )
-            await self._send_alert(
-                f"Execution error for follower {follower_id}: {e!s}",
-                AlertType.GATEWAY_UNREACHABLE,  # Generic IB rejection/error
-                params={"follower_id": follower_id, "error": str(e), "signal": signal},
+            # Publish alert for gateway/execution error
+            await self._publish_alert(
+                follower_id=follower_id,
+                reason=f"GATEWAY_UNREACHABLE: {str(e)}",
+                severity=AlertSeverity.CRITICAL
             )
             return {
                 "status": OrderStatus.REJECTED,
@@ -440,16 +449,11 @@ class VerticalSpreadExecutor:
             for attempt in range(1, max_attempts + 1):
                 # Check if current limit price still meets threshold
                 if abs(current_limit_price) < min_price_threshold:
-                    await self._send_alert(
-                        f"Limit price {current_limit_price:.3f} fell below threshold {min_price_threshold} for follower {follower_id}",
-                        AlertType.MID_TOO_LOW,
-                        params={
-                            "follower_id": follower_id,
-                            "limit_price": current_limit_price,
-                            "threshold": min_price_threshold,
-                            "attempt": attempt,
-                            "strategy": strategy,
-                        },
+                    # Publish alert for limit price below threshold
+                    await self._publish_alert(
+                        follower_id=follower_id,
+                        reason=f"MID_TOO_LOW: Limit price ${current_limit_price:.3f} fell below threshold ${min_price_threshold} on attempt {attempt}",
+                        severity=AlertSeverity.CRITICAL
                     )
                     return {
                         "status": OrderStatus.CANCELED,
@@ -544,18 +548,10 @@ class VerticalSpreadExecutor:
                     await asyncio.sleep(attempt_interval)
 
             # All attempts exhausted
-            await self._send_alert(
-                f"All {max_attempts} attempts exhausted for follower {follower_id}",
-                AlertType.LIMIT_REACHED,
-                params={
-                    "follower_id": follower_id,
-                    "max_attempts": max_attempts,
-                    "final_limit": current_limit_price,
-                    "initial_limit": initial_mid_price,
-                    "strategy": strategy,
-                    "strike_long": strike_long,
-                    "strike_short": strike_short,
-                },
+            await self._publish_alert(
+                follower_id=follower_id,
+                reason=f"LIMIT_REACHED: All {max_attempts} attempts exhausted. Initial limit: ${initial_mid_price:.3f}, Final limit: ${current_limit_price:.3f}",
+                severity=AlertSeverity.CRITICAL
             )
 
             return {
@@ -577,29 +573,6 @@ class VerticalSpreadExecutor:
                 "follower_id": follower_id,
             }
 
-    async def _send_alert(
-        self, message: str, alert_type: AlertType, params: dict[str, Any] | None = None
-    ):
-        """Send an alert about execution events.
-
-        Args:
-            message: Alert message
-            alert_type: Type of alert
-            params: Optional parameters for the alert
-        """
-        try:
-            # Log the alert
-            logger.warning(f"ALERT [{alert_type.value}]: {message}")
-
-            # Create and publish alert event to Redis
-            alert_event = AlertEvent(
-                event_type=alert_type, message=message, params=params or {}
-            )
-
-            await self._publish_alert(alert_event)
-
-        except Exception as e:
-            logger.error(f"Error sending alert: {e}")
 
     async def __aenter__(self):
         """Async context manager entry."""

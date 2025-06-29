@@ -1,37 +1,35 @@
-# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
-
-# Set the working directory in the container
 WORKDIR /app
 
-# Install pip-tools for compiling requirements
-RUN pip install --no-cache-dir --upgrade pip pip-tools
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# --- Install spreadpilot-core ---
-# Copy the core library source into the image
-COPY ./spreadpilot-core /app/spreadpilot-core
-# Install the core library in editable mode
-RUN pip install --no-cache-dir -e /app/spreadpilot-core
+# Copy requirements
+COPY alert-router/requirements.txt .
 
-# --- Install alert-router dependencies ---
-# Copy the requirements file
-COPY ./alert-router/requirements.in /app/requirements.in
-# Compile requirements.in to requirements.txt and install
-RUN pip-compile requirements.in -o requirements.txt --resolver=backtracking \
-    && pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container
-COPY ./alert-router/app /app/app
+# Copy shared core library
+COPY spreadpilot-core /app/spreadpilot-core
+RUN pip install -e /app/spreadpilot-core
 
-# Expose the port the app runs on
-EXPOSE 8080
+# Copy application code
+COPY alert-router/app/ ./app/
 
-# Define the command to run the application
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Expose port
+EXPOSE 8006
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import httpx; r = httpx.get('http://localhost:8006/health'); r.raise_for_status()"
+
+# Run the application
+CMD ["uvicorn", "app.alert_router:app", "--host", "0.0.0.0", "--port", "8006"]

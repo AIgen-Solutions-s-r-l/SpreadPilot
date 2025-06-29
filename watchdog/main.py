@@ -6,12 +6,13 @@ import asyncio
 import json
 import logging
 import os
+import time
 
 import docker
 import httpx
 import redis.asyncio as redis
 
-from spreadpilot_core.models.alert import AlertEvent, AlertSeverity, AlertType
+from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 # Configure logging
 logging.basicConfig(
@@ -22,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration
-CHECK_INTERVAL_SECONDS = int(os.getenv("CHECK_INTERVAL_SECONDS", "30"))
+CHECK_INTERVAL_SECONDS = int(os.getenv("CHECK_INTERVAL_SECONDS", "15"))  # Every 15 seconds
 HEALTH_CHECK_TIMEOUT = int(os.getenv("HEALTH_CHECK_TIMEOUT", "10"))
 MAX_CONSECUTIVE_FAILURES = int(os.getenv("MAX_CONSECUTIVE_FAILURES", "3"))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -136,42 +137,32 @@ class ContainerWatchdog:
             logger.error(f"Error restarting {container_name}: {e}")
             return False
 
-    async def publish_critical_alert(
-        self, container_name: str, action: str, success: bool
+    async def publish_alert(
+        self, service_name: str, reason: str, severity: AlertSeverity = AlertSeverity.CRITICAL
     ):
         """
-        Publish a critical alert to Redis stream.
+        Publish an alert to Redis stream.
 
         Args:
-            container_name: Name of the container
-            action: Action taken (e.g., "restart")
-            success: Whether the action was successful
+            service_name: Name of the service/container
+            reason: Alert reason
+            severity: Alert severity level
         """
-        alert_event = AlertEvent(
-            event_type=(
-                AlertType.COMPONENT_DOWN
-                if not success
-                else AlertType.COMPONENT_RECOVERED
-            ),
-            message=f"Container {container_name} {action} {'succeeded' if success else 'failed'}",
-            params={
-                "container_name": container_name,
-                "action": action,
-                "success": success,
-                "consecutive_failures": self.failure_counts.get(container_name, 0),
-                "severity": (
-                    AlertSeverity.CRITICAL.value
-                    if not success
-                    else AlertSeverity.INFO.value
-                ),
-            },
+        alert = Alert(
+            follower_id="system",  # System-level alert
+            reason=reason,
+            severity=severity,
+            service="watchdog",
+            timestamp=time.time()
         )
 
         try:
             if self.redis_client:
-                alert_json = json.dumps(alert_event.model_dump(mode="json"))
-                await self.redis_client.xadd("alerts", {"alert": alert_json})
-                logger.info(f"Published critical alert: {alert_event.message}")
+                await self.redis_client.xadd(
+                    "alerts",
+                    {"data": alert.model_dump_json()}
+                )
+                logger.info(f"Published alert: {reason}")
             else:
                 logger.warning("Redis not connected, alert not published")
         except Exception as e:
@@ -198,7 +189,11 @@ class ContainerWatchdog:
                 logger.info(
                     f"{container_name} recovered after {self.failure_counts[container_name]} failures"
                 )
-                await self.publish_critical_alert(container_name, "recovery", True)
+                await self.publish_alert(
+                    service_name=container_name,
+                    reason=f"SERVICE_RECOVERED: {container_name} recovered after {self.failure_counts[container_name]} failed health checks",
+                    severity=AlertSeverity.INFO
+                )
             self.failure_counts[container_name] = 0
         else:
             # Increment failure count
@@ -218,14 +213,20 @@ class ContainerWatchdog:
                 # Restart the container
                 restart_success = self.restart_container(container)
 
-                # Publish critical alert about the restart attempt
-                await self.publish_critical_alert(
-                    container_name, "restart", restart_success
-                )
-
-                # Reset failure count after restart attempt
+                # Publish alert about the restart
                 if restart_success:
+                    await self.publish_alert(
+                        service_name=container_name,
+                        reason=f"SERVICE_RESTART: {container_name} was restarted after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
+                        severity=AlertSeverity.WARNING
+                    )
                     self.failure_counts[container_name] = 0
+                else:
+                    await self.publish_alert(
+                        service_name=container_name,
+                        reason=f"SERVICE_RESTART_FAILED: Failed to restart {container_name} after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
+                        severity=AlertSeverity.CRITICAL
+                    )
 
     async def cleanup_stale_containers(self):
         """Remove failure counts for containers that no longer exist"""

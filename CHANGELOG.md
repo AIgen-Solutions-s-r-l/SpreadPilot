@@ -5,6 +5,60 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0.0] - 2025-06-29
+
+### 🚀 Major Features
+
+#### Multi-Tenant Architecture (GWY-γ1)
+- **Enhanced IB Gateway Manager**: Added multi-tenant support with isolated Docker containers per follower
+- **Vault Integration**: Secure credential management with automatic retry logic and exponential backoff
+- **Connection Monitoring**: Automatic reconnection after 2 consecutive failures with MongoDB state persistence
+
+#### Alert Management System (ALT-γ2, EXE-γ3)
+- **Alert Router Service**: New FastAPI service consuming Redis streams and routing to Telegram/email
+- **Executor Alert Publishing**: Refactored to publish structured alerts for trading failures:
+  - NO_MARGIN: Insufficient margin alerts
+  - MID_TOO_LOW: Market price below acceptable threshold
+  - LIMIT_REACHED: Position limit exceeded
+  - GATEWAY_UNREACHABLE: IB Gateway connection failures
+- **Structured Alert Models**: Standardized Alert objects with severity levels and timestamps
+
+#### Risk Management (RISK-γ4)
+- **Time Value Monitor**: Automated monitoring service with 60-second intervals
+- **Auto-Liquidation**: Automatic position closure when time value ≤ $0.10
+- **Real-time Status**: Redis-based status tracking for all monitored positions
+
+#### Service Reliability (WDG-γ5)
+- **Container Watchdog**: Health monitoring for all SpreadPilot services every 15 seconds
+- **Auto-Recovery**: Automatic container restart after 3 consecutive health check failures
+- **Service Discovery**: Dynamic monitoring of containers with 'spreadpilot' label
+
+#### Infrastructure Integration (CMP-γ6)
+- **Complete Docker Compose**: Integrated all services with proper dependencies and health checks
+- **Service Orchestration**: Coordinated startup with wait-healthy and test-services scripts
+- **Environment Configuration**: Standardized environment variables and secrets management
+
+### 🔧 Technical Improvements
+- **Redis Streams**: Implemented reliable message delivery for alerts
+- **Health Check Patterns**: Standardized health endpoints across all services
+- **Async Architecture**: Full AsyncIO implementation for performance
+- **Comprehensive Testing**: Unit and integration tests for all new components
+- **Error Handling**: Robust retry logic with exponential backoff
+
+### 📁 New Files
+- `alert-router/`: Complete alert routing service
+- `spreadpilot-core/spreadpilot_core/utils/redis_client.py`: Redis utilities
+- `scripts/wait-healthy.sh`: Service health verification
+- `scripts/test-services.sh`: Service testing utilities
+- Comprehensive test suites for all new components
+
+### 🔄 Modified Components
+- Enhanced gateway manager with multi-tenant support
+- Refactored executor with alert publishing
+- Updated time value monitor with APScheduler
+- Improved watchdog with structured alerts
+- Updated Docker Compose with all services
+
 ## [v1.1.27.0] - 2025-06-29
 
 ### Added

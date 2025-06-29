@@ -11,9 +11,15 @@ services:
       - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
       - IB_GATEWAY_HOST=ib-gateway
       - IB_GATEWAY_PORT=4002
+      - REDIS_URL=redis://redis:6379
+      - VAULT_ENABLED=${VAULT_ENABLED:-true}
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+      - VAULT_MOUNT_POINT=${VAULT_MOUNT_POINT:-secret}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -22,23 +28,28 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials
+      - /var/run/docker.sock:/var/run/docker.sock  # For gateway manager
     depends_on:
-      # - firestore # Removed Firestore dependency
-      - mongodb # Added MongoDB dependency
-      - ib-gateway
+      - mongodb
+      - redis
+      - vault
     ports:
-      - "8081:8080"
+      - "8001:8001"
     networks:
       - spreadpilot-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8001/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   watchdog:
     build:
-      context: ./watchdog
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: watchdog/Dockerfile
     container_name: spreadpilot-watchdog
-    labels:
-      - "spreadpilot"
     environment:
       - CHECK_INTERVAL_SECONDS=15
       - HEALTH_CHECK_TIMEOUT=5
@@ -46,14 +57,13 @@ services:
       - REDIS_URL=redis://redis:6379
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
-      - ./spreadpilot-core:/app/spreadpilot-core    # Core library for alerts
     depends_on:
       - redis
       - trading-bot
       - admin-api
       - report-worker
+      - alert-router
       - frontend
-      - admin-dashboard
     networks:
       - spreadpilot-network
     restart: unless-stopped
@@ -67,27 +77,38 @@ services:
       - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      # - FIRESTORE_EMULATOR_HOST=firestore:8080 # Removed Firestore
-      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
-      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - REDIS_URL=redis://redis:6379
       - TRADING_BOT_HOST=trading-bot
-      - TRADING_BOT_PORT=8080
+      - TRADING_BOT_PORT=8001
+      - VAULT_ENABLED=${VAULT_ENABLED:-true}
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+      - VAULT_MOUNT_POINT=${VAULT_MOUNT_POINT:-secret}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
-      - JWT_SECRET=${JWT_SECRET:-testsecret} # Added default for testing
+      - JWT_SECRET=${JWT_SECRET:-testsecret}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials
     depends_on:
-      # - firestore # Removed Firestore dependency
-      - mongodb # Added MongoDB dependency
+      - mongodb
+      - redis
       - trading-bot
+      - vault
     ports:
       - "8083:8080"
     networks:
       - spreadpilot-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8080/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   report-worker:
     build:
@@ -98,9 +119,12 @@ services:
       - "spreadpilot"
     environment:
       - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
-      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
-      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - VAULT_ENABLED=${VAULT_ENABLED:-true}
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+      - VAULT_MOUNT_POINT=${VAULT_MOUNT_POINT:-secret}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
@@ -111,8 +135,8 @@ services:
     networks:
       - spreadpilot-network
     depends_on:
-      # - firestore # Removed Firestore dependency
-      - mongodb # Added MongoDB dependency
+      - mongodb
+      - vault
     restart: unless-stopped
 
   alert-router:
@@ -123,25 +147,33 @@ services:
     labels:
       - "spreadpilot"
     environment:
-      - GOOGLE_CLOUD_PROJECT=spreadpilot-dev
-      - FIRESTORE_EMULATOR_HOST=firestore:8080
-      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017 # Updated MongoDB URI with auth
-      - MONGO_DB_NAME=spreadpilot_admin_test # Use a dedicated test DB name
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - VAULT_ENABLED=${VAULT_ENABLED:-true}
+      - VAULT_ADDR=${VAULT_ADDR:-http://vault:8200}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+      - VAULT_MOUNT_POINT=${VAULT_MOUNT_POINT:-secret}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      - DASHBOARD_URL=${DASHBOARD_URL:-http://localhost:8080}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
-    volumes:
-      - ./credentials:/app/credentials
+      - SMTP_URI=${SMTP_URI}
+      - EMAIL_FROM=${EMAIL_FROM:-alerts@spreadpilot.com}
+      - EMAIL_TO=${EMAIL_TO:-admin@spreadpilot.com}
+    ports:
+      - "8006:8006"
     networks:
       - spreadpilot-network
     depends_on:
-      # - firestore # Removed Firestore dependency
-      - mongodb # Added MongoDB dependency
+      - redis
+      - mongodb
+      - vault
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8006/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:
@@ -157,21 +189,12 @@ services:
     restart: unless-stopped
     networks:
       - spreadpilot-network
-
-  admin-dashboard:
-    build:
-      context: ./admin-dashboard
-      dockerfile: Dockerfile
-    container_name: spreadpilot-admin-dashboard
-    labels:
-      - "spreadpilot"
-    ports:
-      - "3001:80"
-    depends_on:
-      - admin-api
-    restart: unless-stopped
-    networks:
-      - spreadpilot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Infrastructure services
   # Removed Firestore service definition
@@ -198,7 +221,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27017:27017" # Expose to host for potential direct access during dev
+      - "27018:27017"
     restart: unless-stopped
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
@@ -213,20 +236,45 @@ services:
     image: redis:7-alpine
     container_name: spreadpilot-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - spreadpilot-network
+
+  vault:
+    image: vault:1.13.3
+    container_name: spreadpilot-vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN:-myroot}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    ports:
+      - "8201:8200"
+    networks:
+      - spreadpilot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Observability services
 
 volumes:
-  prometheus-data:
-  grafana-data:
   mongo_data:
   redis_data:
+  vault_data:
 
 networks:
   spreadpilot-network:
