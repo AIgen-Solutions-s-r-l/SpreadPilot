@@ -5,6 +5,36 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.17.0] - 2025-06-29
+
+### Added
+- **Time Value Monitor Service**: Automatic position liquidation when time value <= $0.10
+  - Monitors all open QQQ option positions every 60 seconds
+  - Calculates time value as: Market Price - Intrinsic Value
+  - Three risk states: SAFE (TV > $1.00), RISK ($0.10 < TV <= $1.00), CRITICAL (TV <= $0.10)
+  - Automatic market order execution for critical positions
+  - Redis stream alerts for all time value status changes
+- **Redis Alert Integration**: Publishes real-time alerts to 'alerts' stream
+  - ASSIGNMENT_DETECTED for time value status notifications
+  - ASSIGNMENT_COMPENSATED for successful auto-liquidation
+  - Comprehensive alert parameters including time value, status, and fill details
+- **Comprehensive Test Suite**: 14 unit tests with mock IB integration
+  - Intrinsic value calculation tests for calls and puts
+  - Time value status determination tests
+  - Position monitoring and auto-close functionality tests
+  - fakeredis integration for Redis stream testing
+
+### Changed
+- **Trading Service Integration**: TimeValueMonitor integrated into service lifecycle
+  - Added import and initialization in base.py
+  - Monitor task started with other background services
+  - Graceful shutdown handling on service stop
+
+### Documentation
+- Updated trading-bot README with time value monitoring details
+- Added risk management features and Redis configuration
+- Enhanced troubleshooting section with time value alerts
+
 ## [v1.1.16.0] - 2025-06-29
 
 ### Added
