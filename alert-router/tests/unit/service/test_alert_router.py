@@ -169,7 +169,7 @@ class TestAlertRouter:
     @pytest.mark.asyncio
     async def test_send_email_alert_success(self, alert_router):
         """Test successful email alert sending."""
-        with patch('app.service.alert_router.send_email') as mock_send_email:
+        with patch('app.service.alert_router.aiosmtplib.send', new_callable=AsyncMock) as mock_send:
             result = await alert_router.send_email_alert(
                 "test@example.com",
                 "Test Subject",
@@ -177,22 +177,18 @@ class TestAlertRouter:
             )
             
             assert result is True
-            mock_send_email.assert_called_once_with(
-                from_email="alerts@spreadpilot.com",
-                to_email="test@example.com",
-                subject="Test Subject",
-                html_content="<p>Test HTML</p>",
-                smtp_host="smtp.example.com",
-                smtp_port=587,
-                smtp_user="smtp_user",
-                smtp_password="smtp_pass",
-                use_tls=True,
-            )
+            mock_send.assert_called_once()
+            
+            # Check the message was created correctly
+            message = mock_send.call_args[0][0]
+            assert message["From"] == "alerts@spreadpilot.com"
+            assert message["To"] == "test@example.com"
+            assert message["Subject"] == "Test Subject"
     
     @pytest.mark.asyncio
     async def test_send_email_alert_failure(self, alert_router):
         """Test email alert sending failure."""
-        with patch('app.service.alert_router.send_email', side_effect=Exception("SMTP error")):
+        with patch('app.service.alert_router.aiosmtplib.send', new_callable=AsyncMock, side_effect=Exception("SMTP error")):
             result = await alert_router.send_email_alert(
                 "test@example.com",
                 "Test Subject",
@@ -243,7 +239,7 @@ class TestAlertRouter:
         alert_router._http_client = mock_client
         
         # Mock successful email
-        with patch('app.service.alert_router.send_email'):
+        with patch('app.service.alert_router.aiosmtplib.send', new_callable=AsyncMock):
             results = await alert_router.route_alert(sample_alert_event)
         
         # Verify results
@@ -300,7 +296,7 @@ class TestAlertRouter:
         alert_router._http_client = mock_client
         
         # Mock failed email
-        with patch('app.service.alert_router.send_email', side_effect=Exception("SMTP error")):
+        with patch('app.service.alert_router.aiosmtplib.send', new_callable=AsyncMock, side_effect=Exception("SMTP error")):
             with pytest.raises(Exception, match="Failed to deliver alert via any channel"):
                 await alert_router.route_alert(sample_alert_event)
     
@@ -315,7 +311,7 @@ class TestAlertRouter:
             smtp_config={"host": "smtp.example.com", "port": 587},
         )
         
-        with patch('app.service.alert_router.send_email'):
+        with patch('app.service.alert_router.aiosmtplib.send', new_callable=AsyncMock):
             results = await router.route_alert(sample_alert_event)
         
         # Should go directly to email

@@ -7,7 +7,9 @@ import asyncio
 from datetime import datetime
 
 from spreadpilot_core.models.alert import AlertEvent, AlertType
-from spreadpilot_core.utils.email import send_email
+import aiosmtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from ..config import settings
 
@@ -223,7 +225,7 @@ class AlertRouter:
             return False
     
     async def send_email_alert(self, recipient: str, subject: str, html_content: str) -> bool:
-        """Send alert via email.
+        """Send alert via email using async SMTP.
         
         Args:
             recipient: Email recipient
@@ -238,17 +240,41 @@ class AlertRouter:
             return False
             
         try:
-            send_email(
-                from_email=self.email_sender,
-                to_email=recipient,
-                subject=subject,
-                html_content=html_content,
-                smtp_host=self.smtp_config["host"],
-                smtp_port=self.smtp_config["port"],
-                smtp_user=self.smtp_config.get("user"),
-                smtp_password=self.smtp_config.get("password"),
-                use_tls=self.smtp_config.get("tls", True),
-            )
+            # Create message
+            message = MIMEMultipart("alternative")
+            message["From"] = self.email_sender
+            message["To"] = recipient
+            message["Subject"] = subject
+            
+            # Create plain text version from HTML (simple conversion)
+            import re
+            plain_text = re.sub('<[^<]+?>', '', html_content).strip()
+            
+            # Attach parts
+            text_part = MIMEText(plain_text, "plain")
+            html_part = MIMEText(html_content, "html")
+            message.attach(text_part)
+            message.attach(html_part)
+            
+            # Send email asynchronously
+            if self.smtp_config.get("tls", True):
+                await aiosmtplib.send(
+                    message,
+                    hostname=self.smtp_config["host"],
+                    port=self.smtp_config["port"],
+                    username=self.smtp_config.get("user"),
+                    password=self.smtp_config.get("password"),
+                    start_tls=True,
+                )
+            else:
+                await aiosmtplib.send(
+                    message,
+                    hostname=self.smtp_config["host"],
+                    port=self.smtp_config["port"],
+                    username=self.smtp_config.get("user"),
+                    password=self.smtp_config.get("password"),
+                )
+            
             logger.info(f"Email alert sent successfully to {recipient}")
             return True
         except Exception as e:

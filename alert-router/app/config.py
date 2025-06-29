@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     MONGO_URI: Optional[str] = Field(None, env="MONGO_URI")
     MONGO_DB_NAME: str = Field("spreadpilot_admin", env="MONGO_DB_NAME")
     MONGO_DB_NAME_SECRETS: Optional[str] = Field(None, env="MONGO_DB_NAME_SECRETS")
+    
+    # Redis Settings
+    REDIS_URL: str = Field("redis://localhost:6379", env="REDIS_URL")
 
     @validator("TELEGRAM_ADMIN_IDS", "EMAIL_ADMIN_RECIPIENTS", pre=True)
     def split_string(cls, v):

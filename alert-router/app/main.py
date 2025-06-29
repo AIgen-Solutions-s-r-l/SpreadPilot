@@ -90,24 +90,47 @@ elif os.getenv("TESTING"):
 
 # Import settings and router after potential env var population
 from .config import settings
-from .service.router import route_alert
+from .service.redis_subscriber import RedisAlertSubscriber
 
 # Setup Logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 setup_logging(service_name="alert-router", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
 
+# Global subscriber instance
+redis_subscriber = None
+subscriber_task = None
+
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global redis_subscriber, subscriber_task
+    
     logger.info("Alert Router service starting...")
-    # Any additional startup logic can go here
+    
+    # Start Redis subscriber
+    redis_subscriber = RedisAlertSubscriber()
+    subscriber_task = asyncio.create_task(redis_subscriber.run())
+    logger.info("Started Redis alert subscriber")
     
     yield # Application runs here
     
     # Application shutdown
     logger.info("Alert Router service shutting down...")
-    # Any cleanup logic can go here
+    
+    # Stop Redis subscriber
+    if redis_subscriber:
+        await redis_subscriber.stop()
+    if subscriber_task:
+        try:
+            await asyncio.wait_for(subscriber_task, timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("Redis subscriber task did not complete within timeout")
+            subscriber_task.cancel()
+        except Exception as e:
+            logger.error(f"Error stopping Redis subscriber: {e}")
+    
+    logger.info("Alert Router service shutdown complete")
 
 app = FastAPI(
     title="SpreadPilot Alert Router",
@@ -116,81 +139,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-logger.info(f"GCP Project ID: {settings.GCP_PROJECT_ID}")
 logger.info(f"Dashboard URL: {settings.DASHBOARD_BASE_URL}")
 logger.info(f"Telegram Admins: {'Configured' if settings.TELEGRAM_ADMIN_IDS else 'Not Configured'}")
 logger.info(f"Email Admins: {'Configured' if settings.EMAIL_ADMIN_RECIPIENTS else 'Not Configured'}")
-
-@app.post("/", status_code=status.HTTP_204_NO_CONTENT)
-async def receive_pubsub_message(request: Request):
-    """
-    Receives Pub/Sub push messages, parses the alert event, and routes it.
-    """
-    envelope = await request.json()
-    logger.debug(f"Received Pub/Sub envelope: {envelope}")
-
-    if not isinstance(envelope, dict) or "message" not in envelope:
-        logger.error(f"Invalid Pub/Sub message format received: {envelope}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid Pub/Sub message format",
-        )
-
-    message = envelope["message"]
-    if "data" not in message:
-        logger.error(f"Pub/Sub message missing 'data' field: {message}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid Pub/Sub message format: 'data' field missing",
-        )
-
-    try:
-        # Decode Base64 data
-        data_bytes = base64.b64decode(message["data"])
-        data_str = data_bytes.decode("utf-8")
-        event_data = json.loads(data_str)
-        logger.info(f"Decoded event data: {event_data}")
-
-        # Validate data with Pydantic model
-        if AlertEvent is None:
-            logger.error("AlertEvent model not loaded. Cannot process message.")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Core library model not loaded.",
-            )
-
-        alert_event = AlertEvent(**event_data)
-        logger.info(f"Parsed AlertEvent: {alert_event.event_type.value}")
-
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        logger.error(f"Error decoding Pub/Sub message data: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot decode message data",
-        )
-    except ValidationError as e:
-        logger.error(f"Invalid alert event data format: {e}", exc_info=True)
-        logger.error(f"Received data: {event_data}")
-        # Acknowledge the message to prevent infinite retries for malformed data
-        logger.error("Acknowledging message despite validation error to prevent retries.")
-        return
-    except Exception as e:
-        logger.error(f"Unexpected error processing message: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error processing message",
-        )
-
-    try:
-        # Route the validated alert
-        await route_alert(alert_event)
-        logger.info(f"Successfully processed and routed alert: {alert_event.event_type.value}")
-    except Exception as e:
-        # Log error but return 2xx to acknowledge Pub/Sub message
-        logger.error(f"Error routing alert {alert_event.event_type.value}: {e}", exc_info=True)
-
-    # Return 204 No Content to acknowledge successful processing by Pub/Sub
-    return
+logger.info(f"Redis URL: {settings.REDIS_URL if hasattr(settings, 'REDIS_URL') else 'Using default'}")
 
 @app.get("/health")
 async def health_check():
