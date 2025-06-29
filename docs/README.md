@@ -26,6 +26,7 @@ Welcome to the SpreadPilot documentation center! This collection provides everyt
 | 🏦 [**Gateway Manager**](./gateway-manager.md) | IB Gateway container management | ✅ Updated |
 | ⚡ [**Order Execution**](./order-execution.md) | Advanced limit-ladder execution strategy | ✅ Updated |
 | 📊 [**Vertical Spreads Strategy**](./vertical_spreads_strategy_implementation.md) | QQQ options strategy implementation | ✅ Updated |
+| 🏥 [**Service Health Monitoring**](./service-health-monitoring.md) | Health checks and service restart capabilities | ✅ New |
 
 ### 🔧 **Setup Guides**
 
