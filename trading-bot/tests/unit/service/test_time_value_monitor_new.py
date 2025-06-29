@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
-import fakeredis.aioredis as fakeredis
+import fakeredis
 import pytest
 from ib_insync import Contract, MarketOrder, Stock, Ticker
 
@@ -97,12 +97,12 @@ async def time_value_monitor(mock_service):
     monitor = TimeValueMonitor(service=mock_service)
     
     # Mock Redis client
-    monitor.redis_client = await fakeredis.create_redis_pool()
+    monitor.redis_client = fakeredis.FakeAsyncRedis(decode_responses=False)
     
     yield monitor
     
     # Cleanup
-    await monitor.redis_client.close()
+    await monitor.redis_client.aclose()
 
 
 class TestTimeValueMonitor:
