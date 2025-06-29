@@ -59,11 +59,13 @@ graph TB
     B --> H
     B --> I
     B --> J
+    B -->|Alert Stream| E
     C --> H
     C --> G
     C --> G2
     D --> I
     D --> M
+    E --> J
     E --> N
     F --> B
     K --> L
@@ -89,7 +91,8 @@ The heart of SpreadPilot's automated trading system.
 - 📊 **Position Management** - Real-time position tracking and assignment handling
 - 💰 **P&L Calculation** - 30-second MTM updates with PostgreSQL storage
 - ⚠️ **Risk Management** - Time value monitoring with automatic liquidation (TV < $0.10)
-- 🚨 **Alert Generation** - Real-time notifications for critical events
+- 🚨 **Alert Generation** - Real-time notifications via Redis Streams for execution failures
+- 🔴 **Redis Alert Publishing** - Publishes NO_MARGIN, MID_TOO_LOW, LIMIT_REACHED, GATEWAY_UNREACHABLE alerts
 
 **🏗️ Architecture Components:**
 - 🎛️ **TradingService** - Main orchestrator and service coordinator
@@ -308,13 +311,28 @@ Comprehensive shared library providing common functionality across all services.
 - 📈 **trades** - Trade execution records with pricing data
 - 📊 **quotes** - Market data and pricing history
 
-#### 🔴 **Redis** - *High-Performance Caching*
+#### 🔴 **Redis** - *High-Performance Caching & Streaming*
 
 **🎯 Usage Patterns:**
 - 📡 **Pub/Sub Messaging** - Trading signal distribution
+- 🚨 **Alert Streaming** - Real-time alerts via Redis Streams ('alerts' channel)
 - 💾 **Signal Caching** - Temporary signal storage and validation
 - ⚡ **Session Storage** - Authentication token caching
 - 📊 **Rate Limiting** - API request throttling and control
+
+**📊 Alert Stream Schema:**
+```json
+{
+  "event_type": "NO_MARGIN | MID_TOO_LOW | LIMIT_REACHED | GATEWAY_UNREACHABLE",
+  "message": "Human-readable alert description",
+  "timestamp": "ISO 8601 datetime",
+  "params": {
+    "follower_id": "string",
+    "error": "string",
+    "additional_context": "varies by alert type"
+  }
+}
+```
 
 ---
 
@@ -386,13 +404,19 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant SRV as 🎯 Services
+    participant TB as 🤖 Trading Bot
+    participant RS as 🔴 Redis Stream
     participant PS as 📮 Pub/Sub
     participant AR as 🔔 Alert Router
     participant TG as 🤖 Telegram
     participant EM as 📧 Email
     
-    SRV->>PS: Publish alert events
+    Note over TB: Executor publishes alerts on failures
+    TB->>RS: Publish AlertEvent to 'alerts' stream
+    Note over RS: Alert types: NO_MARGIN, MID_TOO_LOW,<br/>LIMIT_REACHED, GATEWAY_UNREACHABLE
+    
+    RS->>AR: Subscribe and consume alerts
+    AR->>PS: Forward critical alerts
     PS->>AR: Route alert messages
     AR->>TG: Send instant notifications (Primary)
     alt Telegram Success

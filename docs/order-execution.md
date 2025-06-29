@@ -15,6 +15,7 @@ The `VerticalSpreadExecutor` class implements sophisticated order execution logi
 - **Risk Controls**: Automatic rejection when spread pricing falls below profitability thresholds
 - **Comprehensive Alerting**: Real-time notifications for execution events and risk conditions
 - **Multi-Strategy Support**: Handles both Bull Put (Long) and Bear Call (Short) vertical spreads
+- **Redis Stream Publishing**: Real-time alert events published to Redis 'alerts' channel
 
 ## Execution Algorithm
 
@@ -77,8 +78,8 @@ for attempt in range(max_attempts):
 ```python
 from trading_bot.app.service.executor import VerticalSpreadExecutor
 
-# Initialize with IBKR client
-executor = VerticalSpreadExecutor(ibkr_client)
+# Initialize with IBKR client and Redis URL
+executor = VerticalSpreadExecutor(ibkr_client, redis_url="redis://localhost:6379")
 
 # Define trading signal
 signal = {
@@ -282,6 +283,68 @@ if not all([strategy, strike_long, strike_short]):
     }
 ```
 
+## Redis Alert Publishing
+
+The executor publishes real-time alerts to a Redis stream ('alerts') for downstream processing:
+
+### Alert Types
+
+| Alert Type | Trigger Condition | Parameters |
+|------------|-------------------|------------|
+| `NO_MARGIN` | Insufficient buying power for trade | `follower_id`, `error`, `margin_details` |
+| `MID_TOO_LOW` | Spread premium below threshold | `follower_id`, `mid_price`, `threshold`, `strategy`, `strikes` |
+| `LIMIT_REACHED` | All ladder attempts exhausted | `follower_id`, `max_attempts`, `final_limit`, `strikes` |
+| `GATEWAY_UNREACHABLE` | IB connection failure or rejection | `follower_id`, `error`, `signal` |
+
+### Alert Format
+
+Alerts are published as `AlertEvent` objects to the Redis stream:
+
+```python
+{
+    "event_type": "NO_MARGIN",
+    "message": "Margin check failed for follower test-123: Insufficient margin: need 1500.0, have 1000.0",
+    "timestamp": "2025-06-29T10:30:45.123456",
+    "params": {
+        "follower_id": "test-123",
+        "error": "Insufficient margin: need 1500.0, have 1000.0",
+        "margin_details": {
+            "init_margin": 1500.0,
+            "available_funds": 1000.0,
+            "equity_with_loan": 8500.0
+        }
+    }
+}
+```
+
+### Redis Integration
+
+```python
+# Using context manager for automatic connection handling
+async with VerticalSpreadExecutor(ibkr_client) as executor:
+    result = await executor.execute_vertical_spread(signal, follower_id)
+    # Redis connection automatically closed on exit
+```
+
+### Consuming Alerts
+
+Other services can consume alerts from the Redis stream:
+
+```python
+import redis.asyncio as redis
+
+# Connect to Redis
+client = redis.from_url("redis://localhost:6379")
+
+# Read from stream
+messages = await client.xread({'alerts': '0'}, block=1000)
+for stream_name, stream_messages in messages:
+    for message_id, data in stream_messages:
+        alert_json = data['alert']
+        alert = json.loads(alert_json)
+        print(f"Alert: {alert['event_type']} - {alert['message']}")
+```
+
 ## Performance Metrics
 
 ### Execution Statistics
@@ -316,6 +379,8 @@ The executor includes comprehensive unit tests covering:
 - Partial fills and timeouts
 - Exception handling
 - Both Bull Put and Bear Call strategies
+- Redis alert publishing with fakeredis
+- Alert content verification for all failure scenarios
 
 ### Mock Testing
 

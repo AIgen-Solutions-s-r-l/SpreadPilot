@@ -17,6 +17,7 @@ The Trading Bot is the heart of SpreadPilot, responsible for automated strategy 
 - 📋 **Position Tracking**: Real-time position monitoring and assignment handling
 - 💰 **P&L Calculation**: 30-second MTM updates with PostgreSQL storage
 - 🔒 **Margin Validation**: Pre-trade margin checks and position limits
+- 🚨 **Redis Alert Publishing**: Real-time alerts to Redis stream on execution failures
 
 ### 🔄 **Real-time Operations**
 - ⏱️ **Live Monitoring**: Continuous position and market data updates
@@ -39,6 +40,7 @@ The Trading Bot is the heart of SpreadPilot, responsible for automated strategy 
 | ⚠️ **Time Value Monitor** | Risk management & liquidation | `app/service/time_value_monitor.py` |
 | 💰 **P&L Service** | Real-time P&L calculation | `app/service/pnl_service.py` |
 | 🔔 **Alert Manager** | Notification generation | `app/service/alerts.py` |
+| ⚡ **Executor** | Order execution with Redis alerts | `app/service/executor.py` |
 
 ### 📊 **Data Flow**
 
@@ -105,6 +107,7 @@ curl "http://localhost:8001/status"
 - 🐘 **PostgreSQL** - P&L data storage
 - 🍃 **MongoDB** - Trading data and configuration
 - 🔐 **HashiCorp Vault** - Credential management (optional)
+- 🔴 **Redis** - Alert stream publishing
 
 ### 🔧 Local Setup
 
@@ -155,6 +158,9 @@ TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 SENDGRID_API_KEY=your_sendgrid_key
 ADMIN_EMAIL=admin@example.com
+
+# 🔴 Redis
+REDIS_URL=redis://localhost:6379
 ```
 
 ---
@@ -309,6 +315,11 @@ mongosh mongodb://user:pass@localhost:27017/spreadpilot_admin
 - 🔍 Pre-trade margin validation
 - ⏱️ Configurable timeout and retry logic
 - 📊 Real-time fill monitoring
+- 🚨 Redis alert publishing on execution failures:
+  - **NO_MARGIN**: Insufficient margin for trade
+  - **MID_TOO_LOW**: MID price below threshold
+  - **LIMIT_REACHED**: All ladder attempts exhausted
+  - **GATEWAY_UNREACHABLE**: IB connection/rejection errors
 
 ### 🛡️ **Risk Management**
 - ⚠️ Time value monitoring (TV < $0.10 liquidation)
