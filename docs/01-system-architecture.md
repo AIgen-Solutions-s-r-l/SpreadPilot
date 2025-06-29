@@ -124,6 +124,9 @@ RESTful backend service providing comprehensive system management capabilities.
 - 🔌 **Real-time Updates** - WebSocket support for live dashboard data
 - 📊 **System Monitoring** - Health checks and performance metrics
 - 🚨 **Alert Management** - System notification coordination
+- 💰 **P&L Data Access** - Daily and monthly profit/loss reporting endpoints
+- 📝 **Log Queries** - System log access with filtering and search capabilities
+- 🔧 **Manual Operations** - Emergency position closing with PIN verification (0312)
 
 **🏗️ Architecture Components:**
 - 🔐 **AuthService** - JWT authentication and user management
@@ -131,6 +134,9 @@ RESTful backend service providing comprehensive system management capabilities.
 - 📊 **MonitoringService** - System health and performance tracking
 - 🔌 **WebSocketManager** - Real-time data streaming to frontend
 - 🚨 **AlertHandler** - System alert processing and notification
+- 💰 **PnLService** - P&L data retrieval from MongoDB/PostgreSQL
+- 📝 **LogService** - System log queries and filtering
+- 🔧 **ManualOperationService** - Emergency operations with PIN verification
 
 **🔧 Technology Stack:**
 - 🐍 **Python 3.11+** with FastAPI framework

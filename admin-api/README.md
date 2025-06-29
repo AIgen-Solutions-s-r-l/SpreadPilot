@@ -17,6 +17,9 @@ The Admin API serves as the central management hub for SpreadPilot, offering com
 - 🔄 **Real-time Updates**: Live follower status and data
 - 📊 **Position Tracking**: Current trading positions per follower
 - 💰 **P&L Monitoring**: Real-time profit/loss calculations
+- 📅 **P&L Endpoints**: Daily and monthly P&L data access
+- 📝 **Log Access**: System log queries with filtering
+- 🚨 **Manual Operations**: Emergency position closing with PIN verification
 
 ### ⚡ **Real-time Features**
 - 🔌 **WebSocket Support**: Live dashboard updates
@@ -87,6 +90,25 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 | 📊 GET | `/api/v1/positions/{follower_id}` | Get follower positions |
 | ❌ POST | `/api/v1/close/{follower_id}` | Close follower positions |
 
+### 💰 **P&L Data**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 📅 GET | `/api/v1/pnl/today` | Get today's P&L data |
+| 📊 GET | `/api/v1/pnl/month` | Get monthly P&L data |
+
+### 📝 **System Logs**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 📋 GET | `/api/v1/logs/recent` | Get recent system logs (max 1000) |
+
+### 🔧 **Manual Operations**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| 🚨 POST | `/api/v1/manual-close` | Manually close positions (PIN: 0312) |
+
 ### 🔌 **Real-time Data**
 
 | Method | Endpoint | Description |
@@ -133,6 +155,61 @@ curl -X POST "http://localhost:8002/api/v1/followers" \
 # Toggle follower status
 curl -X POST "http://localhost:8002/api/v1/followers/follower123/toggle" \
   -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 💰 P&L Data
+
+```bash
+# Get today's P&L
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/pnl/today"
+
+# Get monthly P&L (current month)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/pnl/month"
+
+# Get specific month P&L
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/pnl/month?year=2024&month=1"
+```
+
+### 📝 System Logs
+
+```bash
+# Get recent logs (default 200)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/logs/recent"
+
+# Get logs with filters
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:8002/api/v1/logs/recent?n=50&service=trading-bot&level=ERROR&search=connection"
+```
+
+### 🔧 Manual Operations
+
+```bash
+# Manually close all positions for a follower
+curl -X POST "http://localhost:8002/api/v1/manual-close" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "follower_id": "follower123",
+    "pin": "0312",
+    "close_all": true,
+    "reason": "Emergency market conditions"
+  }'
+
+# Close specific positions
+curl -X POST "http://localhost:8002/api/v1/manual-close" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "follower_id": "follower123",
+    "pin": "0312",
+    "close_all": false,
+    "position_ids": ["pos1", "pos2"],
+    "reason": "Risk management"
+  }'
 ```
 
 ### 🔌 WebSocket Connection
