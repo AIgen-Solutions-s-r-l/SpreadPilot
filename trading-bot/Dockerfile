@@ -19,7 +19,7 @@ COPY spreadpilot-core/spreadpilot_core spreadpilot-core/spreadpilot_core
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir ./spreadpilot-core && \
-    pip install --no-cache-dir fastapi uvicorn google-cloud-firestore pydantic[email] # Removed google-cloud-secret-manager
+    pip install --no-cache-dir fastapi uvicorn google-cloud-firestore pydantic[email] redis[hiredis] # Removed google-cloud-secret-manager
 
 # Final stage
 FROM python:3.11-slim

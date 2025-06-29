@@ -1,333 +1,420 @@
-"""Time value monitor for SpreadPilot trading service."""
+"""Time Value Monitor for SpreadPilot trading service.
+
+Monitors open positions and automatically closes them when time value falls below $0.10.
+"""
 
 import asyncio
 import datetime
-from typing import Dict, Any, Optional
+import json
+from typing import Dict, Any, Optional, List
 from enum import Enum
 
+import redis.asyncio as redis
+import ib_insync
+from ib_insync import Contract, Option, Order, MarketOrder
+
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models import AlertType, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertType, AlertSeverity, AlertEvent
+from spreadpilot_core.utils.time import get_ny_time
 
 logger = get_logger(__name__)
 
 
-class RiskStatus(str, Enum):
-    """Risk status levels for time value monitoring."""
-    SAFE = "SAFE"
-    RISK = "RISK"
-    CRITICAL = "CRITICAL"
+class TimeValueStatus(str, Enum):
+    """Time value status enum."""
+    
+    SAFE = "SAFE"  # TV > $1.00
+    RISK = "RISK"  # $0.10 < TV <= $1.00
+    CRITICAL = "CRITICAL"  # TV <= $0.10
 
 
 class TimeValueMonitor:
-    """Monitor for time value tracking and automatic liquidation."""
-
-    def __init__(self, service):
+    """Monitor for tracking time value of open positions."""
+    
+    def __init__(self, service, redis_url: str = "redis://localhost:6379"):
         """Initialize the time value monitor.
-
+        
         Args:
             service: Trading service instance
+            redis_url: Redis connection URL
         """
         self.service = service
-        self.risk_statuses: Dict[str, RiskStatus] = {}
-        self.monitoring_active = False
+        self.redis_url = redis_url
+        self.redis_client: Optional[redis.Redis] = None
+        self.monitoring_interval = 60  # seconds
+        self.tv_threshold = 0.10  # $0.10 threshold
+        self.is_running = False
+        self._monitor_task: Optional[asyncio.Task] = None
         
         logger.info("Initialized time value monitor")
-
-    async def start_monitoring(self, shutdown_event: asyncio.Event):
-        """Start time value monitoring loop.
-
-        Args:
-            shutdown_event: Event to signal shutdown
-        """
-        try:
-            logger.info("Starting time value monitoring task")
-            self.monitoring_active = True
-            
-            while not shutdown_event.is_set() and self.monitoring_active:
-                try:
-                    # Check if market is open
-                    if self.service.is_market_open():
-                        # Monitor time value for all active followers
-                        for follower_id in self.service.active_followers:
-                            await self.monitor_time_value(follower_id)
-                    
-                    # Wait 60 seconds before next check
-                    await asyncio.sleep(60)
-                
-                except Exception as e:
-                    logger.error(f"Error in time value monitoring: {e}", exc_info=True)
-                    await asyncio.sleep(10)  # Wait before retrying
-            
-            logger.info("Time value monitoring task stopped")
+    
+    async def connect_redis(self):
+        """Connect to Redis if not already connected."""
+        if self.redis_client is None:
+            self.redis_client = await redis.from_url(self.redis_url, decode_responses=True)
+            logger.info("Connected to Redis for alert publishing")
+    
+    async def disconnect_redis(self):
+        """Disconnect from Redis."""
+        if self.redis_client:
+            await self.redis_client.close()
+            self.redis_client = None
+            logger.info("Disconnected from Redis")
+    
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.connect_redis()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.disconnect_redis()
+    
+    async def start_monitoring(self):
+        """Start the time value monitoring loop."""
+        if self.is_running:
+            logger.warning("Time value monitor is already running")
+            return
         
-        except asyncio.CancelledError:
-            logger.info("Time value monitoring task cancelled")
-            self.monitoring_active = False
-            raise
+        self.is_running = True
+        self._monitor_task = asyncio.create_task(self._monitor_loop())
+        logger.info("Started time value monitoring")
+    
+    async def stop_monitoring(self):
+        """Stop the time value monitoring loop."""
+        if not self.is_running:
+            logger.warning("Time value monitor is not running")
+            return
         
-        except Exception as e:
-            logger.error(f"Error in time value monitoring task: {e}", exc_info=True)
-            self.monitoring_active = False
-
-    async def monitor_time_value(self, follower_id: str):
-        """Monitor time value for a specific follower.
-
-        Args:
-            follower_id: Follower ID to monitor
-        """
-        try:
-            # Get IBKR client
-            client = await self.service.ibkr_manager.get_client(follower_id)
-            if not client:
-                logger.error(f"Failed to get IBKR client for follower {follower_id}")
-                return
-
-            # Get current positions
-            positions = await client.get_positions(force_update=True)
-            if not positions:
-                # No positions, set status to SAFE
-                await self._update_risk_status(follower_id, RiskStatus.SAFE)
-                return
-
-            # Calculate time value for spread positions
-            time_value = await self._calculate_time_value(client, positions)
-            
-            if time_value is None:
-                logger.warning(f"Could not calculate time value for follower {follower_id}")
-                return
-
-            logger.debug(f"Time value for follower {follower_id}: ${time_value:.4f}")
-
-            # Determine risk status and take action
-            if time_value < 0.10:
-                # CRITICAL: Liquidate positions
-                await self._handle_critical_time_value(follower_id, time_value)
-            elif time_value < 0.20:  # Risk threshold
-                # RISK: Monitor closely
-                await self._update_risk_status(follower_id, RiskStatus.RISK)
-                await self.service.alert_manager.create_alert(
-                    follower_id=follower_id,
-                    alert_type=AlertType.RISK_WARNING,
-                    severity=AlertSeverity.WARNING,
-                    message=f"Time value approaching liquidation threshold: ${time_value:.4f}",
-                )
-            else:
-                # SAFE: Normal operation
-                await self._update_risk_status(follower_id, RiskStatus.SAFE)
-
-        except Exception as e:
-            logger.error(f"Error monitoring time value for follower {follower_id}: {e}")
-
-    async def _calculate_time_value(self, client, positions: Dict[str, int]) -> Optional[float]:
-        """Calculate time value for spread positions.
-
-        Args:
-            client: IBKR client instance
-            positions: Position dictionary from client
-
-        Returns:
-            Time value or None if calculation fails
-        """
-        try:
-            # Get market data for spread
-            spread_mark_price = await client.get_spread_mark_price()
-            if spread_mark_price is None:
-                logger.warning("Could not get spread mark price")
-                return None
-
-            # Calculate intrinsic value
-            intrinsic_value = await self._calculate_intrinsic_value(client, positions)
-            if intrinsic_value is None:
-                logger.warning("Could not calculate intrinsic value")
-                return None
-
-            # Time value = spread_mark_price - intrinsic_value
-            time_value = spread_mark_price - intrinsic_value
-            
-            return max(0.0, time_value)  # Time value cannot be negative
-
-        except Exception as e:
-            logger.error(f"Error calculating time value: {e}")
-            return None
-
-    async def _calculate_intrinsic_value(self, client, positions: Dict[str, int]) -> Optional[float]:
-        """Calculate intrinsic value of the spread.
-
-        Args:
-            client: IBKR client instance
-            positions: Position dictionary from client
-
-        Returns:
-            Intrinsic value or None if calculation fails
-        """
-        try:
-            # Get current underlying price (QQQ)
-            underlying_price = await client.get_underlying_price("QQQ")
-            if underlying_price is None:
-                logger.warning("Could not get underlying price for QQQ")
-                return None
-
-            intrinsic_value = 0.0
-
-            # Calculate intrinsic value for each position
-            for position_key, qty in positions.items():
-                if qty == 0:
-                    continue
-
-                # Parse position key (format: "strike-right")
-                try:
-                    strike_str, right = position_key.split("-")
-                    strike = float(strike_str)
-                except ValueError:
-                    logger.warning(f"Could not parse position key: {position_key}")
-                    continue
-
-                # Calculate intrinsic value per contract
-                if right.upper() == "CALL":
-                    contract_intrinsic = max(0, underlying_price - strike)
-                elif right.upper() == "PUT":
-                    contract_intrinsic = max(0, strike - underlying_price)
-                else:
-                    logger.warning(f"Unknown option type: {right}")
-                    continue
-
-                # Add to total intrinsic value (considering position quantity and sign)
-                intrinsic_value += contract_intrinsic * abs(qty) * (1 if qty > 0 else -1)
-
-            return intrinsic_value
-
-        except Exception as e:
-            logger.error(f"Error calculating intrinsic value: {e}")
-            return None
-
-    async def _handle_critical_time_value(self, follower_id: str, time_value: float):
-        """Handle critical time value by liquidating positions.
-
+        self.is_running = False
+        if self._monitor_task:
+            self._monitor_task.cancel()
+            try:
+                await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+        
+        logger.info("Stopped time value monitoring")
+    
+    async def _monitor_loop(self):
+        """Main monitoring loop that runs every interval."""
+        await self.connect_redis()
+        
+        while self.is_running:
+            try:
+                await self._check_all_positions()
+                await asyncio.sleep(self.monitoring_interval)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in time value monitor loop: {e}", exc_info=True)
+                await asyncio.sleep(self.monitoring_interval)
+    
+    async def _check_all_positions(self):
+        """Check time value for all open positions."""
+        logger.debug("Checking time value for all positions")
+        
+        # Get all active followers
+        for follower_id, follower in self.service.active_followers.items():
+            try:
+                await self._check_follower_positions(follower_id, follower)
+            except Exception as e:
+                logger.error(f"Error checking positions for follower {follower_id}: {e}", exc_info=True)
+    
+    async def _check_follower_positions(self, follower_id: str, follower: Any):
+        """Check time value for a specific follower's positions.
+        
         Args:
             follower_id: Follower ID
+            follower: Follower object
+        """
+        # Get IBKR client for this follower
+        ibkr_client = await self.service.ibkr_manager.get_client(follower_id)
+        if not ibkr_client:
+            logger.warning(f"No IBKR client available for follower {follower_id}")
+            return
+        
+        # Ensure connected
+        if not await ibkr_client.ensure_connected():
+            logger.error(f"Failed to connect to IB Gateway for follower {follower_id}")
+            return
+        
+        # Get all positions from IB
+        try:
+            positions = ibkr_client.ib.positions()
+            
+            for position in positions:
+                contract = position.contract
+                
+                # Only check QQQ options
+                if contract.secType == "OPT" and contract.symbol == "QQQ":
+                    await self._check_position_time_value(
+                        follower_id,
+                        ibkr_client,
+                        position,
+                        contract
+                    )
+        
+        except Exception as e:
+            logger.error(f"Error getting positions for follower {follower_id}: {e}", exc_info=True)
+    
+    async def _check_position_time_value(
+        self,
+        follower_id: str,
+        ibkr_client: Any,
+        position: Any,
+        contract: Contract
+    ):
+        """Check time value for a specific position.
+        
+        Args:
+            follower_id: Follower ID
+            ibkr_client: IBKR client instance
+            position: IB position object
+            contract: IB contract object
+        """
+        try:
+            # Get market price for the option
+            market_price = await ibkr_client.get_market_price(contract)
+            if market_price is None:
+                logger.warning(
+                    f"Failed to get market price for {contract.symbol} {contract.strike} {contract.right}"
+                )
+                return
+            
+            # Get underlying price
+            underlying_contract = ib_insync.Stock("QQQ", "SMART", "USD")
+            underlying_price = await ibkr_client.get_market_price(underlying_contract)
+            if underlying_price is None:
+                logger.warning("Failed to get underlying QQQ price")
+                return
+            
+            # Calculate intrinsic value
+            intrinsic_value = self._calculate_intrinsic_value(
+                contract.strike,
+                contract.right,
+                underlying_price
+            )
+            
+            # Calculate time value
+            time_value = market_price - intrinsic_value
+            
+            # Determine status
+            status = self._get_time_value_status(time_value)
+            
+            logger.info(
+                f"Position time value check",
+                follower_id=follower_id,
+                symbol=contract.symbol,
+                strike=contract.strike,
+                right=contract.right,
+                position_qty=position.position,
+                market_price=market_price,
+                intrinsic_value=intrinsic_value,
+                time_value=time_value,
+                status=status
+            )
+            
+            # Publish alert based on status
+            await self._publish_time_value_alert(
+                follower_id,
+                contract,
+                position.position,
+                time_value,
+                status
+            )
+            
+            # If critical (TV <= $0.10), close the position
+            if status == TimeValueStatus.CRITICAL and position.position != 0:
+                await self._close_position(
+                    follower_id,
+                    ibkr_client,
+                    contract,
+                    position.position,
+                    time_value
+                )
+        
+        except Exception as e:
+            logger.error(
+                f"Error checking time value for position: {e}",
+                follower_id=follower_id,
+                contract_symbol=contract.symbol,
+                strike=contract.strike,
+                right=contract.right,
+                exc_info=True
+            )
+    
+    def _calculate_intrinsic_value(
+        self,
+        strike: float,
+        right: str,
+        underlying_price: float
+    ) -> float:
+        """Calculate intrinsic value of an option.
+        
+        Args:
+            strike: Strike price
+            right: Option right ("C" for call, "P" for put)
+            underlying_price: Current underlying price
+            
+        Returns:
+            Intrinsic value
+        """
+        if right == "C":  # Call option
+            return max(0, underlying_price - strike)
+        else:  # Put option
+            return max(0, strike - underlying_price)
+    
+    def _get_time_value_status(self, time_value: float) -> TimeValueStatus:
+        """Get status based on time value.
+        
+        Args:
+            time_value: Time value in dollars
+            
+        Returns:
+            TimeValueStatus enum
+        """
+        if time_value <= self.tv_threshold:
+            return TimeValueStatus.CRITICAL
+        elif time_value <= 1.00:
+            return TimeValueStatus.RISK
+        else:
+            return TimeValueStatus.SAFE
+    
+    async def _publish_time_value_alert(
+        self,
+        follower_id: str,
+        contract: Contract,
+        position_qty: int,
+        time_value: float,
+        status: TimeValueStatus
+    ):
+        """Publish time value alert to Redis.
+        
+        Args:
+            follower_id: Follower ID
+            contract: Option contract
+            position_qty: Position quantity
+            time_value: Current time value
+            status: Time value status
+        """
+        # Map status to severity
+        severity_map = {
+            TimeValueStatus.SAFE: AlertSeverity.INFO,
+            TimeValueStatus.RISK: AlertSeverity.WARNING,
+            TimeValueStatus.CRITICAL: AlertSeverity.CRITICAL
+        }
+        
+        # Create alert event
+        alert_event = AlertEvent(
+            event_type=AlertType.ASSIGNMENT_DETECTED,  # Using this for time value alerts
+            message=f"Time value {status} for {contract.symbol} {contract.strike}{contract.right}: ${time_value:.2f}",
+            params={
+                "follower_id": follower_id,
+                "symbol": contract.symbol,
+                "strike": contract.strike,
+                "right": contract.right,
+                "position_qty": position_qty,
+                "time_value": time_value,
+                "status": status,
+                "severity": severity_map[status].value
+            }
+        )
+        
+        try:
+            if self.redis_client:
+                alert_json = json.dumps(alert_event.model_dump(mode="json"))
+                await self.redis_client.xadd("alerts", {"alert": alert_json})
+                logger.debug(f"Published time value alert: {status} for follower {follower_id}")
+        except Exception as e:
+            logger.error(f"Failed to publish time value alert: {e}", exc_info=True)
+    
+    async def _close_position(
+        self,
+        follower_id: str,
+        ibkr_client: Any,
+        contract: Contract,
+        position_qty: int,
+        time_value: float
+    ):
+        """Close a position when time value is critical.
+        
+        Args:
+            follower_id: Follower ID
+            ibkr_client: IBKR client instance
+            contract: Option contract
+            position_qty: Position quantity
             time_value: Current time value
         """
+        logger.warning(
+            f"Closing position due to critical time value",
+            follower_id=follower_id,
+            symbol=contract.symbol,
+            strike=contract.strike,
+            right=contract.right,
+            position_qty=position_qty,
+            time_value=time_value
+        )
+        
         try:
-            # Update status to CRITICAL
-            await self._update_risk_status(follower_id, RiskStatus.CRITICAL)
-
-            # Create critical alert
-            await self.service.alert_manager.create_alert(
-                follower_id=follower_id,
-                alert_type=AlertType.TIME_VALUE_CRITICAL,
-                severity=AlertSeverity.CRITICAL,
-                message=f"Time value critical (${time_value:.4f}), initiating liquidation",
+            # Create market order to close position
+            # If long position (qty > 0), sell to close
+            # If short position (qty < 0), buy to close
+            action = "SELL" if position_qty > 0 else "BUY"
+            order = MarketOrder(
+                action=action,
+                totalQuantity=abs(position_qty),
+                transmit=True
             )
-
-            logger.warning(
-                "Time value critical, liquidating positions",
-                follower_id=follower_id,
-                time_value=time_value,
-            )
-
-            # Execute market order to close all positions
-            result = await self.service.position_manager.close_positions(follower_id)
-
-            if result["success"]:
+            
+            # Place the order
+            trade = ibkr_client.ib.placeOrder(contract, order)
+            
+            # Wait a bit for order to process
+            await asyncio.sleep(2)
+            
+            # Check order status
+            if trade.orderStatus.status == "Filled":
                 logger.info(
-                    "Successfully liquidated positions due to time value",
+                    f"Successfully closed position",
                     follower_id=follower_id,
-                    time_value=time_value,
+                    order_id=trade.order.orderId,
+                    fill_price=trade.orderStatus.avgFillPrice
                 )
-
-                # Create success alert
-                await self.service.alert_manager.create_alert(
-                    follower_id=follower_id,
-                    alert_type=AlertType.LIQUIDATION_COMPLETE,
-                    severity=AlertSeverity.INFO,
-                    message=f"Positions liquidated due to time value: ${time_value:.4f}",
+                
+                # Publish success alert
+                alert_event = AlertEvent(
+                    event_type=AlertType.ASSIGNMENT_COMPENSATED,
+                    message=f"Closed position for {contract.symbol} {contract.strike}{contract.right} due to TV <= ${self.tv_threshold}",
+                    params={
+                        "follower_id": follower_id,
+                        "symbol": contract.symbol,
+                        "strike": contract.strike,
+                        "right": contract.right,
+                        "position_qty": position_qty,
+                        "time_value": time_value,
+                        "fill_price": trade.orderStatus.avgFillPrice,
+                        "order_id": trade.order.orderId
+                    }
                 )
-
-                # Update status back to SAFE after successful liquidation
-                await self._update_risk_status(follower_id, RiskStatus.SAFE)
-
+                
+                if self.redis_client:
+                    alert_json = json.dumps(alert_event.model_dump(mode="json"))
+                    await self.redis_client.xadd("alerts", {"alert": alert_json})
             else:
                 logger.error(
-                    f"Failed to liquidate positions: {result.get('error')}",
+                    f"Failed to close position",
                     follower_id=follower_id,
+                    order_status=trade.orderStatus.status,
+                    order_id=trade.order.orderId
                 )
-
-                # Create failure alert
-                await self.service.alert_manager.create_alert(
-                    follower_id=follower_id,
-                    alert_type=AlertType.LIQUIDATION_FAILED,
-                    severity=AlertSeverity.CRITICAL,
-                    message=f"Failed to liquidate positions: {result.get('error')}",
-                )
-
-        except Exception as e:
-            logger.error(f"Error handling critical time value for follower {follower_id}: {e}")
-
-    async def _update_risk_status(self, follower_id: str, status: RiskStatus):
-        """Update risk status in Redis and local cache.
-
-        Args:
-            follower_id: Follower ID
-            status: New risk status
-        """
-        try:
-            # Update local cache
-            self.risk_statuses[follower_id] = status
-
-            # Update Redis if available
-            if hasattr(self.service, 'redis_client') and self.service.redis_client:
-                key = f"risk_status:{follower_id}"
-                await self.service.redis_client.set(key, status.value, ex=300)  # 5-minute expiry
-                
-                # Also publish status change
-                await self.service.redis_client.publish(
-                    "risk_status_updates",
-                    f"{follower_id}:{status.value}:{datetime.datetime.now().isoformat()}"
-                )
-
-            logger.debug(f"Updated risk status for {follower_id}: {status.value}")
-
-        except Exception as e:
-            logger.error(f"Error updating risk status for follower {follower_id}: {e}")
-
-    async def get_risk_status(self, follower_id: str) -> RiskStatus:
-        """Get current risk status for a follower.
-
-        Args:
-            follower_id: Follower ID
-
-        Returns:
-            Current risk status
-        """
-        try:
-            # Try Redis first if available
-            if hasattr(self.service, 'redis_client') and self.service.redis_client:
-                key = f"risk_status:{follower_id}"
-                status_str = await self.service.redis_client.get(key)
-                if status_str:
-                    return RiskStatus(status_str.decode() if isinstance(status_str, bytes) else status_str)
-
-            # Fall back to local cache
-            return self.risk_statuses.get(follower_id, RiskStatus.SAFE)
-
-        except Exception as e:
-            logger.error(f"Error getting risk status for follower {follower_id}: {e}")
-            return RiskStatus.SAFE
-
-    async def get_all_risk_statuses(self) -> Dict[str, RiskStatus]:
-        """Get risk statuses for all followers.
-
-        Returns:
-            Dictionary of follower_id -> risk_status
-        """
-        statuses = {}
         
-        for follower_id in self.service.active_followers:
-            statuses[follower_id] = await self.get_risk_status(follower_id)
-        
-        return statuses
-
-    async def stop_monitoring(self):
-        """Stop the time value monitoring."""
-        logger.info("Stopping time value monitoring")
-        self.monitoring_active = False
+        except Exception as e:
+            logger.error(
+                f"Error closing position: {e}",
+                follower_id=follower_id,
+                contract_symbol=contract.symbol,
+                strike=contract.strike,
+                right=contract.right,
+                exc_info=True
+            )
