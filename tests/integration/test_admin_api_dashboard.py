@@ -70,15 +70,22 @@ async def test_dashboard_api_endpoints(  # Ensure async def
         )  # Ensure await
         assert response_summary.status_code == 200
         summary_data = response_summary.json()
+        
         # Assert against the actual keys returned by the endpoint
-        assert "follower_count" in summary_data
-        assert "active_follower_count" in summary_data
-        assert "total_positions" in summary_data  # Check for the placeholder key
-        assert "last_updated" in summary_data
+        assert "follower_stats" in summary_data
+        assert "system_status" in summary_data
+        
+        # Check follower stats structure
+        follower_stats = summary_data["follower_stats"]
+        assert "total" in follower_stats
+        assert "active" in follower_stats
+        assert "inactive" in follower_stats
+        
         # Check the values based on the inserted data
-        assert summary_data["follower_count"] == 2
-        assert summary_data["active_follower_count"] == 1
-        assert summary_data["total_positions"] == 0  # Verify placeholder value
+        assert follower_stats["total"] == 2
+        assert follower_stats["active"] == 1
+        assert follower_stats["inactive"] == 1
+        assert summary_data["system_status"] == "operational"
 
         # Test /stats endpoint (if implemented)
         # response_stats = await admin_api_client.get("/api/v1/dashboard/stats")

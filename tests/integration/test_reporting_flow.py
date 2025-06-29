@@ -109,9 +109,7 @@ async def test_daily_pnl_calculation(
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Test needs rework for async mocking of monthly aggregation")
 async def test_monthly_pnl_calculation(
-    # Removed firestore_client fixture parameter
     test_mongo_db,  # Add mongo fixture
 ):
     """
@@ -149,9 +147,23 @@ async def test_monthly_pnl_calculation(
         }
         daily_pnl_mock_data.append(daily_pnl_data)
 
-    # --- Mock MongoDB interactions ---
-    mock_cursor = MagicMock()
-    mock_cursor.__aiter__.return_value = daily_pnl_mock_data
+    # --- Mock MongoDB interactions with proper async iterator ---
+    class MockAsyncCursor:
+        def __init__(self, data):
+            self.data = data
+            self.index = 0
+            
+        def __aiter__(self):
+            return self
+            
+        async def __anext__(self):
+            if self.index >= len(self.data):
+                raise StopAsyncIteration
+            item = self.data[self.index]
+            self.index += 1
+            return item
+    
+    mock_cursor = MockAsyncCursor(daily_pnl_mock_data)
     mock_daily_pnl_collection = AsyncMock()
     mock_daily_pnl_collection.find.return_value = mock_cursor
 
