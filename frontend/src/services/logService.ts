@@ -1,50 +1,75 @@
-import { LogEntry, LogLevel } from '../types/logEntry';
+import apiClient from './api';
+import { 
+  LogsResponseSchema,
+  type LogEntry,
+  type LogLevel,
+  type LogsResponse
+} from '../schemas/log.schema';
 
-// TODO: Replace with actual API base URL, potentially from env vars
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-
-// Function to get the auth token (reuse or centralize this logic later)
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('authToken');
-};
-
-// Helper function for making authenticated API requests (reuse or centralize)
-const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  const token = getAuthToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
-    console.error('API Error:', response.status, errorData);
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-  }
-  return response;
-};
-
-// --- API Functions ---
-
-// Fetch latest log entries (limit and level filtering might be query params)
-export const getLogs = async (limit: number = 200, level?: LogLevel): Promise<LogEntry[]> => {
+// Fetch recent logs with optional filtering
+export const getLogs = async (
+  limit: number = 200, 
+  level?: LogLevel,
+  service?: string,
+  search?: string
+): Promise<LogsResponse> => {
   try {
-    let url = `${API_BASE_URL}/logs?limit=${limit}`;
-    if (level) {
-      url += `&level=${level}`;
-    }
-    const response = await fetchWithAuth(url);
-    const data: LogEntry[] = await response.json();
-    // TODO: Add data validation/transformation if necessary (e.g., parse timestamp)
-    return data.map(log => ({
-        ...log,
-        // Ensure timestamp is handled correctly if needed (e.g., new Date(log.timestamp))
-    }));
-  } catch (error) {
+    // Build query parameters
+    const params: any = { n: limit };
+    if (level) params.level = level;
+    if (service) params.service = service;
+    if (search) params.search = search;
+    
+    const response = await apiClient.get('/logs/recent', { params });
+    
+    // Validate response data with Zod
+    const validatedData = LogsResponseSchema.parse(response.data);
+    return validatedData;
+  } catch (error: any) {
     console.error('Failed to fetch logs:', error);
+    if (error.issues) {
+      // Zod validation error
+      console.error('Validation errors:', error.issues);
+    }
     throw error;
   }
+};
+
+// Get logs as array (for backward compatibility)
+export const getLogsArray = async (
+  limit: number = 200,
+  level?: LogLevel,
+  service?: string,
+  search?: string
+): Promise<LogEntry[]> => {
+  const response = await getLogs(limit, level, service, search);
+  return response.logs;
+};
+
+// Stream logs via WebSocket (if needed)
+export const streamLogs = (onMessage: (log: LogEntry) => void): (() => void) => {
+  const wsUrl = import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws') || 'ws://localhost:8083';
+  const ws = new WebSocket(`${wsUrl}/api/v1/ws/logs`);
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      // Validate individual log entry
+      const validatedLog = LogsResponseSchema.shape.logs.element.parse(data);
+      onMessage(validatedLog);
+    } catch (error) {
+      console.error('Failed to parse WebSocket log message:', error);
+    }
+  };
+  
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+  
+  // Return cleanup function
+  return () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  };
 };
