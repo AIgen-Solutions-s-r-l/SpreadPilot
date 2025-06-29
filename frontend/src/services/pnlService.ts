@@ -15,8 +15,8 @@ export const getTodayPnl = async (): Promise<DailyPnl> => {
     return validatedData;
   } catch (error) {
     console.error('Failed to fetch today\'s P&L:', error);
-    if (error.issues) {
-      console.error('Validation errors:', error.issues);
+    if (error && typeof error === 'object' && 'issues' in error) {
+      console.error('Validation errors:', (error as any).issues);
     }
     throw error;
   }
@@ -35,8 +35,8 @@ export const getMonthlyPnl = async (year?: number, month?: number): Promise<Mont
     return validatedData;
   } catch (error) {
     console.error('Failed to fetch monthly P&L:', error);
-    if (error.issues) {
-      console.error('Validation errors:', error.issues);
+    if (error && typeof error === 'object' && 'issues' in error) {
+      console.error('Validation errors:', (error as any).issues);
     }
     throw error;
   }

@@ -27,9 +27,9 @@ export const getLogs = async (
     return validatedData;
   } catch (error) {
     console.error('Failed to fetch logs:', error);
-    if (error.issues) {
+    if (error && typeof error === 'object' && 'issues' in error) {
       // Zod validation error
-      console.error('Validation errors:', error.issues);
+      console.error('Validation errors:', (error as any).issues);
     }
     throw error;
   }
