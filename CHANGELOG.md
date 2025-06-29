@@ -5,6 +5,34 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.14.0] - 2025-06-29
+
+### Added
+- **Multi-tenant IBGateway Container Management**: Fully-working IBGateway containers for each follower
+  - Automatic container creation with unique port and client ID allocation
+  - Health monitoring every 30 seconds using `ib_insync.isConnected()`
+  - Automatic reconnection with exponential backoff
+  - Graceful shutdown with 30-second timeout and force removal fallback
+  - Public `stop_follower_gateway()` method for individual follower management
+- **Vault Integration for Credentials**: Secure IBKR credential management
+  - Primary credential source from HashiCorp Vault using `hvac`
+  - Environment variables `IB_USER` and `IB_PASS` for container configuration
+  - Follower-specific vault secret references
+  - Fallback to stored username with placeholder password
+- **Comprehensive Unit Tests**: Full test coverage with mocked Docker SDK
+  - Core functionality tests for port/client ID allocation
+  - Health monitoring and reconnection tests
+  - Vault integration tests
+  - Simplified tests for CI compatibility
+
+### Fixed
+- **Gateway Environment Variables**: Changed from `TWS_USERID`/`TWS_PASSWORD` to `IB_USER`/`IB_PASS`
+- **MongoDB Import**: Lazy import to avoid test collection errors
+
+### Enhanced
+- **Gateway Manager Documentation**: Updated with Vault integration and new features
+- **Health Check Logic**: Improved connection verification and status management
+
 ## [v1.1.13.0] - 2025-06-29
 
 ### Added
