@@ -52,8 +52,8 @@ import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 
 // Hooks and services
 import { useFollowers } from '../hooks/useFollowers';
-import { enableFollower, disableFollower, closeFollowerPosition } from '../services/followerService';
-import type { Follower } from '../schemas/follower.schema';
+import { enableFollower, disableFollower, closeFollowerPosition, createFollower } from '../services/followerService';
+import type { Follower, CreateFollowerRequest } from '../schemas/follower.schema';
 import { TimeValueBadge } from '../components/common/TimeValueBadge';
 
 // Helper functions for status chips
@@ -113,6 +113,14 @@ const FollowersPageV2: React.FC = () => {
   const [actionType, setActionType] = useState<string | null>(null);
   const [pin, setPin] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Add follower form state
+  const [newFollower, setNewFollower] = useState<Partial<CreateFollowerRequest>>({
+    name: '',
+    email: '',
+    iban: '',
+    commission_pct: 0,
+  });
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openActionMenu = Boolean(anchorEl);
@@ -131,8 +139,40 @@ const FollowersPageV2: React.FC = () => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const handleOpenAddDialog = () => setOpenAddDialog(true);
-  const handleCloseAddDialog = () => setOpenAddDialog(false);
+  const handleOpenAddDialog = () => {
+    setNewFollower({
+      name: '',
+      email: '',
+      iban: '',
+      commission_pct: 0,
+    });
+    setOpenAddDialog(true);
+  };
+  
+  const handleCloseAddDialog = () => {
+    setOpenAddDialog(false);
+    setNewFollower({
+      name: '',
+      email: '',
+      iban: '',
+      commission_pct: 0,
+    });
+  };
+  
+  const handleAddFollower = async () => {
+    try {
+      if (!newFollower.name || !newFollower.email || !newFollower.iban) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      await createFollower(newFollower as CreateFollowerRequest);
+      await refresh();
+      handleCloseAddDialog();
+    } catch (error: any) {
+      alert(error.message || 'Failed to add follower');
+    }
+  };
 
   const handleConfirmAction = (follower: Follower, type: string) => {
     setActionFollower(follower);
@@ -472,14 +512,50 @@ const FollowersPageV2: React.FC = () => {
       <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Add New Follower</DialogTitle>
         <DialogContent>
-          <TextField margin="dense" label="Name" type="text" fullWidth variant="outlined" />
-          <TextField margin="dense" label="Email" type="email" fullWidth variant="outlined" />
-          <TextField margin="dense" label="IBAN" type="text" fullWidth variant="outlined" />
-          <TextField margin="dense" label="Commission %" type="number" fullWidth variant="outlined" />
+          <TextField 
+            margin="dense" 
+            label="Name" 
+            type="text" 
+            fullWidth 
+            variant="outlined" 
+            value={newFollower.name || ''}
+            onChange={(e) => setNewFollower({ ...newFollower, name: e.target.value })}
+            required
+          />
+          <TextField 
+            margin="dense" 
+            label="Email" 
+            type="email" 
+            fullWidth 
+            variant="outlined" 
+            value={newFollower.email || ''}
+            onChange={(e) => setNewFollower({ ...newFollower, email: e.target.value })}
+            required
+          />
+          <TextField 
+            margin="dense" 
+            label="IBAN" 
+            type="text" 
+            fullWidth 
+            variant="outlined" 
+            value={newFollower.iban || ''}
+            onChange={(e) => setNewFollower({ ...newFollower, iban: e.target.value })}
+            required
+          />
+          <TextField 
+            margin="dense" 
+            label="Commission %" 
+            type="number" 
+            fullWidth 
+            variant="outlined" 
+            value={newFollower.commission_pct || 0}
+            onChange={(e) => setNewFollower({ ...newFollower, commission_pct: parseFloat(e.target.value) || 0 })}
+            inputProps={{ min: 0, max: 100, step: 0.1 }}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseAddDialog}>Cancel</Button>
-          <Button onClick={handleCloseAddDialog} variant="contained">Save Follower</Button>
+          <Button onClick={handleAddFollower} variant="contained">Save Follower</Button>
         </DialogActions>
       </Dialog>
 
