@@ -4,14 +4,13 @@ import { WebSocketProvider } from './contexts/WebSocketContext'; // Import WebSo
 import ThemeProvider from './theme/ThemeProvider';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/layout/DashboardLayout';
-import DashboardPage from './pages/DashboardPage'; // Import DashboardPage
-import FollowersPage from './pages/FollowersPage';
+import DashboardPageV2 from './pages/DashboardPageV2';
+import FollowersPageV2 from './pages/FollowersPageV2';
 import TradingActivityPage from './pages/TradingActivityPage'; // Import TradingActivityPage
-import LogsPage from './pages/LogsPage';
+import LogsPageV2 from './pages/LogsPageV2';
 import CommandsPage from './pages/CommandsPage'; // Import CommandsPage
 
-// TODO: Move WebSocket URL to environment variables
-const WEBSOCKET_URL = import.meta.env.REACT_APP_WS_URL;
+const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8084/ws';
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,11 +39,11 @@ function App() {
                 <DashboardLayout>
                 {/* Define nested routes within the layout */}
                 <Routes>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/followers" element={<FollowersPage />} />
+                  <Route path="/dashboard" element={<DashboardPageV2 />} />
+                  <Route path="/followers" element={<FollowersPageV2 />} />
                   <Route path="/trading-activity" element={<TradingActivityPage />} />
                   {/* Add routes for Log Console and Manual Commands later */}
-                  <Route path="/logs" element={<LogsPage />} />
+                  <Route path="/logs" element={<LogsPageV2 />} />
                   <Route path="/commands" element={<CommandsPage />} />
 
                   {/* Default route within the dashboard */}
