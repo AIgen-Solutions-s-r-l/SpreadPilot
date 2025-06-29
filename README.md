@@ -229,6 +229,27 @@ pytest -m e2e tests/e2e/
 make test-coverage
 ```
 
+#### 🔗 Integration Testing
+
+SpreadPilot includes comprehensive integration tests for all major components:
+
+```bash
+# Run all integration tests
+pytest tests/integration/ -v
+
+# Run specific integration test suites
+pytest tests/integration/test_vault_minio_flows.py -v
+pytest tests/integration/test_follower_vault_integration.py -v
+pytest tests/integration/test_report_minio_integration.py -v
+```
+
+The integration test suite validates:
+- ✅ **MongoDB Operations**: Follower CRUD, position updates, trade records
+- ✅ **Vault Integration**: Secret storage/retrieval, credential rotation
+- ✅ **MinIO/S3 Storage**: Report upload/download, pre-signed URLs
+- ✅ **Service Interactions**: Cross-service communication flows
+- ✅ **Error Handling**: Graceful degradation when services unavailable
+
 #### 🌐 End-to-End Testing
 
 SpreadPilot includes comprehensive E2E tests that validate the complete workflow:

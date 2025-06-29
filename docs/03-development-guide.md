@@ -307,6 +307,27 @@ SignalProcessor = trading_bot_service.SignalProcessor
 route_alert = alert_router_service.route_alert
 ```
 
+### 🔗 Integration Tests
+
+```bash
+# Run all integration tests
+pytest tests/integration/ -v
+
+# Run specific integration test files
+pytest tests/integration/test_vault_minio_flows.py -v
+pytest tests/integration/test_follower_vault_integration.py -v
+pytest tests/integration/test_report_minio_integration.py -v
+
+# Run MongoDB-specific tests
+pytest tests/integration/ -k "mongo" -v
+
+# Run Vault-specific tests  
+pytest tests/integration/ -k "vault" -v
+
+# Run MinIO-specific tests
+pytest tests/integration/ -k "minio" -v
+```
+
 ### 🔄 End-to-End Tests
 
 ```bash

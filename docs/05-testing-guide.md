@@ -205,6 +205,71 @@ class TestFollowerAPI:
 - **⚡ Parallel Execution** - Use isolated test databases
 - **📊 Test Workflows** - Verify multi-step processes
 
+### 🔐 **Vault Integration Tests**
+
+SpreadPilot includes comprehensive tests for HashiCorp Vault integration:
+
+```python
+# tests/integration/test_vault_minio_flows.py
+@pytest.mark.asyncio
+async def test_vault_secret_retrieval(test_mongo_db):
+    """Test retrieving secrets from Vault for a follower."""
+    # Create follower with Vault secret reference
+    vault_secret_ref = f"secret/ibkr/follower_{follower_id}"
+    
+    # Mock Vault client
+    mock_vault_client = MagicMock(spec=VaultClient)
+    mock_vault_client.get_ibkr_credentials.return_value = {
+        "IB_USER": "vault_user",
+        "IB_PASS": "vault_password_secure"
+    }
+    
+    # Test credential retrieval
+    with patch('spreadpilot_core.utils.vault.get_vault_client', return_value=mock_vault_client):
+        credentials = vault_client.get_ibkr_credentials(vault_secret_ref)
+        assert credentials["IB_USER"] == "vault_user"
+```
+
+**Vault Test Coverage:**
+- ✅ Secret storage and retrieval
+- ✅ Credential rotation workflows  
+- ✅ Error handling for connection failures
+- ✅ Integration with follower management
+- ✅ Gateway manager credential injection
+
+### 🪣 **MinIO Integration Tests**
+
+Comprehensive tests for MinIO/S3 storage integration:
+
+```python
+# tests/integration/test_report_minio_integration.py
+@pytest.mark.asyncio
+async def test_monthly_report_minio_storage(test_mongo_db):
+    """Test storing monthly reports in MinIO."""
+    # Upload report to MinIO
+    await minio_service.upload_report(
+        report_content=pdf_content,
+        object_name=object_name,
+        content_type="application/pdf"
+    )
+    
+    # Generate pre-signed URL
+    presigned_url = await minio_service.get_presigned_url(
+        object_name, expires_days=30
+    )
+    
+    # Store metadata in MongoDB
+    await test_mongo_db.monthly_reports.insert_one(report_doc)
+```
+
+**MinIO Test Coverage:**
+- ✅ Report upload and download
+- ✅ Pre-signed URL generation
+- ✅ Lifecycle policy configuration
+- ✅ Bulk report processing
+- ✅ Connection failure handling
+- ✅ Report expiration and cleanup
+
 ---
 
 ## 🌐 End-to-End Testing
