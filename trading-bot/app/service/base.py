@@ -6,7 +6,6 @@ import time
 from enum import Enum
 
 # Removed firebase_admin imports
-from google.cloud import secretmanager  # Keep for now, separate concern
 from motor.motor_asyncio import AsyncIOMotorDatabase  # Added Motor import
 
 from spreadpilot_core.db.mongodb import (  # Added MongoDB imports
@@ -69,13 +68,13 @@ class TradingService:
         self.status = ServiceStatus.STARTING
         self.active_followers: dict[str, Follower] = {}
         self.mongo_db: AsyncIOMotorDatabase | None = None  # Changed db to mongo_db
-        self.secret_client = None
+        self.vault_client = None
         self.health_check_time = time.time()
 
         # MongoDB client/db will be initialized in _init_mongo called by run()
 
-        # Initialize Secret Manager (Keep for now)
-        self._init_secret_manager()
+        # Initialize Vault client
+        self._init_vault_client()
 
         # Initialize managers
         self.ibkr_manager = IBKRManager(self)
@@ -110,15 +109,24 @@ class TradingService:
                 # Propagate the error to stop the service startup if connection fails
                 raise
 
-    def _init_secret_manager(self):
-        """Initialize Secret Manager."""
+    def _init_vault_client(self):
+        """Initialize Vault client."""
         try:
-            # Initialize Secret Manager client
-            self.secret_client = secretmanager.SecretManagerServiceClient()
-
-            logger.info("Initialized Secret Manager")
+            if self.settings.vault_enabled:
+                from spreadpilot_core.utils.vault import get_vault_client
+                self.vault_client = get_vault_client()
+                # Override client settings with config values
+                self.vault_client.vault_url = self.settings.vault_url
+                if self.settings.vault_token:
+                    self.vault_client.vault_token = self.settings.vault_token
+                self.vault_client.mount_point = self.settings.vault_mount_point
+                # Reset client to pick up new settings
+                self.vault_client._client = None
+                logger.info("Initialized Vault client")
+            else:
+                logger.info("Vault integration is disabled")
         except Exception as e:
-            logger.error(f"Error initializing Secret Manager: {e}")
+            logger.error(f"Error initializing Vault client: {e}")
             self.status = ServiceStatus.ERROR
 
     async def run(self, shutdown_event: asyncio.Event):
@@ -337,7 +345,7 @@ class TradingService:
             self.status = ServiceStatus.ERROR
 
     async def get_secret(self, secret_ref: str) -> str | None:
-        """Get secret from Secret Manager (legacy method).
+        """Get secret from Vault.
 
         Args:
             secret_ref: Secret reference
@@ -345,21 +353,29 @@ class TradingService:
         Returns:
             Secret value or None if not available
         """
+        if not self.settings.vault_enabled or not self.vault_client:
+            logger.warning("Vault is not enabled or client not initialized")
+            return None
+            
         try:
-            # Build the resource name of the secret version
-            name = f"projects/{self.settings.project_id}/secrets/{secret_ref}/versions/latest"
-
-            # Access the secret version
-            response = self.secret_client.access_secret_version(request={"name": name})
-
-            # Return the decoded payload
-            return response.payload.data.decode("UTF-8")
+            # Get secret from Vault
+            secret = self.vault_client.get_secret(secret_ref)
+            if isinstance(secret, dict):
+                # If it's a dict, return the first value or look for a specific key
+                if "value" in secret:
+                    return secret["value"]
+                elif len(secret) == 1:
+                    return list(secret.values())[0]
+                else:
+                    logger.warning(f"Secret {secret_ref} is a dict with multiple values, returning None")
+                    return None
+            return secret
         except Exception as e:
             logger.error(f"Error getting secret {secret_ref}: {e}")
             return None
 
     def get_ibkr_credentials(self, secret_ref: str) -> dict[str, str] | None:
-        """Get IBKR credentials, preferring Vault over Google Cloud Secret Manager.
+        """Get IBKR credentials from Vault.
 
         Args:
             secret_ref: Secret reference for IBKR credentials
@@ -367,31 +383,20 @@ class TradingService:
         Returns:
             Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
         """
-        # Try Vault first if enabled
-        if self.settings.vault_enabled:
-            credentials = self.settings.get_ibkr_credentials_from_vault(secret_ref)
+        if not self.settings.vault_enabled or not self.vault_client:
+            logger.warning("Vault is not enabled or client not initialized")
+            return None
+            
+        try:
+            credentials = self.vault_client.get_ibkr_credentials(secret_ref)
             if credentials:
+                logger.info(f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}")
                 return credentials
             else:
-                logger.warning(
-                    f"Vault enabled but no credentials found for {secret_ref}, falling back to Google Cloud Secret Manager"
-                )
-
-        # Fallback to Google Cloud Secret Manager (legacy)
-        logger.info(
-            f"Using Google Cloud Secret Manager for IBKR credentials: {secret_ref}"
-        )
-        try:
-            # This would require implementing the secret manager logic here
-            # For now, just log that this is the fallback path
-            logger.warning(
-                "Google Cloud Secret Manager fallback not implemented for IBKR credentials"
-            )
-            return None
+                logger.warning(f"No IBKR credentials found in Vault for: {secret_ref}")
+                return None
         except Exception as e:
-            logger.error(
-                f"Error getting IBKR credentials from Google Cloud Secret Manager: {e}"
-            )
+            logger.error(f"Error getting IBKR credentials from Vault: {e}")
             return None
 
     def is_healthy(self) -> bool:

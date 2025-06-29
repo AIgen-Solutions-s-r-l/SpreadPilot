@@ -141,22 +141,30 @@ def mock_settings():
     settings.ib_client_id = 1
     settings.ib_trading_mode = "paper"
     settings.project_id = "test-project"
+    settings.vault_enabled = True
+    settings.vault_url = "http://vault:8200"
+    settings.vault_token = "test-token"
+    settings.vault_mount_point = "secret"
     return settings
 
 
 @pytest.fixture
 async def trading_service(mock_settings, mock_sheets_client):
     """Fixture to create a TradingService with mocked dependencies."""
-    # Patch Firebase and Secret Manager
-    with patch("trading_bot.app.service.base.firebase_admin.initialize_app"):
-        with patch("trading_bot.app.service.base.firestore.client"):
-            with patch(
-                "trading_bot.app.service.base.secretmanager.SecretManagerServiceClient"
-            ):
+    # Patch MongoDB and Vault
+    with patch("trading_bot.app.service.base.connect_to_mongo"):
+        with patch("trading_bot.app.service.base.get_mongo_db"):
+            with patch("spreadpilot_core.utils.vault.get_vault_client") as mock_get_vault_client:
+                # Create mock vault client
+                mock_vault_client = MagicMock()
+                mock_vault_client.get_secret = MagicMock(return_value="test_secret")
+                mock_vault_client.get_ibkr_credentials = MagicMock(return_value={"IB_USER": "test_user", "IB_PASS": "test_pass"})
+                mock_get_vault_client.return_value = mock_vault_client
+                
                 service = TradingService(mock_settings, mock_sheets_client)
-                # Mock DB and secret client
-                service.db = MagicMock()
-                service.secret_client = MagicMock()
+                # Mock DB and vault client
+                service.mongo_db = MagicMock()
+                service.vault_client = mock_vault_client
                 service.get_secret = AsyncMock(return_value="test_secret")
 
                 # Mock alert manager
