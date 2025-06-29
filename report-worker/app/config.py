@@ -121,6 +121,38 @@ class Settings(BaseSettings):
         env="GCS_SERVICE_ACCOUNT_KEY_PATH",
         description="Path to GCS service account key file",
     )
+    
+    # MinIO/S3 Settings
+    minio_endpoint_url: Optional[str] = Field(
+        None,
+        env="MINIO_ENDPOINT_URL",
+        description="MinIO endpoint URL (e.g., https://minio.example.com)",
+    )
+    minio_access_key: Optional[str] = Field(
+        None,
+        env="MINIO_ACCESS_KEY",
+        description="MinIO access key",
+    )
+    minio_secret_key: Optional[str] = Field(
+        None,
+        env="MINIO_SECRET_KEY",
+        description="MinIO secret key",
+    )
+    minio_bucket_name: Optional[str] = Field(
+        None,
+        env="MINIO_BUCKET_NAME",
+        description="MinIO bucket name for report files",
+    )
+    minio_region: str = Field(
+        default="us-east-1",
+        env="MINIO_REGION",
+        description="MinIO region",
+    )
+    minio_secure: bool = Field(
+        default=True,
+        env="MINIO_SECURE",
+        description="Use HTTPS for MinIO connections",
+    )
 
     class Config:
         """Pydantic config."""
@@ -139,5 +171,6 @@ def get_settings() -> Settings:
         mongo_db_name=settings.mongo_db_name,
         gcs_bucket_configured=bool(settings.gcs_bucket_name),
         smtp_configured=bool(settings.smtp_host),
+        minio_configured=bool(settings.minio_endpoint_url),
     )
     return settings
