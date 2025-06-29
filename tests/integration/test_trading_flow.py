@@ -9,7 +9,13 @@ import pytest
 
 from spreadpilot_core.ibkr.client import OrderStatus
 
-trading_bot_service = importlib.import_module("trading-bot.app.service.signals")
+# Add trading-bot to path and import
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / "trading-bot"))
+trading_bot_service = importlib.import_module("app.service.signals")
 SignalProcessor = trading_bot_service.SignalProcessor
 
 

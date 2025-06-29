@@ -11,8 +11,15 @@ from spreadpilot_core.models.alert import AlertType
 from spreadpilot_core.models.position import AssignmentState, Position
 from spreadpilot_core.utils.time import get_current_trading_date  # Added import
 
+# Add trading-bot to path and import
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / "trading-bot"))
+
 # Import modules using importlib
-trading_bot_positions = importlib.import_module("trading-bot.app.service.positions")
+trading_bot_positions = importlib.import_module("app.service.positions")
 
 # Get specific imports
 PositionManager = trading_bot_positions.PositionManager

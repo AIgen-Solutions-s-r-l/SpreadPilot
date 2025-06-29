@@ -1,11 +1,17 @@
 """Unit tests for trading-bot config Vault integration."""
 
+import sys
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
 
-from trading_bot.app.config import Settings
+# Add trading-bot to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / "trading-bot"))
+
+from app.config import Settings
 
 
 class TestSettingsVaultIntegration:
@@ -53,7 +59,7 @@ class TestSettingsVaultIntegration:
         assert settings.vault_mount_point == "env-secret"
         assert settings.vault_enabled is False
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_get_ibkr_credentials_from_vault_success(self, mock_get_vault_client):
         """Test successful IBKR credentials retrieval from Vault."""
         # Arrange
@@ -78,7 +84,7 @@ class TestSettingsVaultIntegration:
 
         mock_vault_client.get_ibkr_credentials.assert_called_once_with("ibkr/test")
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_get_ibkr_credentials_from_vault_not_found(self, mock_get_vault_client):
         """Test IBKR credentials retrieval when not found in Vault."""
         # Arrange
@@ -92,7 +98,7 @@ class TestSettingsVaultIntegration:
         # Assert
         assert result is None
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_get_ibkr_credentials_from_vault_error(self, mock_get_vault_client):
         """Test IBKR credentials retrieval when Vault throws error."""
         # Arrange
@@ -122,7 +128,7 @@ class TestSettingsVaultIntegration:
         # Assert
         assert result is None
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_vault_client_configuration_override(self, mock_get_vault_client):
         """Test that Settings properly configures the Vault client."""
         # Arrange
@@ -171,11 +177,11 @@ class TestSettingsVaultIntegration:
 class TestSettingsIntegrationWithOriginalStrategy:
     """Test Settings integration with original strategy configuration."""
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_original_strategy_vault_integration(self, mock_get_vault_client):
         """Test that original strategy configuration can work with Vault."""
         # Arrange
-        from trading_bot.app.config import ORIGINAL_EMA_STRATEGY
+        from app.config import ORIGINAL_EMA_STRATEGY
 
         mock_vault_client = Mock()
         mock_vault_client.get_ibkr_credentials.return_value = {
@@ -199,11 +205,11 @@ class TestSettingsIntegrationWithOriginalStrategy:
             "ibkr_original_strategy"
         )
 
-    @patch("trading_bot.app.config.get_vault_client")
+    @patch("app.config.get_vault_client")
     def test_vertical_spreads_strategy_vault_integration(self, mock_get_vault_client):
         """Test that vertical spreads strategy configuration can work with Vault."""
         # Arrange
-        from trading_bot.app.config import VERTICAL_SPREADS_STRATEGY
+        from app.config import VERTICAL_SPREADS_STRATEGY
 
         mock_vault_client = Mock()
         mock_vault_client.get_ibkr_credentials.return_value = {
