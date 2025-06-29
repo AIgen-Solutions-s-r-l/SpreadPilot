@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import psutil
 from app.api.v1.endpoints.auth import get_current_user
-from app.db.mongodb import get_database
+from app.db.mongodb import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -75,7 +75,7 @@ async def check_service_health(
 
 @router.get("/health", response_model=dict[str, Any])
 async def get_comprehensive_health(
-    db: AsyncIOMotorClient = Depends(get_database),
+    db: AsyncIOMotorClient = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """

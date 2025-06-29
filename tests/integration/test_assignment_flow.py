@@ -374,18 +374,98 @@ async def test_position_update_after_trade(
     assert call_kwargs.get("upsert") is True
 
     # --- Test updating existing position ---
-    # Reset mock for the second call - find should return the previously "inserted" doc
-    # This requires a more stateful mock or separate test case.
-    # For simplicity, we'll assume the update logic works if insert works.
-    # TODO: Create a separate test case for updating an existing position.
+    # Clean up - No explicit cleanup needed for mocks
 
+
+@pytest.mark.asyncio
+async def test_position_update_existing(
+    test_follower: Follower,
+    test_mongo_db: AsyncIOMotorDatabase,
+):
+    """
+    Test updating an existing position with new trades.
+
+    This test verifies:
+    1. Existing position is found and updated correctly
+    2. Quantities are accumulated properly for same side
+    3. Opposite side trades update both long and short quantities
+    """
+    # Create position manager with mocked dependencies
+    mock_service = MagicMock()
+    mock_positions_collection = AsyncMock()
+    
+    # Mock existing position data
+    existing_position = {
+        "_id": str(uuid.uuid4()),
+        "follower_id": test_follower.id,
+        "date": get_current_trading_date(),
+        "long_qty": 5,
+        "short_qty": 2,
+        "long_strikes": [380.0, 380.0, 380.0, 380.0, 380.0],
+        "short_strikes": [385.0, 385.0],
+        "updated_at": datetime.datetime.now()
+    }
+    
+    # Mock find_one to return existing position
+    mock_positions_collection.find_one.return_value = existing_position
+    mock_positions_collection.update_one.return_value = MagicMock(
+        modified_count=1
+    )
+    
+    mock_db_handle = MagicMock()
+    mock_db_handle.__getitem__.return_value = mock_positions_collection
+    mock_service.mongo_db = mock_db_handle
+    
+    position_manager = PositionManager(mock_service)
+    
+    # Create test trade to add to existing position (long side)
+    from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
+    
+    trade_long = Trade(
+        id=str(uuid.uuid4()),
+        follower_id=test_follower.id,
+        side=TradeSide.LONG,
+        qty=3,
+        strike=382.0,
+        limit_price_requested=0.80,
+        status=TradeStatus.FILLED,
+        timestamps={
+            "submitted": datetime.datetime.now(),
+            "filled": datetime.datetime.now(),
+        },
+    )
+    
+    # Update position with new long trade
+    await position_manager.update_position(test_follower.id, trade_long)
+    
+    # Verify position was updated correctly
+    mock_positions_collection.update_one.assert_called_once()
+    call_args, call_kwargs = mock_positions_collection.update_one.call_args
+    trading_date = get_current_trading_date()
+    
+    # Check filter
+    assert call_args[0] == {
+        "follower_id": test_follower.id,
+        "date": trading_date,
+    }
+    
+    # Check update - should add to existing quantities
+    assert "$set" in call_args[1]
+    assert call_args[1]["$set"]["long_qty"] == 8  # 5 existing + 3 new
+    assert call_args[1]["$set"]["short_qty"] == 2  # unchanged
+    assert len(call_args[1]["$set"]["long_strikes"]) == 8
+    assert call_kwargs.get("upsert") is True
+    
+    # Reset mock for second trade
+    mock_positions_collection.update_one.reset_mock()
+    
     # Add a short side trade
-    trade2 = Trade(
+    trade_short = Trade(
         id=str(uuid.uuid4()),
         follower_id=test_follower.id,
         side=TradeSide.SHORT,
         qty=1,
-        strike=385.0,
+        strike=387.0,
         limit_price_requested=0.75,
         status=TradeStatus.FILLED,
         timestamps={
@@ -393,10 +473,18 @@ async def test_position_update_after_trade(
             "filled": datetime.datetime.now(),
         },
     )
-
-    # Update position with second trade (now async)
-    # Reset find_one mock state if needed for update path test
-    # await position_manager.update_position(test_follower.id, trade2)
+    
+    # Update position with short trade
+    await position_manager.update_position(test_follower.id, trade_short)
+    
+    # Verify short side was updated
+    mock_positions_collection.update_one.assert_called_once()
+    call_args, call_kwargs = mock_positions_collection.update_one.call_args
+    
+    assert "$set" in call_args[1]
+    assert call_args[1]["$set"]["long_qty"] == 8  # unchanged from previous
+    assert call_args[1]["$set"]["short_qty"] == 3  # 2 existing + 1 new
+    assert len(call_args[1]["$set"]["short_strikes"]) == 3
 
     # Verify position was updated with both trades in MongoDB
     # Reset mocks for second trade
