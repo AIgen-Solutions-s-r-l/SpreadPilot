@@ -164,3 +164,5 @@ yarl==1.20.0
     # via aiohttp
 zipp==3.21.0
     # via importlib-metadata
+sqlalchemy==2.0.36
+    # via -r spreadpilot-core/setup.py

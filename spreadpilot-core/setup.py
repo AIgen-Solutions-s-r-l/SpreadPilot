@@ -29,6 +29,7 @@ setup(
         "redis>=5.0.0",  # Redis client
         "gspread>=5.11.0",  # Google Sheets API wrapper
         "google-cloud-storage>=2.10.0",  # GCS for file storage
+        "sqlalchemy>=2.0.0",  # SQL toolkit and ORM
     ],
     python_requires=">=3.11",
     author="SpreadPilot Team",

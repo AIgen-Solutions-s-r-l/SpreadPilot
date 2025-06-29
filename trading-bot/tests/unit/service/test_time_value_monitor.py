@@ -5,13 +5,9 @@ import json
 import os
 import sys
 import unittest
-from datetime import datetime
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import fakeredis.aioredis as fakeredis
-import ib_insync
-import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.insert(
@@ -20,7 +16,7 @@ sys.path.insert(
 
 from app.service.time_value_monitor import TimeValueMonitor, TimeValueStatus
 
-from spreadpilot_core.models.alert import AlertEvent, AlertSeverity, AlertType
+from spreadpilot_core.models.alert import AlertType
 
 
 class MockPosition:
