@@ -263,8 +263,8 @@ class GatewayManager:
                     '4002/tcp': host_port,  # TWS API port
                 },
                 environment={
-                    'TWS_USERID': ibkr_username,
-                    'TWS_PASSWORD': ibkr_password,
+                    'IB_USER': ibkr_username,
+                    'IB_PASS': ibkr_password,
                     'TRADING_MODE': 'paper',  # Default to paper trading
                     'TWS_SETTINGS_PATH': '/opt/ibc',
                     'DISPLAY': ':0',
@@ -296,6 +296,16 @@ class GatewayManager:
             logger.error(f"Failed to start IBGateway for follower {follower.id}: {e}")
             raise
     
+    async def stop_follower_gateway(self, follower_id: str) -> None:
+        """Stop the IBGateway container for a specific follower.
+        
+        Public method to gracefully stop a follower's gateway.
+        
+        Args:
+            follower_id: The follower ID
+        """
+        await self._stop_gateway(follower_id)
+    
     async def _stop_gateway(self, follower_id: str) -> None:
         """Stop the IBGateway container for a follower.
         
@@ -315,13 +325,26 @@ class GatewayManager:
             except Exception as e:
                 logger.warning(f"Error disconnecting IB client for follower {follower_id}: {e}")
         
-        # Stop container
+        # Stop container gracefully
         if gateway.container:
             try:
-                gateway.container.stop(timeout=10)
+                logger.debug(f"Sending stop signal to container for follower {follower_id}")
+                gateway.container.stop(timeout=30)  # Give container 30 seconds to stop gracefully
+                logger.debug(f"Waiting for container to stop for follower {follower_id}")
+                gateway.container.wait()
+                logger.debug(f"Removing container for follower {follower_id}")
                 gateway.container.remove()
+                logger.info(f"Container stopped and removed for follower {follower_id}")
+            except docker.errors.NotFound:
+                logger.warning(f"Container for follower {follower_id} was already removed")
             except Exception as e:
-                logger.warning(f"Error stopping container for follower {follower_id}: {e}")
+                logger.error(f"Error stopping container for follower {follower_id}: {e}")
+                # Force remove if graceful stop failed
+                try:
+                    gateway.container.remove(force=True)
+                    logger.warning(f"Force removed container for follower {follower_id}")
+                except Exception as e2:
+                    logger.error(f"Failed to force remove container for follower {follower_id}: {e2}")
         
         # Free resources
         self.used_ports.discard(gateway.host_port)
@@ -453,13 +476,24 @@ class GatewayManager:
                                 logger.error(f"Gateway for follower {gateway.follower_id} failed to start within {self.max_startup_time}s")
                     
                     elif gateway.status == GatewayStatus.RUNNING:
-                        # Verify IB connection is still alive
-                        if gateway.ib_client and not gateway.ib_client.isConnected():
-                            logger.warning(f"IB client disconnected for follower {gateway.follower_id}, attempting reconnect")
+                        # Verify IB connection is still alive using isConnected()
+                        if gateway.ib_client:
+                            if not gateway.ib_client.isConnected():
+                                logger.warning(f"IB client disconnected for follower {gateway.follower_id}, attempting reconnect")
+                                try:
+                                    await self._connect_ib_client(gateway)
+                                    logger.info(f"Successfully reconnected IB client for follower {gateway.follower_id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}")
+                                    gateway.status = GatewayStatus.FAILED
+                        else:
+                            # No client connection exists, try to establish one
+                            logger.warning(f"No IB client for follower {gateway.follower_id}, attempting to connect")
                             try:
                                 await self._connect_ib_client(gateway)
+                                logger.info(f"Successfully connected IB client for follower {gateway.follower_id}")
                             except Exception as e:
-                                logger.error(f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}")
+                                logger.error(f"Failed to connect IB client for follower {gateway.follower_id}: {e}")
                 
                 elif container_status in ['exited', 'dead']:
                     gateway.status = GatewayStatus.STOPPED
