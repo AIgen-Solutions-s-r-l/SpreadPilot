@@ -67,7 +67,11 @@ graph TB
     D --> M
     E --> J
     E --> N
-    F --> B
+    F -->|Health Check| B
+    F -->|Health Check| C
+    F -->|Health Check| D
+    F -->|Health Check| E
+    F -->|Alert Stream| J
     K --> L
     N --> D
     N --> E
@@ -191,29 +195,31 @@ Centralized alert management with Telegram-first, email-fallback notification st
 - 🔐 **MongoDB** for configuration and secrets management
 - ✅ **pytest + httpx mocking** for comprehensive testing
 
-### 👀 **Watchdog** - *Self-Hosted Health Monitor*
+### 👀 **Watchdog** - *Autonomous Container Health Monitor*
 
-Proactive monitoring and automatic recovery system for critical SpreadPilot services.
+Proactive monitoring and automatic recovery system for all SpreadPilot containers labeled with 'spreadpilot'.
 
 **🎯 Primary Responsibilities:**
-- 🔍 **Health Monitoring** - HTTP health checks every 15 seconds
+- 🔍 **Dynamic Discovery** - Automatically discovers containers with 'spreadpilot' label
+- 🏥 **Health Monitoring** - HTTP health checks every 30 seconds on exposed ports
 - 🔄 **Auto-Recovery** - Docker restart after 3 consecutive failures
-- 📊 **Failure Tracking** - Per-service failure count management
-- 🚨 **Alert Generation** - MongoDB-stored alerts for failures and recovery
-- ⚡ **Concurrent Monitoring** - Parallel health checks for all services
+- 📊 **Failure Tracking** - Per-container failure count management
+- 🚨 **Critical Alerts** - Redis stream publishing for failures and recovery
+- ⚡ **Concurrent Monitoring** - Parallel health checks for all discovered containers
 
 **🏗️ Architecture Components:**
-- 🔍 **ServiceWatchdog** - Main monitoring orchestrator with asyncio
-- 🌐 **Health Checker** - HTTP endpoint validation using httpx
-- 🔄 **Docker Integration** - Container restart via subprocess
-- 📊 **Failure Counter** - Consecutive failure tracking per service
-- 🚨 **Alert Publisher** - MongoDB integration for alert storage
+- 🔍 **ContainerWatchdog** - Main monitoring orchestrator with asyncio
+- 🐳 **Docker SDK** - Container discovery and management via docker-py
+- 🌐 **Health Checker** - Automatic port detection and HTTP validation
+- 📊 **Failure Counter** - Consecutive failure tracking with cleanup
+- 🔴 **Redis Publisher** - Alert stream integration for critical events
 
 **🔧 Technology Stack:**
 - 🐍 **Python 3.11+** with asyncio for concurrent monitoring
+- 🐳 **docker-py** for Docker API integration
 - 🌐 **httpx** for async HTTP health checks
-- 🍃 **MongoDB** (motor) for alert storage
-- 🐳 **Docker CLI** for container management
+- 🔴 **Redis** for alert stream publishing
+- 🏷️ **Container Labels** for automatic service discovery
 - ⏱️ **Configurable intervals** via environment variables
 
 ### 🖥️ **Frontend** - *Administrative Dashboard*

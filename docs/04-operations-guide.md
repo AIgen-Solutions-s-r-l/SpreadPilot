@@ -396,38 +396,57 @@ docker logs spreadpilot-watchdog --tail 50
 # Monitor service failures
 docker logs spreadpilot-watchdog | grep "consecutive failures"
 
-# Check alert storage
-mongo spreadpilot_admin --eval "db.alerts.find({}).sort({timestamp: -1}).limit(10)"
+# Check discovered containers
+docker logs spreadpilot-watchdog | grep "Discovered new containers"
+
+# Monitor Redis alerts
+docker exec -it spreadpilot-redis redis-cli xrevrange alerts + - COUNT 10
 ```
 
 **Common Issues & Resolution:**
 
-**1. False Positives (Unnecessary restarts):**
+**1. Container Not Monitored:**
+```bash
+# Verify container has spreadpilot label
+docker inspect <container-name> | grep -A2 Labels
+
+# Add label if missing (requires docker-compose update)
+labels:
+  - "spreadpilot"
+```
+
+**2. False Positives (Unnecessary restarts):**
 ```bash
 # Adjust environment variables
 docker-compose stop watchdog
-export CHECK_INTERVAL_SECONDS=30  # Increase from 15
+export CHECK_INTERVAL_SECONDS=60  # Increase from 30
 export MAX_CONSECUTIVE_FAILURES=5  # Increase from 3
-export HEALTH_CHECK_TIMEOUT=10    # Increase from 5
+export HEALTH_CHECK_TIMEOUT=15    # Increase from 10
 docker-compose up -d watchdog
 ```
 
-**2. Docker Socket Permission Issues:**
+**3. Docker Socket Permission Issues:**
 ```bash
-# Check Docker socket access
-docker exec spreadpilot-watchdog docker ps
+# Check socket permissions
+ls -la /var/run/docker.sock
 
-# Fix permissions if needed
-docker exec spreadpilot-watchdog chmod 666 /var/run/docker.sock
+# Fix permissions (temporary)
+sudo chmod 666 /var/run/docker.sock
+
+# Permanent fix: Add user to docker group
+sudo usermod -aG docker $USER
 ```
 
-**3. Service Not Being Monitored:**
+**4. Service Not Restarting:**
 ```bash
-# Verify health endpoint
-docker exec spreadpilot-watchdog curl http://trading-bot:8080/health
+# Check if container is running
+docker ps -a | grep <container-name>
 
-# Check network connectivity
-docker exec spreadpilot-watchdog ping trading-bot
+# Manually restart to verify it works
+docker restart <container-name>
+
+# Check watchdog logs for errors
+docker logs spreadpilot-watchdog | grep -i error
 ```
 
 #### 📊 Report Generation Failures
