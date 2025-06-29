@@ -61,12 +61,22 @@ const StatusItem: React.FC<StatusItemProps> = ({ label, status }) => {
 
 interface SystemStatusBannerProps {
   onRefresh?: () => void;
+  isConnected?: boolean;
+  activeFollowerCount?: number;
+  totalFollowerCount?: number;
 }
 
-const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({ onRefresh }) => {
+const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({ 
+  onRefresh, 
+  isConnected = false, 
+  activeFollowerCount = 0, 
+  totalFollowerCount = 0 
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  const isSystemHealthy = isConnected && activeFollowerCount > 0;
   
   const handleRefresh = () => {
     if (onRefresh) {
@@ -76,7 +86,7 @@ const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({ onRefresh }) =>
   
   return (
     <Alert
-      severity="success"
+      severity={isSystemHealthy ? "success" : "warning"}
       iconMapping={{
         success: <CheckCircleIcon fontSize="inherit" />,
       }}
@@ -114,7 +124,7 @@ const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({ onRefresh }) =>
       }}
     >
       <AlertTitle sx={{ fontWeight: 600, letterSpacing: 0.5, fontSize: '1.1rem' }}>
-        SYSTEM STATUS: OPERATIONAL
+        SYSTEM STATUS: {isSystemHealthy ? 'OPERATIONAL' : 'LIMITED'}
       </AlertTitle>
       <Collapse in={isExpanded || !isMobile} sx={{ width: '100%' }}>
         <Stack
@@ -124,9 +134,9 @@ const SystemStatusBanner: React.FC<SystemStatusBannerProps> = ({ onRefresh }) =>
           flexWrap="wrap"
         >
           <StatusItem label="Trading Bot: Online" status="online" />
-          <StatusItem label="IB Gateway: Connected" status="online" />
-          <StatusItem label="Followers: 12/15 Active" status="online" />
-          <StatusItem label="Last Update: 2 min ago" status="online" />
+          <StatusItem label={`WebSocket: ${isConnected ? 'Connected' : 'Disconnected'}`} status={isConnected ? 'online' : 'error'} />
+          <StatusItem label={`Followers: ${activeFollowerCount}/${totalFollowerCount} Active`} status={activeFollowerCount > 0 ? 'online' : 'warning'} />
+          <StatusItem label={`Last Update: ${new Date().toLocaleTimeString()}`} status="online" />
         </Stack>
       </Collapse>
     </Alert>

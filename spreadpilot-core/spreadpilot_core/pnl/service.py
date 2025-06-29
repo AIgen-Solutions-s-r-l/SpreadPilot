@@ -6,11 +6,13 @@ This service subscribes to trade fills and tick feeds, updates P&L tables
 
 import asyncio
 import datetime
+import json
 from datetime import date, time
 from decimal import Decimal
 from typing import Any
 
 import pytz
+import redis.asyncio as redis
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +27,7 @@ from ..models.pnl import (
     Quote,
     Trade,
 )
+from ..utils.redis_client import get_redis_client
 
 logger = get_logger(__name__)
 
@@ -50,6 +53,9 @@ class PnLService:
         self.get_follower_positions_callback = None
         self.get_market_price_callback = None
         self.subscribe_to_tick_feed_callback = None
+        
+        # Redis client for stream subscriptions
+        self.redis_client: redis.Redis | None = None
 
         logger.info("Initialized P&L service")
 
@@ -76,13 +82,19 @@ class PnLService:
         try:
             logger.info("Starting P&L monitoring service")
             self.monitoring_active = True
+            
+            # Initialize Redis client
+            self.redis_client = await get_redis_client()
+            if not self.redis_client:
+                logger.error("Failed to connect to Redis")
+                return
 
             # Start concurrent tasks
             tasks = [
                 asyncio.create_task(self._mtm_calculation_loop(shutdown_event)),
                 asyncio.create_task(self._daily_rollup_scheduler(shutdown_event)),
                 asyncio.create_task(self._monthly_rollup_scheduler(shutdown_event)),
-                asyncio.create_task(self._quote_subscription_loop(shutdown_event)),
+                asyncio.create_task(self._redis_stream_subscriber(shutdown_event)),
             ]
 
             # Wait for any task to complete or shutdown
@@ -96,6 +108,8 @@ class PnLService:
         finally:
             self.monitoring_active = False
             self.subscriptions_active = False
+            if self.redis_client:
+                await self.redis_client.close()
 
     async def record_trade_fill(self, follower_id: str, fill_data: dict[str, Any]):
         """Record a trade fill from IBKR.
@@ -416,26 +430,84 @@ class PnLService:
         except Exception as e:
             logger.error(f"Error storing intraday P&L: {e}")
 
-    async def _quote_subscription_loop(self, shutdown_event: asyncio.Event):
-        """Subscribe to quote feeds and store in database."""
+    async def _redis_stream_subscriber(self, shutdown_event: asyncio.Event):
+        """Subscribe to Redis streams for trade fills and quotes."""
         try:
             self.subscriptions_active = True
-            logger.info("Starting quote subscription loop")
+            logger.info("Starting Redis stream subscriptions")
+            
+            if not self.redis_client:
+                logger.error("No Redis client available")
+                return
+
+            # Create consumer group if it doesn't exist
+            try:
+                await self.redis_client.xgroup_create("trade_fills", "pnl_service", id="0", mkstream=True)
+            except redis.exceptions.ResponseError as e:
+                if "BUSYGROUP" not in str(e):
+                    logger.error(f"Error creating consumer group for trade_fills: {e}")
+            
+            try:
+                await self.redis_client.xgroup_create("quotes", "pnl_service", id="0", mkstream=True)
+            except redis.exceptions.ResponseError as e:
+                if "BUSYGROUP" not in str(e):
+                    logger.error(f"Error creating consumer group for quotes: {e}")
 
             while not shutdown_event.is_set() and self.subscriptions_active:
                 try:
-                    # Subscribe to quotes for active positions
-                    await self._subscribe_to_position_quotes()
+                    # Read from trade_fills stream
+                    trade_messages = await self.redis_client.xreadgroup(
+                        "pnl_service", "pnl_worker",
+                        {"trade_fills": ">"},
+                        count=10,
+                        block=1000  # 1 second timeout
+                    )
+                    
+                    for stream_name, messages in trade_messages:
+                        for message_id, fields in messages:
+                            try:
+                                # Process trade fill
+                                fill_data = json.loads(fields.get("data", "{}"))
+                                follower_id = fill_data.get("follower_id")
+                                if follower_id:
+                                    await self.record_trade_fill(follower_id, fill_data)
+                                
+                                # Acknowledge message
+                                await self.redis_client.xack("trade_fills", "pnl_service", message_id)
+                                
+                            except Exception as e:
+                                logger.error(f"Error processing trade fill: {e}")
 
-                    # Wait before next subscription check
-                    await asyncio.sleep(60)  # Check every minute
+                    # Read from quotes stream
+                    quote_messages = await self.redis_client.xreadgroup(
+                        "pnl_service", "pnl_worker",
+                        {"quotes": ">"},
+                        count=10,
+                        block=1000  # 1 second timeout
+                    )
+                    
+                    for stream_name, messages in quote_messages:
+                        for message_id, fields in messages:
+                            try:
+                                # Process quote update
+                                quote_data = json.loads(fields.get("data", "{}"))
+                                await self.update_quote(quote_data)
+                                
+                                # Acknowledge message
+                                await self.redis_client.xack("quotes", "pnl_service", message_id)
+                                
+                            except Exception as e:
+                                logger.error(f"Error processing quote: {e}")
 
+                except redis.exceptions.ConnectionError as e:
+                    logger.error(f"Redis connection error: {e}")
+                    await asyncio.sleep(5)  # Wait before retrying
                 except Exception as e:
-                    logger.error(f"Error in quote subscription: {e}", exc_info=True)
-                    await asyncio.sleep(30)
+                    logger.error(f"Error in Redis stream subscription: {e}", exc_info=True)
+                    await asyncio.sleep(1)
 
         except asyncio.CancelledError:
-            logger.info("Quote subscription loop cancelled")
+            logger.info("Redis stream subscription cancelled")
             raise
         finally:
             self.subscriptions_active = False

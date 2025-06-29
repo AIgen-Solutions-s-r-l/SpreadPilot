@@ -1,7 +1,15 @@
 """Email sending utilities for SpreadPilot."""
 
+import asyncio
+import datetime
 import os
+import smtplib
+import urllib.parse
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
+import aiosmtplib
 import sendgrid
 from sendgrid.helpers.mail import (
     Attachment,
@@ -151,60 +159,264 @@ class EmailSender:
             return False
 
 
+class SMTPEmailSender:
+    """Email sender using SMTP."""
+
+    def __init__(self, smtp_uri: str = None, smtp_host: str = None, smtp_port: int = 587, 
+                 smtp_user: str = None, smtp_password: str = None, smtp_tls: bool = True,
+                 from_email: str = None, from_name: str = "SpreadPilot"):
+        """Initialize the SMTP email sender.
+
+        Args:
+            smtp_uri: SMTP URI (e.g., smtp://user:pass@host:port)
+            smtp_host: SMTP server host
+            smtp_port: SMTP server port
+            smtp_user: SMTP username
+            smtp_password: SMTP password
+            smtp_tls: Enable TLS
+            from_email: From email address
+            from_name: From name
+        """
+        if smtp_uri:
+            # Parse SMTP URI
+            parsed = urllib.parse.urlparse(smtp_uri)
+            self.smtp_host = parsed.hostname
+            self.smtp_port = parsed.port or 587
+            self.smtp_user = parsed.username
+            self.smtp_password = parsed.password
+            self.smtp_tls = parsed.scheme == "smtps" or smtp_tls
+        else:
+            self.smtp_host = smtp_host
+            self.smtp_port = smtp_port
+            self.smtp_user = smtp_user
+            self.smtp_password = smtp_password
+            self.smtp_tls = smtp_tls
+            
+        self.from_email = from_email
+        self.from_name = from_name
+
+        logger.info(
+            "Initialized SMTP email sender",
+            smtp_host=self.smtp_host,
+            smtp_port=self.smtp_port,
+            from_email=from_email,
+            from_name=from_name,
+        )
+
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        cc_emails: list[str] | None = None,
+        bcc_emails: list[str] | None = None,
+        attachments: list[dict] | None = None,
+    ) -> bool:
+        """Send an email via SMTP.
+
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            html_content: HTML content
+            cc_emails: CC recipients (optional)
+            bcc_emails: BCC recipients (optional)
+            attachments: List of attachments with 'path' and 'filename' keys (optional)
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        try:
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f"{self.from_name} <{self.from_email}>"
+            msg['To'] = to_email
+            
+            if cc_emails:
+                msg['Cc'] = ', '.join(cc_emails)
+            
+            # Add HTML content
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            # Add attachments
+            if attachments:
+                for attachment in attachments:
+                    file_path = attachment.get('path')
+                    filename = attachment.get('filename')
+                    
+                    if not file_path or not os.path.exists(file_path):
+                        logger.warning(f"Attachment file not found: {file_path}")
+                        continue
+                    
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
+                    
+                    # Determine MIME type
+                    if filename.lower().endswith('.pdf'):
+                        mime_type = 'application/pdf'
+                    elif filename.lower().endswith(('.xlsx', '.xls')):
+                        mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    else:
+                        mime_type = 'application/octet-stream'
+                    
+                    attachment_part = MIMEApplication(file_content, mime_type)
+                    attachment_part.add_header(
+                        'Content-Disposition',
+                        'attachment',
+                        filename=filename or os.path.basename(file_path)
+                    )
+                    msg.attach(attachment_part)
+            
+            # Prepare recipient list
+            recipients = [to_email]
+            if cc_emails:
+                recipients.extend(cc_emails)
+            if bcc_emails:
+                recipients.extend(bcc_emails)
+            
+            # Send email using aiosmtplib
+            await aiosmtplib.send(
+                msg,
+                hostname=self.smtp_host,
+                port=self.smtp_port,
+                username=self.smtp_user,
+                password=self.smtp_password,
+                use_tls=self.smtp_tls,
+            )
+            
+            logger.info(
+                "Email sent successfully via SMTP",
+                to_email=to_email,
+                subject=subject,
+                smtp_host=self.smtp_host,
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(
+                f"Error sending email via SMTP: {e}",
+                to_email=to_email,
+                subject=subject,
+                smtp_host=self.smtp_host,
+            )
+            return False
+
+
 def send_email(
     to_email: str,
     subject: str,
     html_content: str,
-    cc_emails: list[str] | None = None,
-    bcc_emails: list[str] | None = None,
-    attachments: list[str] | None = None,
-    api_key: str | None = None,
+    cc_recipients: list[str] | None = None,
+    bcc_recipients: list[str] | None = None,
+    attachments: list[dict] | None = None,
     from_email: str | None = None,
     from_name: str | None = None,
 ) -> bool:
-    """Send an email using SendGrid.
+    """Send an email using SMTP or SendGrid.
+
+    Automatically chooses SMTP if SMTP_URI is configured, otherwise falls back to SendGrid.
 
     Args:
         to_email: Recipient email address
         subject: Email subject
         html_content: HTML content
-        cc_emails: CC recipients (optional)
-        bcc_emails: BCC recipients (optional)
-        attachments: List of file paths to attach (optional)
-        api_key: SendGrid API key (optional, defaults to SENDGRID_API_KEY env var)
-        from_email: From email address (optional, defaults to SENDGRID_FROM_EMAIL env var)
-        from_name: From name (optional, defaults to "SpreadPilot")
+        cc_recipients: CC recipients (optional)
+        bcc_recipients: BCC recipients (optional)
+        attachments: List of attachment dicts with 'path' and 'filename' keys (optional)
+        from_email: From email address (optional)
+        from_name: From name (optional)
 
     Returns:
         True if email was sent successfully, False otherwise
     """
-    # Get API key from environment if not provided
-    if not api_key:
-        api_key = os.environ.get("SENDGRID_API_KEY")
-        if not api_key:
-            logger.error("SendGrid API key not provided")
-            return False
-
-    # Get from email from environment if not provided
+    # Get from email and name from environment if not provided
     if not from_email:
-        from_email = os.environ.get("SENDGRID_FROM_EMAIL", "capital@tradeautomation.it")
+        from_email = os.environ.get("REPORT_SENDER_EMAIL") or os.environ.get("SENDGRID_FROM_EMAIL", "capital@tradeautomation.it")
 
-    # Get from name from environment if not provided
     if not from_name:
         from_name = os.environ.get("SENDGRID_FROM_NAME", "SpreadPilot")
 
-    # Create email sender
-    sender = EmailSender(api_key, from_email, from_name)
+    # Check if SMTP is configured
+    smtp_uri = os.environ.get("SMTP_URI")
+    smtp_host = os.environ.get("SMTP_HOST")
+    
+    if smtp_uri or smtp_host:
+        # Use SMTP
+        logger.info("Using SMTP for email delivery")
+        
+        smtp_sender = SMTPEmailSender(
+            smtp_uri=smtp_uri,
+            smtp_host=smtp_host,
+            smtp_port=int(os.environ.get("SMTP_PORT", 587)),
+            smtp_user=os.environ.get("SMTP_USER"),
+            smtp_password=os.environ.get("SMTP_PASSWORD"),
+            smtp_tls=os.environ.get("SMTP_TLS", "true").lower() == "true",
+            from_email=from_email,
+            from_name=from_name,
+        )
+        
+        # Convert attachment format for SMTP
+        smtp_attachments = []
+        if attachments:
+            for attachment in attachments:
+                if isinstance(attachment, dict):
+                    smtp_attachments.append(attachment)
+                else:
+                    # Convert string path to dict format
+                    smtp_attachments.append({
+                        'path': attachment,
+                        'filename': os.path.basename(attachment)
+                    })
+        
+        # Run async function in sync context
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        return loop.run_until_complete(
+            smtp_sender.send_email(
+                to_email=to_email,
+                subject=subject,
+                html_content=html_content,
+                cc_emails=cc_recipients,
+                bcc_emails=bcc_recipients,
+                attachments=smtp_attachments,
+            )
+        )
+    
+    else:
+        # Use SendGrid
+        logger.info("Using SendGrid for email delivery")
+        
+        api_key = os.environ.get("SENDGRID_API_KEY")
+        if not api_key:
+            logger.error("Neither SMTP nor SendGrid is properly configured")
+            return False
 
-    # Send email
-    return sender.send_email(
-        to_email=to_email,
-        subject=subject,
-        html_content=html_content,
-        cc_emails=cc_emails,
-        bcc_emails=bcc_emails,
-        attachments=attachments,
-    )
+        # Create email sender
+        sender = EmailSender(api_key, from_email, from_name)
+
+        # Convert attachment format for SendGrid
+        sendgrid_attachments = []
+        if attachments:
+            for attachment in attachments:
+                if isinstance(attachment, dict):
+                    sendgrid_attachments.append(attachment.get('path'))
+                else:
+                    sendgrid_attachments.append(attachment)
+
+        # Send email
+        return sender.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            cc_emails=cc_recipients,
+            bcc_emails=bcc_recipients,
+            attachments=sendgrid_attachments,
+        )
 
 
 def send_monthly_report_email(

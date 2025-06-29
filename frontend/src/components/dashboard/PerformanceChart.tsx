@@ -121,12 +121,20 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
 
 interface PerformanceChartProps {
   title?: string;
+  pnlHistory?: Array<{ date: string; value: number }>;
 }
 
-const PerformanceChart: React.FC<PerformanceChartProps> = ({ title = 'PERFORMANCE' }) => {
+const PerformanceChart: React.FC<PerformanceChartProps> = ({ 
+  title = 'PERFORMANCE', 
+  pnlHistory = [] 
+}) => {
   const [timeRange, setTimeRange] = useState('1M');
   const theme = useTheme();
-  const data = generateChartData(timeRange);
+  
+  // Use real data if available, otherwise fallback to mock data
+  const data = pnlHistory.length > 0 
+    ? pnlHistory.map(item => ({ time: item.date, value: item.value }))
+    : generateChartData(timeRange);
   
   const handleTimeRangeChange = (
     _event: React.MouseEvent<HTMLElement>,

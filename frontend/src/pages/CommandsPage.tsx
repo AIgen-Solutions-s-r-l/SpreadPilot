@@ -24,11 +24,6 @@ const CommandsPage: React.FC = () => {
       setError('Follower ID and PIN are required.');
       return;
     }
-    // Basic PIN check - Replace with secure handling if possible
-    if (pin !== '0312') {
-        setError('Incorrect PIN.');
-        return;
-    }
 
     setIsLoadingCloseOne(true);
     setError(null);
@@ -50,11 +45,6 @@ const CommandsPage: React.FC = () => {
      if (!pin) {
       setError('PIN is required.');
       return;
-    }
-     // Basic PIN check - Replace with secure handling if possible
-     if (pin !== '0312') {
-        setError('Incorrect PIN.');
-        return;
     }
 
     setIsLoadingCloseAll(true);

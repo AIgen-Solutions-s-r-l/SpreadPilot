@@ -7,10 +7,9 @@ import os
 
 import pytz
 from flask import Flask, Response, request
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from spreadpilot_core.logging.logger import get_logger, setup_logging
-from spreadpilot_core.utils.secrets import get_secret_from_mongo
+from spreadpilot_core.utils.vault import get_secret
 
 # --- Secret Pre-loading ---
 
@@ -24,43 +23,31 @@ SECRETS_TO_FETCH = [
     # MinIO credentials
     "MINIO_ACCESS_KEY",
     "MINIO_SECRET_KEY",
-    # Add SMTP credentials here if needed in the future
+    # SMTP credentials from Vault
+    "SMTP_URI",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "SMTP_TLS",
 ]
 
 
 async def load_secrets_into_env():
-    """Fetches secrets from MongoDB and sets them as environment variables."""
+    """Fetches secrets from Vault and sets them as environment variables."""
     preload_logger.info(
-        "Attempting to load secrets from MongoDB into environment variables..."
+        "Attempting to load secrets from Vault into environment variables..."
     )
-    mongo_uri = os.environ.get("MONGO_URI")
-    mongo_db_name = os.environ.get(
-        "MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")
-    )
-
-    if not mongo_uri:
-        preload_logger.warning(
-            "MONGO_URI environment variable not set. Skipping MongoDB secret loading."
-        )
+    
+    vault_enabled = os.environ.get("VAULT_ENABLED", "true").lower() == "true"
+    if not vault_enabled:
+        preload_logger.info("Vault disabled, skipping secret loading")
         return
 
-    client = None
     try:
-        preload_logger.info(
-            f"Connecting to MongoDB at {mongo_uri} for secret loading..."
-        )
-        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
-        await client.admin.command("ping")
-        db = client[mongo_db_name]
-        preload_logger.info(f"Connected to MongoDB database '{mongo_db_name}'.")
-
-        app_env = os.environ.get("APP_ENV", "development")
-
         for secret_name in SECRETS_TO_FETCH:
-            preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
-            secret_value = await get_secret_from_mongo(
-                db, secret_name, environment=app_env
-            )
+            preload_logger.debug(f"Fetching secret: {secret_name} from Vault")
+            secret_value = await get_secret(secret_name)
             if secret_value is not None:
                 os.environ[secret_name] = secret_value
                 preload_logger.info(
@@ -68,19 +55,15 @@ async def load_secrets_into_env():
                 )
             else:
                 preload_logger.info(
-                    f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set."
+                    f"Secret '{secret_name}' not found in Vault. Environment variable not set."
                 )
 
-        preload_logger.info("Finished loading secrets into environment.")
+        preload_logger.info("Finished loading secrets from Vault into environment.")
 
     except Exception as e:
         preload_logger.error(
-            f"Failed to load secrets from MongoDB into environment: {e}", exc_info=True
+            f"Failed to load secrets from Vault into environment: {e}", exc_info=True
         )
-    finally:
-        if client:
-            client.close()
-            preload_logger.info("MongoDB connection for secret loading closed.")
 
 
 # Run secret loading BEFORE importing the config module

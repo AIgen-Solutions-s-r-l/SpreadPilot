@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import os
 import pytz
 from app.api.v1.endpoints.auth import get_current_user
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -12,8 +13,8 @@ from spreadpilot_core.logging.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
-# PIN for manual operations (as specified in requirements)
-MANUAL_OPERATION_PIN = "0312"
+# PIN for manual operations - get from environment or Vault
+MANUAL_OPERATION_PIN = os.getenv("MANUAL_OPERATION_PIN", "0312")
 
 
 class ManualCloseRequest(BaseModel):

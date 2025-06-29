@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getFollowers } from '../services/followerService';
 import { getTodayPnl, getMonthlyPnl, calculatePeriodPnl } from '../services/pnlService';
 import { getLogs } from '../services/logService';
+import { useWebSocket } from './useWebSocket';
 import type { Follower } from '../schemas/follower.schema';
 // import type { DailyPnl, MonthlyPnl } from '../schemas/pnl.schema';
 import type { LogEntry, LogLevel } from '../schemas/log.schema';
@@ -24,10 +25,12 @@ interface DashboardData {
   pnlHistory: Array<{ date: string; value: number }>;
   loading: boolean;
   error: string | null;
+  isConnected: boolean;
   refresh: () => Promise<void>;
 }
 
 export const useDashboard = (): DashboardData => {
+  const { lastMessage, isConnected } = useWebSocket();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalPnl: 0,
     todayPnl: 0,
@@ -96,10 +99,72 @@ export const useDashboard = (): DashboardData => {
     }
   }, []);
 
+  // Handle WebSocket messages for real-time updates
+  useEffect(() => {
+    if (lastMessage) {
+      try {
+        const { type, data } = lastMessage;
+        
+        switch (type) {
+          case 'pnl_update':
+            // Update P&L metrics in real-time
+            setMetrics(prev => ({
+              ...prev,
+              todayPnl: data.todayPnl || prev.todayPnl,
+              totalPnl: data.totalPnl || prev.totalPnl,
+              monthlyPnl: data.monthlyPnl || prev.monthlyPnl,
+            }));
+            break;
+            
+          case 'position_update':
+            // Update position counts
+            setMetrics(prev => ({
+              ...prev,
+              activePositions: data.activePositions || prev.activePositions,
+              positionsValue: data.positionsValue || prev.positionsValue,
+            }));
+            break;
+            
+          case 'trade_update':
+            // Update trade count
+            setMetrics(prev => ({
+              ...prev,
+              tradeCountToday: data.tradeCountToday || prev.tradeCountToday,
+            }));
+            break;
+            
+          case 'follower_update':
+            // Update follower data
+            if (data.followers) {
+              setActiveFollowers(data.followers.filter((f: Follower) => f.enabled));
+              setMetrics(prev => ({
+                ...prev,
+                followerCount: data.followers.length,
+                activeFollowerCount: data.followers.filter((f: Follower) => f.enabled).length,
+              }));
+            }
+            break;
+            
+          case 'log_update':
+            // Add new log entries
+            if (data.log) {
+              setRecentLogs(prev => [data.log, ...prev.slice(0, 49)]); // Keep last 50 logs
+            }
+            break;
+            
+          default:
+            console.log('Unknown WebSocket message type:', type);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    }
+  }, [lastMessage]);
+
   useEffect(() => {
     fetchDashboardData();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (reduced since we have WebSocket updates)
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
@@ -111,6 +176,7 @@ export const useDashboard = (): DashboardData => {
     pnlHistory,
     loading,
     error,
+    isConnected,
     refresh: fetchDashboardData,
   };
 };

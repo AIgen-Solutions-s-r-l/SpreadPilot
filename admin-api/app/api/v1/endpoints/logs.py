@@ -11,9 +11,9 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/recent", dependencies=[Depends(get_current_user)])
-async def get_recent_logs(
-    n: int = Query(
+@router.get("/", dependencies=[Depends(get_current_user)])
+async def get_logs(
+    limit: int = Query(
         default=200, ge=1, le=1000, description="Number of log entries to retrieve"
     ),
     service: str | None = Query(default=None, description="Filter by service name"),
@@ -23,10 +23,10 @@ async def get_recent_logs(
     search: str | None = Query(default=None, description="Search text in log messages"),
 ):
     """
-    Get recent log entries from all services.
+    Get log entries from all services.
 
     Parameters:
-    - n: Number of log entries to retrieve (1-1000, default: 200)
+    - limit: Number of log entries to retrieve (1-1000, default: 200)
     - service: Optional filter by service name
     - level: Optional filter by log level
     - search: Optional text search in log messages
@@ -62,10 +62,10 @@ async def get_recent_logs(
                 },
             )
             .sort("timestamp", -1)
-            .limit(n)
+            .limit(limit)
         )
 
-        logs = await cursor.to_list(length=n)
+        logs = await cursor.to_list(length=limit)
 
         # Format timestamps for better readability
         for log in logs:
@@ -74,7 +74,7 @@ async def get_recent_logs(
 
         return {
             "count": len(logs),
-            "requested": n,
+            "requested": limit,
             "filters": {"service": service, "level": level, "search": search},
             "logs": logs,
         }

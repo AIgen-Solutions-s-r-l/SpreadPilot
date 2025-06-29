@@ -18,13 +18,14 @@ import ActiveFollowersListV2 from '../components/dashboard/ActiveFollowersListV2
 import TradingActivityTimeline from '../components/dashboard/TradingActivityTimeline';
 import RecentAlertsV2 from '../components/dashboard/RecentAlertsV2';
 import ServiceHealthWidget from '../components/dashboard/ServiceHealthWidget';
+import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
 
 // Hooks
 import { useDashboard } from '../hooks/useDashboard';
 
 const DashboardPageV2: React.FC = () => {
   const navigate = useNavigate();
-  const { metrics, activeFollowers, recentLogs, pnlHistory: _pnlHistory, loading, error, refresh } = useDashboard();
+  const { metrics, activeFollowers, recentLogs, pnlHistory, loading, error, isConnected, refresh } = useDashboard();
 
   const handleViewAllFollowers = () => {
     navigate('/followers');
@@ -115,7 +116,12 @@ const DashboardPageV2: React.FC = () => {
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100%', py: 3 }}>
       <Container maxWidth="xl">
-        <StatusBanner onRefresh={refresh} />
+        <StatusBanner 
+          onRefresh={refresh} 
+          isConnected={isConnected}
+          activeFollowerCount={metrics.activeFollowerCount}
+          totalFollowerCount={metrics.followerCount}
+        />
         
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: 3, mb: 3 }}>
           {metricsData.map((metric) => (
@@ -132,7 +138,7 @@ const DashboardPageV2: React.FC = () => {
         
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, mb: 3 }}>
           <Box>
-            <PerformanceChart />
+            <PerformanceChart pnlHistory={pnlHistory} />
           </Box>
           <Box>
             <ActiveFollowersListV2 
@@ -156,9 +162,12 @@ const DashboardPageV2: React.FC = () => {
           </Box>
         </Box>
         
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr' }, gap: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
           <Box>
             <ServiceHealthWidget />
+          </Box>
+          <Box>
+            <QuickActionsWidget />
           </Box>
         </Box>
       </Container>

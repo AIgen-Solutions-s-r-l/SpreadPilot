@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     )
 
     # Email Settings
+    smtp_uri: str | None = Field(
+        None,
+        env="SMTP_URI",
+        description="SMTP URI (e.g., smtp://user:pass@host:port)",
+    )
     smtp_host: str | None = Field(
         None,
         env="SMTP_HOST",
