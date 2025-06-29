@@ -5,6 +5,37 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.25.0] - 2025-06-29
+
+### Fixed
+- **CI/CD Pipeline**: Resolved multiple issues to improve pipeline success rate
+  - Fixed Ruff linting errors by updating pyproject.toml configuration
+  - Resolved SQLAlchemy missing dependency in spreadpilot-core
+  - Fixed Black formatting issues across multiple files
+  - Corrected freezegun version to 1.5.2 (1.6.0 doesn't exist)
+- **Frontend Build**: Fixed TypeScript compilation errors
+  - Exported LogLevel as both type and value for runtime use
+  - Fixed WebSocketContext export issue
+  - Updated DataGrid API to use disableRowSelectionOnClick
+  - Fixed type mismatches in components
+  - Resolved strict mode error handling in services
+- **Python Tests**: Fixed test failures
+  - Replaced logger keyword arguments with f-strings in IBKR client
+  - Fixed incorrect module paths in test patches (trading_bot.app -> app)
+  - Made vault_token optional in trading-bot config
+- **Frontend Linting**: Resolved ESLint errors
+  - Fixed unused variables by prefixing with underscore
+  - Removed unused imports from components
+  - Split auth/websocket hooks to separate files for React Fast Refresh
+  - Updated ESLint config to handle unused vars with underscore prefix
+- **E2E Tests**: Added missing configuration
+  - Created e2e-tests service in docker-compose.e2e.yml
+  - Added Dockerfile.e2e for E2E test runner
+
+### Changed
+- **Dependencies**: Updated requirements-dev.txt with correct package versions
+- **Type Definitions**: Created proper TypeScript interfaces for auth and websocket
+
 ## [v1.1.24.0] - 2025-06-29
 
 ### Fixed
