@@ -181,9 +181,14 @@ jobs:
           TELEGRAM_CHAT_ID=test-chat-id
           EOF
 
+      - name: Build E2E test images
+        run: |
+          docker-compose -f docker-compose.e2e.yml build --parallel
+
       - name: Run E2E tests with docker-compose
         run: |
           docker-compose -f docker-compose.e2e.yml up --exit-code-from e2e-tests --abort-on-container-exit
+        timeout-minutes: 15
 
       - name: Collect docker logs on failure
         if: failure()
@@ -196,6 +201,11 @@ jobs:
         with:
           name: docker-logs
           path: docker-logs.txt
+
+      - name: Cleanup E2E containers
+        if: always()
+        run: |
+          docker-compose -f docker-compose.e2e.yml down -v --remove-orphans
 
   # Security scanning with Trivy
   security-scan:
@@ -251,9 +261,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.service }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ matrix.service }}-
+            ${{ runner.os }}-buildx-
+
       - name: Build Docker image
         run: |
-          docker build -t spreadpilot/${{ matrix.service }}:scan -f ${{ matrix.service }}/Dockerfile .
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
+            -t spreadpilot/${{ matrix.service }}:scan \
+            -f ${{ matrix.service }}/Dockerfile .
+          
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Run Trivy on Docker image
         uses: aquasecurity/trivy-action@master
@@ -282,6 +311,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
