@@ -1,0 +1,117 @@
+[tool.ruff]
+# Same line length as Black
+line-length = 88
+
+# Python version
+target-version = "py311"
+
+# Enable additional rule sets
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "S",    # flake8-bandit (security)
+    "RUF",  # Ruff-specific rules
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",  # Line too long (handled by Black)
+    "S101",  # Use of assert detected (common in tests)
+    "S603",  # subprocess without shell equals true
+    "S607",  # Starting a process with a partial executable path
+]
+
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    ".mypy_cache",
+    ".pytest_cache",
+    "htmlcov",
+    "docs",
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+
+[tool.ruff.per-file-ignores]
+# Ignore security issues in tests
+"tests/**/*.py" = ["S"]
+# Ignore import violations in __init__.py files
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.isort]
+known-first-party = ["spreadpilot_core", "trading_bot", "admin_api", "report_worker", "alert_router", "watchdog"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | node_modules
+)/
+'''
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "tests",
+]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+markers = [
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+    "slow: marks tests as slow",
+]
+
+[tool.coverage.run]
+source = [
+    "spreadpilot_core",
+    "trading_bot",
+    "admin_api", 
+    "report_worker",
+    "alert_router",
+    "watchdog"
+]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
