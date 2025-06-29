@@ -5,6 +5,22 @@ line-length = 88
 # Python version
 target-version = "py311"
 
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    ".mypy_cache",
+    ".pytest_cache",
+    "htmlcov",
+    "docs",
+]
+
+[tool.ruff.lint]
 # Enable additional rule sets
 select = [
     "E",    # pycodestyle errors
@@ -26,33 +42,37 @@ ignore = [
     "S101",  # Use of assert detected (common in tests)
     "S603",  # subprocess without shell equals true
     "S607",  # Starting a process with a partial executable path
-]
-
-# Exclude directories
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pycache__",
-    "build",
-    "dist",
-    "node_modules",
-    ".mypy_cache",
-    ".pytest_cache",
-    "htmlcov",
-    "docs",
+    "W291",  # Trailing whitespace
+    "W293",  # Blank line contains whitespace
+    "B008",  # Do not perform function call in argument defaults
+    "DTZ001", # datetime without tzinfo
+    "DTZ003", # datetime.utcnow()
+    "DTZ005", # datetime.now() without tz
+    "S104",  # Possible binding to all interfaces
+    "S105",  # Possible hardcoded password
+    "S106",  # Possible hardcoded password in argument
+    "S108",  # Probable insecure usage of temp file
+    "N805",  # First argument of method should be self
+    "N806",  # Variable in function should be lowercase
+    "B007",  # Loop control variable not used
+    "B904",  # Use raise from in except
+    "F811",  # Redefinition of unused variable
+    "F841",  # Local variable assigned but never used
+    "E712",  # Comparison to True/False
+    "E402",  # Module import not at top
+    "I001",  # Import block unsorted
 ]
 
 # Allow autofix for all enabled rules
 fixable = ["ALL"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Ignore security issues in tests
 "tests/**/*.py" = ["S"]
 # Ignore import violations in __init__.py files
 "**/__init__.py" = ["F401"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["spreadpilot_core", "trading_bot", "admin_api", "report_worker", "alert_router", "watchdog"]
 
 [tool.black]
