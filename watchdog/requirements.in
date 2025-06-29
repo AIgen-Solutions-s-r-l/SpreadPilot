@@ -1,6 +1,7 @@
 # Basic dependencies for the watchdog service
 httpx>=0.24.0
 motor>=3.0.0
-asyncio
+docker>=6.0.0
+redis[hiredis]>=4.5.0
 # SpreadPilot core for alert models
 # -e ../spreadpilot-core

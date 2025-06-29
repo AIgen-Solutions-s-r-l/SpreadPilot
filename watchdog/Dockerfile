@@ -29,7 +29,10 @@ RUN pip install -e /app/spreadpilot-core
 COPY watchdog/ .
 
 # Create a non-root user to run the application
-RUN groupadd -r watchdog && useradd -r -g watchdog -u 1000 watchdog
+# Note: User needs to be in docker group to access docker.sock
+RUN groupadd -r watchdog && useradd -r -g watchdog -u 1000 watchdog && \
+    groupadd -g 999 docker || true && \
+    usermod -aG docker watchdog
 
 # Change ownership of the app directory
 RUN chown -R watchdog:watchdog /app
@@ -44,5 +47,5 @@ USER watchdog
 # Define environment variables (if any)
 # ENV NAME="Watchdog"
 
-# Run watchdog.py when the container launches
-CMD ["python", "watchdog.py"]
+# Run main.py when the container launches
+CMD ["python", "main.py"]

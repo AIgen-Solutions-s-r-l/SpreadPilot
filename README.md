@@ -157,7 +157,7 @@ SpreadPilot supports HashiCorp Vault for secure credential management:
 | 🎛️ **Admin API** | Backend for dashboard, follower management | 8002 |
 | 🖥️ **Frontend** | React admin dashboard | 8080 |
 | 📱 **Admin Dashboard** | Vue 3 mobile-responsive SPA | 3001 |
-| 👀 **Watchdog** | Self-hosted health monitoring with auto-recovery | - |
+| 👀 **Watchdog** | Autonomous container health monitoring & restart | - |
 | 📊 **Report Worker** | PDF/Excel report generation | 8004 |
 | 🔔 **Alert Router** | Telegram/email notifications | 8005 |
 
@@ -165,7 +165,7 @@ SpreadPilot supports HashiCorp Vault for secure credential management:
 
 - 🐘 **PostgreSQL**: P&L data, commission calculations
 - 🍃 **MongoDB**: Trading data, follower configuration
-- 🔴 **Redis**: Pub/Sub messaging, signal caching
+- 🔴 **Redis**: Alert streams, Pub/Sub messaging, signal caching
 - 🔐 **Vault**: Secure credential storage
 - ☁️ **GCS**: Report file storage
 
