@@ -70,7 +70,17 @@ async def test_dashboard_api_endpoints( # Ensure async def
         assert summary_data["active_follower_count"] == 1
         assert summary_data["total_positions"] == 0 # Verify placeholder value
 
-        # TODO: Add tests for /stats, /alerts, /performance if needed
+        # Test /stats endpoint (if implemented)
+        # response_stats = await admin_api_client.get("/api/v1/dashboard/stats")
+        # assert response_stats.status_code == 200
+        
+        # Test /alerts endpoint (if implemented)  
+        # response_alerts = await admin_api_client.get("/api/v1/dashboard/alerts")
+        # assert response_alerts.status_code == 200
+        
+        # Test /performance endpoint (if implemented)
+        # response_perf = await admin_api_client.get("/api/v1/dashboard/performance")
+        # assert response_perf.status_code == 200
 
     finally:
         # Clean up
