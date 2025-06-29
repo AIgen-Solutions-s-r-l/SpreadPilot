@@ -5,6 +5,41 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.27.0] - 2025-06-29
+
+### Added
+- **Vault Integration**:
+  - Migrated from GCP Secret Manager to HashiCorp Vault for secrets management
+  - Added `VaultClient` utility class in `spreadpilot_core.utils.vault`
+  - Support for IBKR credentials retrieval from Vault
+  - Vault configuration in trading-bot service base
+  - Integration tests for Vault secret retrieval
+- **UI Live Data Integration**:
+  - Connected frontend to real backend APIs
+  - Implemented WebSocket connection for real-time updates
+  - Added proper error handling and loading states
+  - Integrated followers, positions, and P&L data from backend
+- **Documentation**:
+  - Added comprehensive Vault integration guide (`docs/security/vault-integration.md`)
+  - Created Vault deployment documentation
+  - Updated README with Vault configuration instructions
+
+### Changed
+- **Trading Bot Service**:
+  - Replaced GCP Secret Manager calls with Vault client
+  - Updated `get_secret()` and `get_ibkr_credentials()` methods
+  - Modified initialization to use Vault client
+- **Frontend**:
+  - Switched from mock data to real API calls
+  - Updated hooks to fetch data from backend services
+  - Improved real-time data synchronization
+
+### Fixed
+- **Integration Tests**:
+  - Fixed import paths for new Vault module
+  - Updated mocking for Vault client in tests
+  - Corrected async patterns in test fixtures
+
 ## [v1.1.26.0] - 2025-06-29
 
 ### Added
