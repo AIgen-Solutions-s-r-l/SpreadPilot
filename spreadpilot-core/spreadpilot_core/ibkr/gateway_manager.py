@@ -13,9 +13,14 @@ import ib_insync
 from ib_insync import IB
 
 from ..logging import get_logger
-from ..db.mongodb import get_mongo_db
 from ..models.follower import Follower, FollowerState
 from ..utils.vault import get_vault_client
+
+# Import MongoDB function lazily to avoid import errors during testing
+def get_mongo_db():
+    """Get MongoDB connection lazily."""
+    from ..db.mongodb import get_mongo_db as _get_mongo_db
+    return _get_mongo_db()
 
 logger = get_logger(__name__)
 
