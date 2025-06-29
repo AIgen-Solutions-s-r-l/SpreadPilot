@@ -1,8 +1,6 @@
 """Configuration module for the report worker."""
 
-import os
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -14,7 +12,7 @@ logger = get_logger(__name__)
 
 class Settings(BaseSettings):
     """Application settings for the report worker.
-    
+
     Loads settings from environment variables.
     """
 
@@ -24,9 +22,9 @@ class Settings(BaseSettings):
         env="GOOGLE_CLOUD_PROJECT",
         description="Google Cloud Project ID",
     )
-    
+
     # MongoDB Settings
-    mongo_uri: Optional[str] = Field(
+    mongo_uri: str | None = Field(
         None,
         env="MONGO_URI",
         description="MongoDB connection URI",
@@ -41,9 +39,9 @@ class Settings(BaseSettings):
         env="MONGO_DB_NAME_SECRETS",
         description="MongoDB secrets database name",
     )
-    
+
     # PostgreSQL Settings for P&L data
-    postgres_uri: Optional[str] = Field(
+    postgres_uri: str | None = Field(
         None,
         env="POSTGRES_URI",
         description="PostgreSQL connection URI for P&L data",
@@ -60,7 +58,7 @@ class Settings(BaseSettings):
         env="REPORT_SENDER_EMAIL",
         description="Email address for sending reports",
     )
-    admin_email: Optional[str] = Field(
+    admin_email: str | None = Field(
         None,
         env="ADMIN_EMAIL",
         description="Admin email address for CC",
@@ -84,7 +82,7 @@ class Settings(BaseSettings):
     )
 
     # Email Settings
-    smtp_host: Optional[str] = Field(
+    smtp_host: str | None = Field(
         None,
         env="SMTP_HOST",
         description="SMTP server host",
@@ -94,12 +92,12 @@ class Settings(BaseSettings):
         env="SMTP_PORT",
         description="SMTP server port",
     )
-    smtp_user: Optional[str] = Field(
+    smtp_user: str | None = Field(
         None,
         env="SMTP_USER",
         description="SMTP username",
     )
-    smtp_password: Optional[str] = Field(
+    smtp_password: str | None = Field(
         None,
         env="SMTP_PASSWORD",
         description="SMTP password",
@@ -111,34 +109,34 @@ class Settings(BaseSettings):
     )
 
     # GCS Settings
-    gcs_bucket_name: Optional[str] = Field(
+    gcs_bucket_name: str | None = Field(
         None,
         env="GCS_BUCKET_NAME",
         description="Google Cloud Storage bucket name for report files",
     )
-    gcs_service_account_key_path: Optional[str] = Field(
+    gcs_service_account_key_path: str | None = Field(
         None,
         env="GCS_SERVICE_ACCOUNT_KEY_PATH",
         description="Path to GCS service account key file",
     )
-    
+
     # MinIO/S3 Settings
-    minio_endpoint_url: Optional[str] = Field(
+    minio_endpoint_url: str | None = Field(
         None,
         env="MINIO_ENDPOINT_URL",
         description="MinIO endpoint URL (e.g., https://minio.example.com)",
     )
-    minio_access_key: Optional[str] = Field(
+    minio_access_key: str | None = Field(
         None,
         env="MINIO_ACCESS_KEY",
         description="MinIO access key",
     )
-    minio_secret_key: Optional[str] = Field(
+    minio_secret_key: str | None = Field(
         None,
         env="MINIO_SECRET_KEY",
         description="MinIO secret key",
     )
-    minio_bucket_name: Optional[str] = Field(
+    minio_bucket_name: str | None = Field(
         None,
         env="MINIO_BUCKET_NAME",
         description="MinIO bucket name for report files",
@@ -156,12 +154,13 @@ class Settings(BaseSettings):
 
     class Config:
         """Pydantic config."""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings."""
     settings = Settings()

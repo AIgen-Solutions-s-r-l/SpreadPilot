@@ -1,8 +1,6 @@
 """Configuration module for the trading bot."""
 
-import os
 from functools import lru_cache
-from typing import Optional, Dict
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
@@ -15,7 +13,7 @@ logger = get_logger(__name__)
 
 class Settings(BaseSettings):
     """Application settings.
-    
+
     Loads settings from environment variables.
     """
 
@@ -25,19 +23,19 @@ class Settings(BaseSettings):
         env="GOOGLE_CLOUD_PROJECT",
         description="Google Cloud Project ID",
     )
-    
+
     # Google Sheets
     google_sheet_url: str = Field(
         ...,
         env="GOOGLE_SHEET_URL",
         description="Google Sheet URL containing trading signals",
     )
-    google_sheets_api_key: Optional[str] = Field(
+    google_sheets_api_key: str | None = Field(
         None,
         env="GOOGLE_SHEETS_API_KEY",
         description="Google Sheets API key",
     )
-    
+
     # IBKR
     ib_gateway_host: str = Field(
         default="127.0.0.1",
@@ -59,7 +57,7 @@ class Settings(BaseSettings):
         env="IB_TRADING_MODE",
         description="IB trading mode (paper or live)",
     )
-    
+
     # Trading parameters
     min_price: float = Field(
         default=0.70,
@@ -81,7 +79,7 @@ class Settings(BaseSettings):
         env="TIMEOUT_SECONDS",
         description="Timeout in seconds for each limit order attempt",
     )
-    
+
     # Polling parameters
     polling_interval_seconds: float = Field(
         default=1.0,
@@ -93,43 +91,43 @@ class Settings(BaseSettings):
         env="POSITION_CHECK_INTERVAL_SECONDS",
         description="Interval in seconds for checking positions",
     )
-    
+
     # Firestore
-    firestore_emulator_host: Optional[str] = Field(
+    firestore_emulator_host: str | None = Field(
         None,
         env="FIRESTORE_EMULATOR_HOST",
         description="Firestore emulator host (for local development)",
     )
-    
+
     # Alerting
-    telegram_bot_token: Optional[str] = Field(
+    telegram_bot_token: str | None = Field(
         None,
         env="TELEGRAM_BOT_TOKEN",
         description="Telegram bot token",
     )
-    telegram_chat_id: Optional[str] = Field(
+    telegram_chat_id: str | None = Field(
         None,
         env="TELEGRAM_CHAT_ID",
         description="Telegram chat ID",
     )
-    sendgrid_api_key: Optional[str] = Field(
+    sendgrid_api_key: str | None = Field(
         None,
         env="SENDGRID_API_KEY",
         description="SendGrid API key",
     )
-    admin_email: Optional[str] = Field(
+    admin_email: str | None = Field(
         None,
         env="ADMIN_EMAIL",
         description="Admin email address",
     )
-    
+
     # Dashboard URL
-    dashboard_url: Optional[str] = Field(
+    dashboard_url: str | None = Field(
         None,
         env="DASHBOARD_URL",
         description="Dashboard URL for deep links in alerts",
     )
-    
+
     # Vault configuration
     vault_url: str = Field(
         default="http://vault:8200",
@@ -143,7 +141,7 @@ class Settings(BaseSettings):
     )
     vault_mount_point: str = Field(
         default="secret",
-        env="VAULT_MOUNT_POINT", 
+        env="VAULT_MOUNT_POINT",
         description="Vault KV mount point",
     )
     vault_enabled: bool = Field(
@@ -151,27 +149,27 @@ class Settings(BaseSettings):
         env="VAULT_ENABLED",
         description="Enable Vault integration for secrets",
     )
-    
+
     @validator("ib_trading_mode")
     def validate_trading_mode(cls, v):
         """Validate trading mode."""
         if v not in ["paper", "live"]:
             raise ValueError("Trading mode must be 'paper' or 'live'")
         return v
-    
-    def get_ibkr_credentials_from_vault(self, secret_ref: str) -> Optional[Dict[str, str]]:
+
+    def get_ibkr_credentials_from_vault(self, secret_ref: str) -> dict[str, str] | None:
         """Get IBKR credentials from Vault.
-        
+
         Args:
             secret_ref: Secret reference/path for IBKR credentials
-            
+
         Returns:
             Dict with 'IB_USER' and 'IB_PASS' keys or None if not found
         """
         if not self.vault_enabled:
             logger.info("Vault integration is disabled, skipping credential retrieval")
             return None
-            
+
         try:
             vault_client = get_vault_client()
             # Override client settings with config values
@@ -180,29 +178,31 @@ class Settings(BaseSettings):
             vault_client.mount_point = self.vault_mount_point
             # Reset client to pick up new settings
             vault_client._client = None
-            
+
             credentials = vault_client.get_ibkr_credentials(secret_ref)
-            
+
             if credentials:
-                logger.info(f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}")
+                logger.info(
+                    f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}"
+                )
                 return credentials
             else:
                 logger.warning(f"No IBKR credentials found in Vault for: {secret_ref}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
             return None
-    
+
     class Config:
         """Pydantic config."""
-        
+
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings."""
     settings = Settings()
@@ -228,7 +228,7 @@ ORIGINAL_EMA_STRATEGY = {
     "trading_end_time": "15:29:00",
     "dollar_amount": 10000,
     "trailing_stop_pct": 1.0,
-    "close_at_eod": True
+    "close_at_eod": True,
 }
 
 # Configuration for the Vertical Spreads on QQQ Strategy
@@ -242,5 +242,5 @@ VERTICAL_SPREADS_STRATEGY = {
     "min_price": 0.70,  # Minimum price threshold for vertical spreads
     "timeout_seconds": 5,  # Timeout in seconds for each attempt
     "time_value_threshold": 0.10,  # Time Value threshold for closing positions
-    "time_value_check_interval": 60  # Check Time Value every 60 seconds
+    "time_value_check_interval": 60,  # Check Time Value every 60 seconds
 }

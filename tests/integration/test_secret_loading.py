@@ -1,13 +1,14 @@
-import pytest
-import os
-from unittest.mock import patch, AsyncMock
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
 # Import the function to test and the collection name constant
 # Use importlib to avoid potential import issues during test collection if admin_api is not directly in path
 import importlib
-admin_api_main = importlib.import_module('admin_api.app.main')
-secrets_utils = importlib.import_module('spreadpilot_core.utils.secrets')
+import os
+from unittest.mock import AsyncMock, patch
+
+import pytest
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+admin_api_main = importlib.import_module("admin_api.app.main")
+secrets_utils = importlib.import_module("spreadpilot_core.utils.secrets")
 
 load_secrets_into_env = admin_api_main.load_secrets_into_env
 SECRETS_COLLECTION_NAME = secrets_utils.SECRETS_COLLECTION_NAME
@@ -19,8 +20,9 @@ pytestmark = pytest.mark.asyncio
 TEST_SECRETS_CONFIG = [
     "TEST_SECRET_ONE",
     "TEST_SECRET_TWO",
-    "NON_EXISTENT_SECRET" # Include one that won't be found
+    "NON_EXISTENT_SECRET",  # Include one that won't be found
 ]
+
 
 @pytest.fixture(autouse=True)
 def cleanup_env_vars():
@@ -44,15 +46,25 @@ async def test_load_secrets_into_env_integration(test_mongo_db: AsyncIOMotorData
     # --- Arrange ---
     secret_one_value = "value_one_123"
     secret_two_value = "value_two_456"
-    test_env_name = "testing_load" # Use a specific env for this test
+    test_env_name = "testing_load"  # Use a specific env for this test
 
     # Insert mock secrets into the test database
     secrets_collection = test_mongo_db[SECRETS_COLLECTION_NAME]
-    await secrets_collection.insert_many([
-        {"name": "TEST_SECRET_ONE", "environment": test_env_name, "value": secret_one_value},
-        {"name": "TEST_SECRET_TWO", "environment": test_env_name, "value": secret_two_value},
-        # NON_EXISTENT_SECRET is intentionally omitted
-    ])
+    await secrets_collection.insert_many(
+        [
+            {
+                "name": "TEST_SECRET_ONE",
+                "environment": test_env_name,
+                "value": secret_one_value,
+            },
+            {
+                "name": "TEST_SECRET_TWO",
+                "environment": test_env_name,
+                "value": secret_two_value,
+            },
+            # NON_EXISTENT_SECRET is intentionally omitted
+        ]
+    )
 
     # Ensure the target env vars are not set initially
     os.environ.pop("TEST_SECRET_ONE", None)
@@ -62,11 +74,20 @@ async def test_load_secrets_into_env_integration(test_mongo_db: AsyncIOMotorData
     # Patch the list of secrets the function tries to fetch
     # Patch the database connection/getter functions used *within* load_secrets_into_env
     # Patch APP_ENV to control the environment lookup
-    with patch.dict(os.environ, {"APP_ENV": test_env_name}, clear=False), \
-         patch('admin_api.app.main.SECRETS_TO_FETCH', TEST_SECRETS_CONFIG), \
-         patch('admin_api.app.db.mongodb.connect_to_mongo', new_callable=AsyncMock) as mock_connect, \
-         patch('admin_api.app.db.mongodb.close_mongo_connection', new_callable=AsyncMock) as mock_close, \
-         patch('admin_api.app.db.mongodb.get_mongo_db', AsyncMock(return_value=test_mongo_db)) as mock_get_db:
+    with (
+        patch.dict(os.environ, {"APP_ENV": test_env_name}, clear=False),
+        patch("admin_api.app.main.SECRETS_TO_FETCH", TEST_SECRETS_CONFIG),
+        patch(
+            "admin_api.app.db.mongodb.connect_to_mongo", new_callable=AsyncMock
+        ) as mock_connect,
+        patch(
+            "admin_api.app.db.mongodb.close_mongo_connection", new_callable=AsyncMock
+        ) as mock_close,
+        patch(
+            "admin_api.app.db.mongodb.get_mongo_db",
+            AsyncMock(return_value=test_mongo_db),
+        ) as mock_get_db,
+    ):
 
         # --- Act ---
         await load_secrets_into_env()

@@ -6,25 +6,30 @@ This service subscribes to trade fills and tick feeds, updates P&L tables
 
 import asyncio
 import datetime
-from decimal import Decimal
-from typing import Dict, List, Optional, Set, Tuple, Any
 from datetime import date, time
-import pytz
+from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import select, and_, func, desc
+import pytz
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..logging import get_logger
-from ..db.postgresql import get_postgres_session
-from ..models.pnl import (
-    Trade, Quote, PnLIntraday, PnLDaily, PnLMonthly, CommissionMonthly, TradeType
-)
 from ..db.mongodb import get_mongo_db
+from ..db.postgresql import get_postgres_session
+from ..logging import get_logger
+from ..models.pnl import (
+    CommissionMonthly,
+    PnLDaily,
+    PnLIntraday,
+    PnLMonthly,
+    Quote,
+    Trade,
+)
 
 logger = get_logger(__name__)
 
 # Eastern timezone for rollup times
-ET = pytz.timezone('US/Eastern')
+ET = pytz.timezone("US/Eastern")
 
 
 class PnLService:
@@ -34,26 +39,25 @@ class PnLService:
         """Initialize P&L service."""
         self.monitoring_active = False
         self.subscriptions_active = False
-        
+
         # Track active followers for P&L calculation
-        self.active_followers: Set[str] = set()
-        
+        self.active_followers: set[str] = set()
+
         # In-memory quote cache for faster MTM calculations
-        self.quote_cache: Dict[str, Quote] = {}
-        
+        self.quote_cache: dict[str, Quote] = {}
+
         # Callback functions for external integrations
         self.get_follower_positions_callback = None
         self.get_market_price_callback = None
         self.subscribe_to_tick_feed_callback = None
-        
+
         logger.info("Initialized P&L service")
 
-    def set_callbacks(self, 
-                     get_positions_fn=None,
-                     get_market_price_fn=None,
-                     subscribe_tick_fn=None):
+    def set_callbacks(
+        self, get_positions_fn=None, get_market_price_fn=None, subscribe_tick_fn=None
+    ):
         """Set callback functions for external integrations.
-        
+
         Args:
             get_positions_fn: Function to get follower positions (follower_id) -> List[Position]
             get_market_price_fn: Function to get market price for contract
@@ -65,14 +69,14 @@ class PnLService:
 
     async def start_monitoring(self, shutdown_event: asyncio.Event):
         """Start P&L monitoring and rollup tasks.
-        
+
         Args:
             shutdown_event: Event to signal shutdown
         """
         try:
             logger.info("Starting P&L monitoring service")
             self.monitoring_active = True
-            
+
             # Start concurrent tasks
             tasks = [
                 asyncio.create_task(self._mtm_calculation_loop(shutdown_event)),
@@ -80,10 +84,10 @@ class PnLService:
                 asyncio.create_task(self._monthly_rollup_scheduler(shutdown_event)),
                 asyncio.create_task(self._quote_subscription_loop(shutdown_event)),
             ]
-            
+
             # Wait for any task to complete or shutdown
             await asyncio.gather(*tasks, return_exceptions=True)
-            
+
         except asyncio.CancelledError:
             logger.info("P&L monitoring service cancelled")
             raise
@@ -93,9 +97,9 @@ class PnLService:
             self.monitoring_active = False
             self.subscriptions_active = False
 
-    async def record_trade_fill(self, follower_id: str, fill_data: Dict[str, Any]):
+    async def record_trade_fill(self, follower_id: str, fill_data: dict[str, Any]):
         """Record a trade fill from IBKR.
-        
+
         Args:
             follower_id: Follower ID
             fill_data: Dictionary containing trade fill information
@@ -124,24 +128,26 @@ class PnLService:
                 commission=Decimal(str(fill_data.get("commission", 0))),
                 order_id=fill_data.get("order_id"),
                 execution_id=fill_data.get("execution_id"),
-                trade_time=fill_data["trade_time"]
+                trade_time=fill_data["trade_time"],
             )
-            
+
             async with get_postgres_session() as session:
                 session.add(trade)
                 await session.commit()
-                
-            logger.info(f"Recorded trade fill for {follower_id}: "
-                       f"{fill_data['trade_type']} {fill_data['quantity']} "
-                       f"{fill_data['symbol']} {fill_data['strike']} {fill_data['contract_type']} "
-                       f"@ ${fill_data['price']}")
-                       
+
+            logger.info(
+                f"Recorded trade fill for {follower_id}: "
+                f"{fill_data['trade_type']} {fill_data['quantity']} "
+                f"{fill_data['symbol']} {fill_data['strike']} {fill_data['contract_type']} "
+                f"@ ${fill_data['price']}"
+            )
+
         except Exception as e:
             logger.error(f"Error recording trade fill: {e}", exc_info=True)
 
-    async def update_quote(self, quote_data: Dict[str, Any]):
+    async def update_quote(self, quote_data: dict[str, Any]):
         """Update market quote for a contract.
-        
+
         Args:
             quote_data: Dictionary containing quote information
                 - symbol: e.g., "QQQ"
@@ -158,27 +164,33 @@ class PnLService:
             quote = Quote(
                 symbol=quote_data["symbol"],
                 contract_type=quote_data["contract_type"],
-                strike=Decimal(str(quote_data["strike"])) if quote_data.get("strike") else None,
+                strike=(
+                    Decimal(str(quote_data["strike"]))
+                    if quote_data.get("strike")
+                    else None
+                ),
                 expiration=quote_data.get("expiration"),
                 bid=Decimal(str(quote_data["bid"])) if quote_data.get("bid") else None,
                 ask=Decimal(str(quote_data["ask"])) if quote_data.get("ask") else None,
-                last=Decimal(str(quote_data["last"])) if quote_data.get("last") else None,
+                last=(
+                    Decimal(str(quote_data["last"])) if quote_data.get("last") else None
+                ),
                 volume=quote_data.get("volume"),
-                quote_time=quote_data["quote_time"]
+                quote_time=quote_data["quote_time"],
             )
-            
+
             async with get_postgres_session() as session:
                 session.add(quote)
                 await session.commit()
-                
+
             # Update cache for faster MTM calculations
             cache_key = self._get_quote_cache_key(quote_data)
             self.quote_cache[cache_key] = quote
-            
+
         except Exception as e:
             logger.error(f"Error updating quote: {e}", exc_info=True)
 
-    def _get_quote_cache_key(self, quote_data: Dict[str, Any]) -> str:
+    def _get_quote_cache_key(self, quote_data: dict[str, Any]) -> str:
         """Generate cache key for a quote."""
         parts = [quote_data["symbol"], quote_data["contract_type"]]
         if quote_data.get("strike"):
@@ -189,7 +201,7 @@ class PnLService:
 
     async def add_follower(self, follower_id: str):
         """Add a follower to active P&L tracking.
-        
+
         Args:
             follower_id: Follower ID to start tracking
         """
@@ -198,7 +210,7 @@ class PnLService:
 
     async def remove_follower(self, follower_id: str):
         """Remove a follower from active P&L tracking.
-        
+
         Args:
             follower_id: Follower ID to stop tracking
         """
@@ -213,14 +225,14 @@ class PnLService:
                     # Only calculate during market hours
                     if self._is_market_open():
                         await self._calculate_and_store_mtm()
-                    
+
                     # Wait 30 seconds before next calculation
                     await asyncio.sleep(30)
-                    
+
                 except Exception as e:
                     logger.error(f"Error in MTM calculation: {e}", exc_info=True)
                     await asyncio.sleep(10)  # Wait before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("MTM calculation loop cancelled")
             raise
@@ -242,8 +254,10 @@ class PnLService:
                 try:
                     await self._calculate_follower_mtm(follower_id)
                 except Exception as e:
-                    logger.error(f"Error calculating MTM for follower {follower_id}: {e}")
-                    
+                    logger.error(
+                        f"Error calculating MTM for follower {follower_id}: {e}"
+                    )
+
         except Exception as e:
             logger.error(f"Error in MTM calculation: {e}")
 
@@ -254,42 +268,54 @@ class PnLService:
             if not self.get_follower_positions_callback:
                 logger.debug("No position callback set, skipping MTM calculation")
                 return
-                
+
             positions = await self.get_follower_positions_callback(follower_id)
             if not positions:
                 logger.debug(f"No positions for follower {follower_id}")
                 return
-            
+
             # Calculate realized P&L from today's trades
             realized_pnl = await self._get_realized_pnl_today(follower_id)
-            
+
             # Calculate unrealized P&L from open positions
             unrealized_pnl = Decimal("0")
             total_market_value = Decimal("0")
             position_count = 0
-            
+
             for position in positions:
                 if position.quantity != 0:
                     position_count += 1
-                    
+
                     # Get current market price
                     if self.get_market_price_callback:
                         market_price = await self.get_market_price_callback(position)
                         if market_price:
-                            position_value = Decimal(str(market_price)) * Decimal(str(abs(position.quantity))) * 100
+                            position_value = (
+                                Decimal(str(market_price))
+                                * Decimal(str(abs(position.quantity)))
+                                * 100
+                            )
                             total_market_value += position_value
-                            
+
                             # Calculate unrealized P&L
                             avg_cost = Decimal(str(position.avg_cost))
                             if position.quantity > 0:  # Long position
-                                unrealized = (Decimal(str(market_price)) - avg_cost) * Decimal(str(position.quantity)) * 100
+                                unrealized = (
+                                    (Decimal(str(market_price)) - avg_cost)
+                                    * Decimal(str(position.quantity))
+                                    * 100
+                                )
                             else:  # Short position
-                                unrealized = (avg_cost - Decimal(str(market_price))) * Decimal(str(abs(position.quantity))) * 100
+                                unrealized = (
+                                    (avg_cost - Decimal(str(market_price)))
+                                    * Decimal(str(abs(position.quantity)))
+                                    * 100
+                                )
                             unrealized_pnl += unrealized
-            
+
             # Get today's commission
             total_commission = await self._get_daily_commission(follower_id)
-            
+
             # Store MTM snapshot
             await self._store_intraday_pnl(
                 follower_id=follower_id,
@@ -297,9 +323,9 @@ class PnLService:
                 unrealized_pnl=unrealized_pnl,
                 position_count=position_count,
                 total_market_value=total_market_value,
-                total_commission=total_commission
+                total_commission=total_commission,
             )
-            
+
         except Exception as e:
             logger.error(f"Error calculating follower MTM: {e}")
 
@@ -307,7 +333,7 @@ class PnLService:
         """Get realized P&L from today's trades."""
         try:
             today = date.today()
-            
+
             async with get_postgres_session() as session:
                 # Get all trades for today
                 result = await session.execute(
@@ -315,13 +341,13 @@ class PnLService:
                     .where(
                         and_(
                             Trade.follower_id == follower_id,
-                            func.date(Trade.trade_time) == today
+                            func.date(Trade.trade_time) == today,
                         )
                     )
                     .order_by(Trade.trade_time)
                 )
                 trades = result.scalars().all()
-                
+
                 # Calculate realized P&L
                 # This is simplified - in reality, you'd match trades to calculate actual P&L
                 realized_pnl = Decimal("0")
@@ -329,9 +355,9 @@ class PnLService:
                     # For now, we'll use a simplified calculation
                     # In production, you'd match opening and closing trades
                     pass
-                
+
                 return realized_pnl
-                
+
         except Exception as e:
             logger.error(f"Error getting realized P&L: {e}")
             return Decimal("0")
@@ -340,32 +366,37 @@ class PnLService:
         """Get total commission paid today."""
         try:
             today = date.today()
-            
+
             async with get_postgres_session() as session:
                 result = await session.execute(
-                    select(func.sum(Trade.commission))
-                    .where(
+                    select(func.sum(Trade.commission)).where(
                         and_(
                             Trade.follower_id == follower_id,
-                            func.date(Trade.trade_time) == today
+                            func.date(Trade.trade_time) == today,
                         )
                     )
                 )
                 commission = result.scalar() or Decimal("0")
                 return commission
-                
+
         except Exception as e:
             logger.error(f"Error getting daily commission for {follower_id}: {e}")
             return Decimal("0")
 
-    async def _store_intraday_pnl(self, follower_id: str, realized_pnl: Decimal, 
-                                 unrealized_pnl: Decimal, position_count: int,
-                                 total_market_value: Decimal, total_commission: Decimal):
+    async def _store_intraday_pnl(
+        self,
+        follower_id: str,
+        realized_pnl: Decimal,
+        unrealized_pnl: Decimal,
+        position_count: int,
+        total_market_value: Decimal,
+        total_commission: Decimal,
+    ):
         """Store intraday P&L snapshot."""
         try:
             now = datetime.datetime.utcnow()
             today = now.date()
-            
+
             pnl_snapshot = PnLIntraday(
                 follower_id=follower_id,
                 snapshot_time=now,
@@ -375,13 +406,13 @@ class PnLService:
                 total_pnl=realized_pnl + unrealized_pnl,
                 position_count=position_count,
                 total_market_value=total_market_value,
-                total_commission=total_commission
+                total_commission=total_commission,
             )
-            
+
             async with get_postgres_session() as session:
                 session.add(pnl_snapshot)
                 await session.commit()
-                
+
         except Exception as e:
             logger.error(f"Error storing intraday P&L: {e}")
 
@@ -390,19 +421,19 @@ class PnLService:
         try:
             self.subscriptions_active = True
             logger.info("Starting quote subscription loop")
-            
+
             while not shutdown_event.is_set() and self.subscriptions_active:
                 try:
                     # Subscribe to quotes for active positions
                     await self._subscribe_to_position_quotes()
-                    
+
                     # Wait before next subscription check
                     await asyncio.sleep(60)  # Check every minute
-                    
+
                 except Exception as e:
                     logger.error(f"Error in quote subscription: {e}", exc_info=True)
                     await asyncio.sleep(30)
-                    
+
         except asyncio.CancelledError:
             logger.info("Quote subscription loop cancelled")
             raise
@@ -415,7 +446,7 @@ class PnLService:
             if not self.subscribe_to_tick_feed_callback:
                 logger.debug("No tick feed subscription callback set")
                 return
-                
+
             # Get all unique contracts from active positions
             contracts = set()
             for follower_id in self.active_followers:
@@ -423,13 +454,19 @@ class PnLService:
                     positions = await self.get_follower_positions_callback(follower_id)
                     for position in positions:
                         if position.quantity != 0:
-                            contracts.add((position.symbol, position.contract_type, 
-                                         position.strike, position.expiration))
-            
+                            contracts.add(
+                                (
+                                    position.symbol,
+                                    position.contract_type,
+                                    position.strike,
+                                    position.expiration,
+                                )
+                            )
+
             # Subscribe to tick feed for each contract
             for contract_info in contracts:
                 await self.subscribe_to_tick_feed_callback(contract_info)
-                    
+
         except Exception as e:
             logger.error(f"Error subscribing to position quotes: {e}")
 
@@ -441,22 +478,23 @@ class PnLService:
                     # Check if it's time for daily rollup (16:30 ET)
                     now_et = datetime.datetime.now(ET)
                     target_time = time(16, 30)  # 4:30 PM ET
-                    
-                    if (now_et.time() >= target_time and 
-                        now_et.time() <= time(16, 35)):  # 5-minute window
-                        
+
+                    if now_et.time() >= target_time and now_et.time() <= time(
+                        16, 35
+                    ):  # 5-minute window
+
                         # Check if we already ran today
                         if not await self._daily_rollup_completed_today():
                             logger.info("Starting daily P&L rollup at 16:30 ET")
                             await self._perform_daily_rollup()
-                    
+
                     # Check every minute
                     await asyncio.sleep(60)
-                    
+
                 except Exception as e:
                     logger.error(f"Error in daily rollup scheduler: {e}", exc_info=True)
                     await asyncio.sleep(300)  # Wait 5 minutes before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("Daily rollup scheduler cancelled")
             raise
@@ -465,20 +503,20 @@ class PnLService:
         """Check if daily rollup was already completed today."""
         try:
             today = date.today()
-            
+
             async with get_postgres_session() as session:
                 result = await session.execute(
                     select(PnLDaily)
                     .where(
                         and_(
                             PnLDaily.trading_date == today,
-                            PnLDaily.is_finalized == True
+                            PnLDaily.is_finalized == True,
                         )
                     )
                     .limit(1)
                 )
                 return result.scalar() is not None
-                
+
         except Exception as e:
             logger.error(f"Error checking daily rollup status: {e}")
             return False
@@ -487,15 +525,17 @@ class PnLService:
         """Perform daily P&L rollup for all followers."""
         try:
             today = date.today()
-            
+
             for follower_id in self.active_followers:
                 try:
                     await self._rollup_daily_pnl(follower_id, today)
                 except Exception as e:
-                    logger.error(f"Error in daily rollup for follower {follower_id}: {e}")
-            
+                    logger.error(
+                        f"Error in daily rollup for follower {follower_id}: {e}"
+                    )
+
             logger.info(f"Completed daily P&L rollup for {today}")
-            
+
         except Exception as e:
             logger.error(f"Error in daily rollup: {e}")
 
@@ -509,41 +549,44 @@ class PnLService:
                     .where(
                         and_(
                             PnLIntraday.follower_id == follower_id,
-                            PnLIntraday.trading_date == trading_date
+                            PnLIntraday.trading_date == trading_date,
                         )
                     )
                     .order_by(PnLIntraday.snapshot_time)
                 )
                 snapshots = intraday_result.scalars().all()
-                
+
                 if not snapshots:
-                    logger.debug(f"No intraday data for follower {follower_id} on {trading_date}")
+                    logger.debug(
+                        f"No intraday data for follower {follower_id} on {trading_date}"
+                    )
                     return
-                
+
                 # Get first and last snapshots
                 first_snapshot = snapshots[0]
                 last_snapshot = snapshots[-1]
-                
+
                 # Calculate daily metrics
                 max_profit = max((s.total_pnl for s in snapshots), default=Decimal("0"))
-                max_drawdown = min((s.total_pnl for s in snapshots), default=Decimal("0"))
-                
+                max_drawdown = min(
+                    (s.total_pnl for s in snapshots), default=Decimal("0")
+                )
+
                 # Get trading activity
                 trades_result = await session.execute(
-                    select(Trade)
-                    .where(
+                    select(Trade).where(
                         and_(
                             Trade.follower_id == follower_id,
-                            func.date(Trade.trade_time) == trading_date
+                            func.date(Trade.trade_time) == trading_date,
                         )
                     )
                 )
                 trades = trades_result.scalars().all()
-                
+
                 trades_count = len(trades)
                 total_volume = sum(t.quantity for t in trades)
                 total_commission = sum(t.commission for t in trades)
-                
+
                 # Create daily summary
                 daily_pnl = PnLDaily(
                     follower_id=follower_id,
@@ -562,15 +605,17 @@ class PnLService:
                     max_drawdown=max_drawdown,
                     max_profit=max_profit,
                     is_finalized=True,
-                    rollup_time=datetime.datetime.utcnow()
+                    rollup_time=datetime.datetime.utcnow(),
                 )
-                
+
                 session.add(daily_pnl)
                 await session.commit()
-                
-                logger.info(f"Completed daily rollup for follower {follower_id}: "
-                           f"total_pnl=${daily_pnl.total_pnl:.2f}, trades={trades_count}")
-                
+
+                logger.info(
+                    f"Completed daily rollup for follower {follower_id}: "
+                    f"total_pnl=${daily_pnl.total_pnl:.2f}, trades={trades_count}"
+                )
+
         except Exception as e:
             logger.error(f"Error in daily rollup for {follower_id}: {e}")
 
@@ -581,23 +626,29 @@ class PnLService:
                 try:
                     # Check if it's the 1st of the month at 00:10 ET
                     now_et = datetime.datetime.now(ET)
-                    
-                    if (now_et.day == 1 and 
-                        now_et.time() >= time(0, 10) and 
-                        now_et.time() <= time(0, 15)):  # 5-minute window
-                        
+
+                    if (
+                        now_et.day == 1
+                        and now_et.time() >= time(0, 10)
+                        and now_et.time() <= time(0, 15)
+                    ):  # 5-minute window
+
                         # Check if we already ran this month
                         if not await self._monthly_rollup_completed():
-                            logger.info("Starting monthly P&L rollup at 00:10 ET on the 1st")
+                            logger.info(
+                                "Starting monthly P&L rollup at 00:10 ET on the 1st"
+                            )
                             await self._perform_monthly_rollup()
-                    
+
                     # Check every 5 minutes
                     await asyncio.sleep(300)
-                    
+
                 except Exception as e:
-                    logger.error(f"Error in monthly rollup scheduler: {e}", exc_info=True)
+                    logger.error(
+                        f"Error in monthly rollup scheduler: {e}", exc_info=True
+                    )
                     await asyncio.sleep(600)  # Wait 10 minutes before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("Monthly rollup scheduler cancelled")
             raise
@@ -611,7 +662,7 @@ class PnLService:
                 year, month = now.year - 1, 12
             else:
                 year, month = now.year, now.month - 1
-            
+
             async with get_postgres_session() as session:
                 result = await session.execute(
                     select(PnLMonthly)
@@ -619,13 +670,13 @@ class PnLService:
                         and_(
                             PnLMonthly.year == year,
                             PnLMonthly.month == month,
-                            PnLMonthly.is_finalized == True
+                            PnLMonthly.is_finalized == True,
                         )
                     )
                     .limit(1)
                 )
                 return result.scalar() is not None
-                
+
         except Exception as e:
             logger.error(f"Error checking monthly rollup status: {e}")
             return False
@@ -639,15 +690,17 @@ class PnLService:
                 year, month = now.year - 1, 12
             else:
                 year, month = now.year, now.month - 1
-            
+
             for follower_id in self.active_followers:
                 try:
                     await self._rollup_monthly_pnl(follower_id, year, month)
                 except Exception as e:
-                    logger.error(f"Error in monthly rollup for follower {follower_id}: {e}")
-            
+                    logger.error(
+                        f"Error in monthly rollup for follower {follower_id}: {e}"
+                    )
+
             logger.info(f"Completed monthly P&L rollup for {year}-{month:02d}")
-            
+
         except Exception as e:
             logger.error(f"Error in monthly rollup: {e}")
 
@@ -661,42 +714,58 @@ class PnLService:
                     .where(
                         and_(
                             PnLDaily.follower_id == follower_id,
-                            func.extract('year', PnLDaily.trading_date) == year,
-                            func.extract('month', PnLDaily.trading_date) == month
+                            func.extract("year", PnLDaily.trading_date) == year,
+                            func.extract("month", PnLDaily.trading_date) == month,
                         )
                     )
                     .order_by(PnLDaily.trading_date)
                 )
                 daily_summaries = daily_result.scalars().all()
-                
+
                 if not daily_summaries:
-                    logger.debug(f"No daily data for follower {follower_id} in {year}-{month:02d}")
+                    logger.debug(
+                        f"No daily data for follower {follower_id} in {year}-{month:02d}"
+                    )
                     return
-                
+
                 # Calculate monthly metrics
                 total_realized = sum(d.realized_pnl for d in daily_summaries)
                 total_pnl = sum(d.total_pnl for d in daily_summaries)
                 total_trades = sum(d.trades_count for d in daily_summaries)
                 total_volume = sum(d.total_volume for d in daily_summaries)
                 total_commission = sum(d.total_commission for d in daily_summaries)
-                
+
                 # Performance metrics
-                best_day = max((d.total_pnl for d in daily_summaries), default=Decimal("0"))
-                worst_day = min((d.total_pnl for d in daily_summaries), default=Decimal("0"))
-                max_profit = max((d.max_profit for d in daily_summaries if d.max_profit), default=Decimal("0"))
-                max_drawdown = min((d.max_drawdown for d in daily_summaries if d.max_drawdown), default=Decimal("0"))
-                
+                best_day = max(
+                    (d.total_pnl for d in daily_summaries), default=Decimal("0")
+                )
+                worst_day = min(
+                    (d.total_pnl for d in daily_summaries), default=Decimal("0")
+                )
+                max_profit = max(
+                    (d.max_profit for d in daily_summaries if d.max_profit),
+                    default=Decimal("0"),
+                )
+                max_drawdown = min(
+                    (d.max_drawdown for d in daily_summaries if d.max_drawdown),
+                    default=Decimal("0"),
+                )
+
                 # Win/Loss statistics
                 winning_days = sum(1 for d in daily_summaries if d.total_pnl > 0)
                 losing_days = sum(1 for d in daily_summaries if d.total_pnl < 0)
                 breakeven_days = sum(1 for d in daily_summaries if d.total_pnl == 0)
-                
-                avg_daily_pnl = total_pnl / len(daily_summaries) if daily_summaries else Decimal("0")
-                
+
+                avg_daily_pnl = (
+                    total_pnl / len(daily_summaries)
+                    if daily_summaries
+                    else Decimal("0")
+                )
+
                 # Get start/end unrealized P&L
                 first_day = daily_summaries[0]
                 last_day = daily_summaries[-1]
-                
+
                 monthly_pnl = PnLMonthly(
                     follower_id=follower_id,
                     year=year,
@@ -718,28 +787,38 @@ class PnLService:
                     losing_days=losing_days,
                     breakeven_days=breakeven_days,
                     is_finalized=True,
-                    rollup_time=datetime.datetime.utcnow()
+                    rollup_time=datetime.datetime.utcnow(),
                 )
-                
+
                 session.add(monthly_pnl)
                 await session.commit()
-                
+
                 # Calculate monthly commission after P&L rollup
-                await self._calculate_monthly_commission(session, follower_id, year, month, total_pnl)
-                
-                logger.info(f"Completed monthly rollup for follower {follower_id} {year}-{month:02d}: "
-                           f"total_pnl=${monthly_pnl.total_pnl:.2f}, "
-                           f"winning_days={winning_days}, losing_days={losing_days}")
-                
+                await self._calculate_monthly_commission(
+                    session, follower_id, year, month, total_pnl
+                )
+
+                logger.info(
+                    f"Completed monthly rollup for follower {follower_id} {year}-{month:02d}: "
+                    f"total_pnl=${monthly_pnl.total_pnl:.2f}, "
+                    f"winning_days={winning_days}, losing_days={losing_days}"
+                )
+
         except Exception as e:
             logger.error(f"Error in monthly rollup for {follower_id}: {e}")
 
-    async def _calculate_monthly_commission(self, session: AsyncSession, follower_id: str, 
-                                          year: int, month: int, monthly_pnl: Decimal):
+    async def _calculate_monthly_commission(
+        self,
+        session: AsyncSession,
+        follower_id: str,
+        year: int,
+        month: int,
+        monthly_pnl: Decimal,
+    ):
         """Calculate monthly commission based on positive P&L.
-        
+
         Rule: if pnl_month > 0 => commission = pct * pnl_month, else 0
-        
+
         Args:
             session: Database session
             follower_id: Follower ID
@@ -756,17 +835,20 @@ class PnLService:
 
             # Calculate commission only if P&L is positive
             is_payable = monthly_pnl > 0
-            commission_pct = Decimal(str(follower_data.get("commission_pct", 20))) / 100  # Convert percentage to decimal
-            commission_amount = commission_pct * monthly_pnl if is_payable else Decimal("0")
+            commission_pct = (
+                Decimal(str(follower_data.get("commission_pct", 20))) / 100
+            )  # Convert percentage to decimal
+            commission_amount = (
+                commission_pct * monthly_pnl if is_payable else Decimal("0")
+            )
 
             # Check if commission entry already exists
             existing_result = await session.execute(
-                select(CommissionMonthly)
-                .where(
+                select(CommissionMonthly).where(
                     and_(
                         CommissionMonthly.follower_id == follower_id,
                         CommissionMonthly.year == year,
-                        CommissionMonthly.month == month
+                        CommissionMonthly.month == month,
                     )
                 )
             )
@@ -782,9 +864,11 @@ class PnLService:
                 existing_commission.follower_email = follower_data.get("email", "")
                 existing_commission.calculated_at = datetime.datetime.utcnow()
                 existing_commission.updated_at = datetime.datetime.utcnow()
-                
-                logger.info(f"Updated commission for follower {follower_id} {year}-{month:02d}: "
-                           f"pnl=${monthly_pnl:.2f}, commission=${commission_amount:.2f}")
+
+                logger.info(
+                    f"Updated commission for follower {follower_id} {year}-{month:02d}: "
+                    f"pnl=${monthly_pnl:.2f}, commission=${commission_amount:.2f}"
+                )
             else:
                 # Create new commission entry
                 commission_entry = CommissionMonthly(
@@ -798,14 +882,16 @@ class PnLService:
                     follower_iban=follower_data.get("iban", ""),
                     follower_email=follower_data.get("email", ""),
                     is_payable=is_payable,
-                    is_paid=False
+                    is_paid=False,
                 )
-                
+
                 session.add(commission_entry)
-                
-                logger.info(f"Calculated commission for follower {follower_id} {year}-{month:02d}: "
-                           f"pnl=${monthly_pnl:.2f}, commission_pct={commission_pct*100:.1f}%, "
-                           f"commission=${commission_amount:.2f}, payable={is_payable}")
+
+                logger.info(
+                    f"Calculated commission for follower {follower_id} {year}-{month:02d}: "
+                    f"pnl=${monthly_pnl:.2f}, commission_pct={commission_pct*100:.1f}%, "
+                    f"commission=${commission_amount:.2f}, payable={is_payable}"
+                )
 
             await session.commit()
 
@@ -813,45 +899,47 @@ class PnLService:
             logger.error(f"Error calculating monthly commission for {follower_id}: {e}")
             await session.rollback()
 
-    async def _get_follower_data(self, follower_id: str) -> Optional[dict]:
+    async def _get_follower_data(self, follower_id: str) -> dict | None:
         """Get follower data from MongoDB including IBAN and commission percentage.
-        
+
         Args:
             follower_id: Follower ID
-            
+
         Returns:
             Dictionary with follower data or None if not found
         """
         try:
             db = await get_mongo_db()
             follower_doc = await db.followers.find_one({"_id": follower_id})
-            
+
             if follower_doc:
                 return {
                     "id": follower_id,
                     "email": follower_doc.get("email", ""),
                     "iban": follower_doc.get("iban", ""),
-                    "commission_pct": follower_doc.get("commission_pct", 20)  # Default 20%
+                    "commission_pct": follower_doc.get(
+                        "commission_pct", 20
+                    ),  # Default 20%
                 }
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error retrieving follower data: {e}")
             return None
 
-    async def get_current_pnl(self, follower_id: str) -> Dict[str, Any]:
+    async def get_current_pnl(self, follower_id: str) -> dict[str, Any]:
         """Get current P&L for a follower.
-        
+
         Args:
             follower_id: Follower ID
-            
+
         Returns:
             Dictionary with current P&L metrics
         """
         try:
             today = date.today()
-            
+
             async with get_postgres_session() as session:
                 # Get latest intraday snapshot
                 latest_result = await session.execute(
@@ -859,14 +947,14 @@ class PnLService:
                     .where(
                         and_(
                             PnLIntraday.follower_id == follower_id,
-                            PnLIntraday.trading_date == today
+                            PnLIntraday.trading_date == today,
                         )
                     )
                     .order_by(desc(PnLIntraday.snapshot_time))
                     .limit(1)
                 )
                 latest_snapshot = latest_result.scalar()
-                
+
                 if latest_snapshot:
                     return {
                         "follower_id": follower_id,
@@ -875,7 +963,7 @@ class PnLService:
                         "unrealized_pnl": float(latest_snapshot.unrealized_pnl),
                         "total_pnl": float(latest_snapshot.total_pnl),
                         "position_count": latest_snapshot.position_count,
-                        "total_market_value": float(latest_snapshot.total_market_value)
+                        "total_market_value": float(latest_snapshot.total_market_value),
                     }
                 else:
                     return {
@@ -885,53 +973,57 @@ class PnLService:
                         "unrealized_pnl": 0.0,
                         "total_pnl": 0.0,
                         "position_count": 0,
-                        "total_market_value": 0.0
+                        "total_market_value": 0.0,
                     }
-                    
+
         except Exception as e:
             logger.error(f"Error getting current P&L: {e}")
-            return {
-                "follower_id": follower_id,
-                "error": str(e)
-            }
+            return {"follower_id": follower_id, "error": str(e)}
 
-    async def get_monthly_commission(self, follower_id: str, year: int, month: int) -> Dict[str, Any]:
+    async def get_monthly_commission(
+        self, follower_id: str, year: int, month: int
+    ) -> dict[str, Any]:
         """Get monthly commission for a follower.
-        
+
         Args:
             follower_id: Follower ID
             year: Year
             month: Month
-            
+
         Returns:
             Dictionary with commission details
         """
         try:
             async with get_postgres_session() as session:
                 result = await session.execute(
-                    select(CommissionMonthly)
-                    .where(
+                    select(CommissionMonthly).where(
                         and_(
                             CommissionMonthly.follower_id == follower_id,
                             CommissionMonthly.year == year,
-                            CommissionMonthly.month == month
+                            CommissionMonthly.month == month,
                         )
                     )
                 )
                 commission = result.scalar()
-                
+
                 if commission:
                     return {
                         "follower_id": follower_id,
                         "year": year,
                         "month": month,
                         "monthly_pnl": float(commission.monthly_pnl),
-                        "commission_pct": float(commission.commission_pct * 100),  # Convert to percentage
+                        "commission_pct": float(
+                            commission.commission_pct * 100
+                        ),  # Convert to percentage
                         "commission_amount": float(commission.commission_amount),
                         "is_payable": commission.is_payable,
                         "is_paid": commission.is_paid,
-                        "payment_date": commission.payment_date.isoformat() if commission.payment_date else None,
-                        "payment_reference": commission.payment_reference
+                        "payment_date": (
+                            commission.payment_date.isoformat()
+                            if commission.payment_date
+                            else None
+                        ),
+                        "payment_reference": commission.payment_reference,
                     }
                 else:
                     return {
@@ -942,14 +1034,14 @@ class PnLService:
                         "commission_pct": 0.0,
                         "commission_amount": 0.0,
                         "is_payable": False,
-                        "is_paid": False
+                        "is_paid": False,
                     }
-                    
+
         except Exception as e:
             logger.error(f"Error getting monthly commission: {e}")
             return {
                 "follower_id": follower_id,
                 "year": year,
                 "month": month,
-                "error": str(e)
+                "error": str(e),
             }

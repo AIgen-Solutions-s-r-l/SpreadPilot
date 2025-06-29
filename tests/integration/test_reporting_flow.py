@@ -1,28 +1,22 @@
-import sys
 import os
+import sys
 
 # Add project root to sys.path to allow imports like 'report_worker.app...'
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 """Integration tests for the reporting flow."""
 
-import asyncio
 import datetime
-import decimal
-import pytest
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
-from decimal import Decimal
-
-from spreadpilot_core.models.follower import Follower
-from spreadpilot_core.models.position import Position
-from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
-
 import importlib
+import uuid
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Import modules using importlib
-report_worker_pnl = importlib.import_module('report_worker.app.service.pnl')
+report_worker_pnl = importlib.import_module("report_worker.app.service.pnl")
 
 # Get specific imports (assuming these are now async)
 calculate_daily_pnl = report_worker_pnl.calculate_daily_pnl
@@ -30,8 +24,8 @@ calculate_monthly_pnl = report_worker_pnl.calculate_monthly_pnl
 calculate_commission = report_worker_pnl.calculate_commission
 
 # Import more modules using importlib
-report_worker_generator = importlib.import_module('report_worker.app.service.generator')
-report_worker_notifier = importlib.import_module('report_worker.app.service.notifier')
+report_worker_generator = importlib.import_module("report_worker.app.service.generator")
+report_worker_notifier = importlib.import_module("report_worker.app.service.notifier")
 
 # Get specific imports (assuming these are now async)
 generate_monthly_report = report_worker_generator.generate_monthly_report
@@ -42,7 +36,7 @@ send_monthly_report = report_worker_notifier.send_monthly_report
 async def test_daily_pnl_calculation(
     # Removed firestore_client fixture parameter
     test_follower,
-    test_mongo_db, # Add mongo fixture if needed for mocking/verification
+    test_mongo_db,  # Add mongo fixture if needed for mocking/verification
 ):
     """
     Test the daily P&L calculation process.
@@ -68,27 +62,35 @@ async def test_daily_pnl_calculation(
     # --- Mock MongoDB interactions ---
     # Mock the find operation on the positions collection
     mock_cursor = MagicMock()
-    mock_cursor.__aiter__.return_value = trades_mock_data # Simulate async iteration
+    mock_cursor.__aiter__.return_value = trades_mock_data  # Simulate async iteration
     mock_positions_collection = AsyncMock()
     mock_positions_collection.find.return_value = mock_cursor
 
     # Mock the update_one operation on the daily_pnl collection
     mock_daily_pnl_collection = AsyncMock()
-    mock_daily_pnl_collection.update_one.return_value = MagicMock(upserted_id=None, modified_count=1)
+    mock_daily_pnl_collection.update_one.return_value = MagicMock(
+        upserted_id=None, modified_count=1
+    )
 
     # Mock the get_mongo_db function to return a mock DB that returns our mock collections
     mock_db_handle = MagicMock()
+
     def get_collection_side_effect(name):
-        if name == "positions": # Or "trades" depending on final logic
+        if name == "positions":  # Or "trades" depending on final logic
             return mock_positions_collection
         elif name == "daily_pnl":
             return mock_daily_pnl_collection
         else:
             return AsyncMock()
+
     mock_db_handle.__getitem__.side_effect = get_collection_side_effect
 
     # Patch the get_mongo_db function within the pnl module
-    with patch("report_worker.app.service.pnl.get_mongo_db", new_callable=AsyncMock, return_value=mock_db_handle):
+    with patch(
+        "report_worker.app.service.pnl.get_mongo_db",
+        new_callable=AsyncMock,
+        return_value=mock_db_handle,
+    ):
         # Now call the async function
         result = await calculate_daily_pnl(today)
 
@@ -98,7 +100,7 @@ async def test_daily_pnl_calculation(
     # Verify P&L was stored (check if update_one was called correctly)
     mock_daily_pnl_collection.update_one.assert_called_once()
     call_args, call_kwargs = mock_daily_pnl_collection.update_one.call_args
-    assert call_args[0] == {"date": today.isoformat()} # Check filter
+    assert call_args[0] == {"date": today.isoformat()}  # Check filter
     assert "$set" in call_args[1]
     assert call_args[1]["$set"]["total_pnl"] == str(total_pnl)
     assert call_kwargs.get("upsert") is True
@@ -110,7 +112,7 @@ async def test_daily_pnl_calculation(
 @pytest.mark.skip(reason="Test needs rework for async mocking of monthly aggregation")
 async def test_monthly_pnl_calculation(
     # Removed firestore_client fixture parameter
-    test_mongo_db, # Add mongo fixture
+    test_mongo_db,  # Add mongo fixture
 ):
     """
     Test the monthly P&L calculation process.
@@ -133,13 +135,13 @@ async def test_monthly_pnl_calculation(
         try:
             date = datetime.date(year, month, day)
         except ValueError:
-            continue # Skip invalid dates
+            continue  # Skip invalid dates
 
         daily_pnl = Decimal(str(100.0 * day))  # 100, 200, 300, 400, 500
         total_monthly_pnl += daily_pnl
 
         daily_pnl_data = {
-            "_id": f"id_{day}", # Mock an ID
+            "_id": f"id_{day}",  # Mock an ID
             "date": date.isoformat(),
             "total_pnl": str(daily_pnl),
             "calculation_timestamp": datetime.datetime.now(),
@@ -154,10 +156,16 @@ async def test_monthly_pnl_calculation(
     mock_daily_pnl_collection.find.return_value = mock_cursor
 
     mock_db_handle = MagicMock()
-    mock_db_handle.__getitem__.return_value = mock_daily_pnl_collection # Only need daily_pnl collection
+    mock_db_handle.__getitem__.return_value = (
+        mock_daily_pnl_collection  # Only need daily_pnl collection
+    )
 
     # Patch the get_mongo_db function within the pnl module
-    with patch("report_worker.app.service.pnl.get_mongo_db", new_callable=AsyncMock, return_value=mock_db_handle):
+    with patch(
+        "report_worker.app.service.pnl.get_mongo_db",
+        new_callable=AsyncMock,
+        return_value=mock_db_handle,
+    ):
         # Call the async function
         result = await calculate_monthly_pnl(year, month)
 
@@ -180,7 +188,9 @@ async def test_commission_calculation(
     """
     # Test with positive P&L
     monthly_pnl = Decimal("1000.00")
-    expected_commission = monthly_pnl * (Decimal(str(test_follower.commission_pct)) / Decimal("100.0"))
+    expected_commission = monthly_pnl * (
+        Decimal(str(test_follower.commission_pct)) / Decimal("100.0")
+    )
 
     result = calculate_commission(monthly_pnl, test_follower)
     assert result == expected_commission
@@ -200,8 +210,8 @@ async def test_commission_calculation(
 async def test_monthly_report_generation(
     # Removed firestore_client fixture parameter
     test_follower,
-    mock_ibkr_client, # Keep mock_ibkr_client if needed by other parts of the test setup
-    test_mongo_db, # Add test_mongo_db fixture
+    mock_ibkr_client,  # Keep mock_ibkr_client if needed by other parts of the test setup
+    test_mongo_db,  # Add test_mongo_db fixture
 ):
     """
     Test the generation of monthly reports.
@@ -220,16 +230,25 @@ async def test_monthly_report_generation(
     total_monthly_pnl = Decimal("1500.00")
 
     # Mock the calculate_monthly_pnl function (now async)
-    with patch("report_worker.app.service.generator.calculate_monthly_pnl", new_callable=AsyncMock, return_value=total_monthly_pnl):
+    with patch(
+        "report_worker.app.service.generator.calculate_monthly_pnl",
+        new_callable=AsyncMock,
+        return_value=total_monthly_pnl,
+    ):
         # Mock the calculate_commission function
-        expected_commission = total_monthly_pnl * (Decimal(str(test_follower.commission_pct)) / Decimal("100.0"))
-        with patch("report_worker.app.service.generator.calculate_commission", return_value=expected_commission):
+        expected_commission = total_monthly_pnl * (
+            Decimal(str(test_follower.commission_pct)) / Decimal("100.0")
+        )
+        with patch(
+            "report_worker.app.service.generator.calculate_commission",
+            return_value=expected_commission,
+        ):
             # Generate monthly report (pass the test_mongo_db fixture)
             report = await generate_monthly_report(
                 year=year,
                 month=month,
                 follower=test_follower,
-                db=test_mongo_db, # Pass the test MongoDB handle
+                db=test_mongo_db,  # Pass the test MongoDB handle
             )
 
     # Verify report data
@@ -241,7 +260,9 @@ async def test_monthly_report_generation(
     assert "report_id" in report
 
     # Verify report was stored in MongoDB
-    report_doc = await test_mongo_db["monthly_reports"].find_one({"report_id": report["report_id"]})
+    report_doc = await test_mongo_db["monthly_reports"].find_one(
+        {"report_id": report["report_id"]}
+    )
     assert report_doc is not None
     assert report_doc["follower_id"] == test_follower.id
     assert report_doc["year"] == year
@@ -280,22 +301,30 @@ async def test_monthly_report_email_sending(
     # Mock PDF generation
     # Patch PDF generation and os.path.exists (used by notifier)
     # Removed patch for generate_excel_report as it's not called by send_monthly_report
-    with patch("report_worker.app.service.generator.generate_pdf_report", return_value="/tmp/mock_report.pdf") as mock_gen_pdf, \
-         patch("os.path.exists", return_value=True) as mock_exists:
+    with (
+        patch(
+            "report_worker.app.service.generator.generate_pdf_report",
+            return_value="/tmp/mock_report.pdf",
+        ) as mock_gen_pdf,
+        patch("os.path.exists", return_value=True) as mock_exists,
+    ):
 
         # Send report (assuming send_monthly_report is async)
         result = await send_monthly_report(report, test_follower)
 
     # Verify email was sent
-    assert result is True # Check if send_monthly_report indicates success
-    mock_email_sender.assert_called_once() # Now this should be called
+    assert result is True  # Check if send_monthly_report indicates success
+    mock_email_sender.assert_called_once()  # Now this should be called
 
     # Verify email content
     email_args = mock_email_sender.call_args[1]
     assert test_follower.email in email_args["recipients"]
     # Correct the assertion to match the actual subject format "YYYY-MM"
     report_period = f"{report['year']}-{report['month']:02d}"
-    assert f"SpreadPilot Monthly Report - {report_period} - {test_follower.id}" == email_args["subject"]
+    assert (
+        f"SpreadPilot Monthly Report - {report_period} - {test_follower.id}"
+        == email_args["subject"]
+    )
     # Remove assertions checking for specific PnL values in the body, as the template doesn't include them
     assert "attachments" in email_args
     # Expect only 1 attachment (PDF) because send_monthly_report passes excel_path=None
@@ -310,7 +339,7 @@ async def test_end_to_end_reporting_flow(
     test_follower,
     mock_email_sender,
     mock_ibkr_client,
-    test_mongo_db, # Add test_mongo_db fixture
+    test_mongo_db,  # Add test_mongo_db fixture
 ):
     """
     Test the end-to-end reporting flow.
@@ -331,27 +360,48 @@ async def test_end_to_end_reporting_flow(
 
     # Mock functions to isolate the flow
     # Mock the async pnl calculation function
-    with patch("report_worker.app.service.pnl.calculate_monthly_pnl", new_callable=AsyncMock, return_value=total_monthly_pnl):
+    with patch(
+        "report_worker.app.service.pnl.calculate_monthly_pnl",
+        new_callable=AsyncMock,
+        return_value=total_monthly_pnl,
+    ):
         # Patch report generation AND os.path.exists within the notifier module
-        with patch("report_worker.app.service.generator.generate_pdf_report", return_value="/tmp/mock_report.pdf"):
-            with patch("report_worker.app.service.generator.generate_excel_report", return_value="/tmp/mock_report.xlsx"):
+        with patch(
+            "report_worker.app.service.generator.generate_pdf_report",
+            return_value="/tmp/mock_report.pdf",
+        ):
+            with patch(
+                "report_worker.app.service.generator.generate_excel_report",
+                return_value="/tmp/mock_report.xlsx",
+            ):
                 # Patch os.path.exists specifically where it's used in notifier.py (called by report_service)
-                with patch("report_worker.app.service.notifier.os.path.exists", return_value=True):
+                with patch(
+                    "report_worker.app.service.notifier.os.path.exists",
+                    return_value=True,
+                ):
                     # Run the end-to-end flow
-                        # Import the service class
-                        ReportService = importlib.import_module('report_worker.app.service.report_service').ReportService
-                        report_service_instance = ReportService()
+                    # Import the service class
+                    ReportService = importlib.import_module(
+                        "report_worker.app.service.report_service"
+                    ).ReportService
+                    report_service_instance = ReportService()
 
-                        # Mock the async _get_active_followers method on the class
-                        with patch("report_worker.app.service.report_service.ReportService._get_active_followers", new_callable=AsyncMock, return_value=[test_follower]):
-                            # process_monthly_reports is now async
-                            # Need to run the async function
-                            await report_service_instance.process_monthly_reports(trigger_date=today) # Use today as trigger date
+                    # Mock the async _get_active_followers method on the class
+                    with patch(
+                        "report_worker.app.service.report_service.ReportService._get_active_followers",
+                        new_callable=AsyncMock,
+                        return_value=[test_follower],
+                    ):
+                        # process_monthly_reports is now async
+                        # Need to run the async function
+                        await report_service_instance.process_monthly_reports(
+                            trigger_date=today
+                        )  # Use today as trigger date
 
         # Verify results - Check if mocks were called (e.g., email sender)
         # The actual verification depends on what mocks are available (e.g., mock_email_sender)
         # Assuming mock_email_sender is available from fixture and notifier.send_report_email uses it
-        mock_email_sender.assert_called_once() # Check that the email sender mock was called
+        mock_email_sender.assert_called_once()  # Check that the email sender mock was called
         # Add more specific assertions on mock_email_sender arguments if needed
         # Removed assertions using 'result' as process_monthly_reports doesn't return it
 

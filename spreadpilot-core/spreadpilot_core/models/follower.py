@@ -2,12 +2,11 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from typing import Any, Annotated # Added Annotated
-from bson import ObjectId # Added ObjectId
-from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
+from typing import Annotated, Any  # Added Annotated
 
+from bson import ObjectId  # Added ObjectId
 from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
 class FollowerState(str, Enum):
@@ -26,7 +25,8 @@ def validate_objectid_to_str(v: Any) -> str:
     if isinstance(v, str):
         return v
     # Raise error for other unexpected types
-    raise TypeError('ObjectId or str required')
+    raise TypeError("ObjectId or str required")
+
 
 class Follower(BaseModel):
     """Follower model.
@@ -35,16 +35,26 @@ class Follower(BaseModel):
     """
 
     # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
-    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique follower ID", alias='_id')
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(
+        ..., description="Unique follower ID", alias="_id"
+    )
     email: EmailStr = Field(..., description="Follower email address")
     iban: str = Field(..., description="Follower IBAN for commission payments")
     ibkr_username: str = Field(..., description="IBKR username")
-    ibkr_secret_ref: str = Field(..., description="Secret Manager reference for IBKR password")
+    ibkr_secret_ref: str = Field(
+        ..., description="Secret Manager reference for IBKR password"
+    )
     commission_pct: float = Field(..., description="Commission percentage (0-100)")
     enabled: bool = Field(default=False, description="Whether the follower is enabled")
-    state: FollowerState = Field(default=FollowerState.DISABLED, description="Follower state")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    state: FollowerState = Field(
+        default=FollowerState.DISABLED, description="Follower state"
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Last update timestamp"
+    )
 
     @validator("commission_pct")
     def validate_commission_pct(cls, v):

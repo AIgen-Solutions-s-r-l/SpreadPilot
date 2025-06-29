@@ -1,13 +1,15 @@
 """Isolated unit tests for time value monitor."""
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from enum import Enum
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 class RiskStatus(str, Enum):
     """Risk status levels for time value monitoring."""
+
     SAFE = "SAFE"
     RISK = "RISK"
     CRITICAL = "CRITICAL"
@@ -15,6 +17,7 @@ class RiskStatus(str, Enum):
 
 class MockAlertType:
     """Mock alert types."""
+
     RISK_WARNING = "RISK_WARNING"
     TIME_VALUE_CRITICAL = "TIME_VALUE_CRITICAL"
     LIQUIDATION_COMPLETE = "LIQUIDATION_COMPLETE"
@@ -23,6 +26,7 @@ class MockAlertType:
 
 class MockAlertSeverity:
     """Mock alert severities."""
+
     INFO = "INFO"
     WARNING = "WARNING"
     CRITICAL = "CRITICAL"
@@ -39,14 +43,14 @@ class TimeValueMonitor:
     async def start_monitoring(self, shutdown_event):
         """Start time value monitoring loop."""
         self.monitoring_active = True
-        
+
         while not shutdown_event.is_set() and self.monitoring_active:
             try:
                 if self.service.is_market_open():
                     for follower_id in self.service.active_followers:
                         await self.monitor_time_value(follower_id)
                 await asyncio.sleep(60)
-            except Exception as e:
+            except Exception:
                 await asyncio.sleep(10)
 
     async def monitor_time_value(self, follower_id):
@@ -152,21 +156,23 @@ class TimeValueMonitor:
         """Update risk status in Redis and local cache."""
         self.risk_statuses[follower_id] = status
 
-        if hasattr(self.service, 'redis_client') and self.service.redis_client:
+        if hasattr(self.service, "redis_client") and self.service.redis_client:
             key = f"risk_status:{follower_id}"
             await self.service.redis_client.set(key, status.value, ex=300)
             await self.service.redis_client.publish(
                 "risk_status_updates",
-                f"{follower_id}:{status.value}:2024-01-01T00:00:00"
+                f"{follower_id}:{status.value}:2024-01-01T00:00:00",
             )
 
     async def get_risk_status(self, follower_id):
         """Get current risk status for a follower."""
-        if hasattr(self.service, 'redis_client') and self.service.redis_client:
+        if hasattr(self.service, "redis_client") and self.service.redis_client:
             key = f"risk_status:{follower_id}"
             status_str = await self.service.redis_client.get(key)
             if status_str:
-                return RiskStatus(status_str.decode() if isinstance(status_str, bytes) else status_str)
+                return RiskStatus(
+                    status_str.decode() if isinstance(status_str, bytes) else status_str
+                )
 
         return self.risk_statuses.get(follower_id, RiskStatus.SAFE)
 
@@ -191,7 +197,7 @@ class TestTimeValueMonitor:
         service = MagicMock()
         service.active_followers = ["follower1", "follower2"]
         service.is_market_open.return_value = True
-        
+
         service.ibkr_manager = AsyncMock()
         service.alert_manager = AsyncMock()
         service.alert_manager.create_alert = AsyncMock()
@@ -201,7 +207,7 @@ class TestTimeValueMonitor:
         service.redis_client.set = AsyncMock()
         service.redis_client.get = AsyncMock()
         service.redis_client.publish = AsyncMock()
-        
+
         return service
 
     @pytest.fixture
@@ -228,19 +234,21 @@ class TestTimeValueMonitor:
     async def test_monitor_time_value_no_client(self, time_value_monitor, mock_service):
         """Test monitoring when IBKR client is not available."""
         mock_service.ibkr_manager.get_client.return_value = None
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         mock_service.ibkr_manager.get_client.assert_called_once_with("follower1")
 
     @pytest.mark.asyncio
-    async def test_monitor_time_value_no_positions(self, time_value_monitor, mock_service, mock_client):
+    async def test_monitor_time_value_no_positions(
+        self, time_value_monitor, mock_service, mock_client
+    ):
         """Test monitoring when there are no positions."""
         mock_service.ibkr_manager.get_client.return_value = mock_client
         mock_client.get_positions.return_value = {}
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.SAFE
 
     @pytest.mark.asyncio
@@ -249,63 +257,77 @@ class TestTimeValueMonitor:
         positions = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 1.50
         mock_client.get_underlying_price.return_value = 410.0
-        
-        time_value = await time_value_monitor._calculate_time_value(mock_client, positions)
-        
+
+        time_value = await time_value_monitor._calculate_time_value(
+            mock_client, positions
+        )
+
         # Spread mark price (1.50) - intrinsic value (0.0) = 1.50
         assert time_value == 1.50
 
     @pytest.mark.asyncio
-    async def test_calculate_intrinsic_value_put_spread(self, time_value_monitor, mock_client):
+    async def test_calculate_intrinsic_value_put_spread(
+        self, time_value_monitor, mock_client
+    ):
         """Test intrinsic value calculation for put spread."""
         positions = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_underlying_price.return_value = 402.0
-        
-        intrinsic_value = await time_value_monitor._calculate_intrinsic_value(mock_client, positions)
-        
+
+        intrinsic_value = await time_value_monitor._calculate_intrinsic_value(
+            mock_client, positions
+        )
+
         # Short 400 PUT: max(0, 400-402) = 0, qty=-1 -> 0
         # Long 405 PUT: max(0, 405-402) = 3, qty=1 -> 3
         # Total: 0 + 3 = 3
         assert intrinsic_value == 3.0
 
     @pytest.mark.asyncio
-    async def test_calculate_intrinsic_value_call_spread(self, time_value_monitor, mock_client):
+    async def test_calculate_intrinsic_value_call_spread(
+        self, time_value_monitor, mock_client
+    ):
         """Test intrinsic value calculation for call spread."""
         positions = {"400.0-CALL": 1, "405.0-CALL": -1}
         mock_client.get_underlying_price.return_value = 402.0
-        
-        intrinsic_value = await time_value_monitor._calculate_intrinsic_value(mock_client, positions)
-        
+
+        intrinsic_value = await time_value_monitor._calculate_intrinsic_value(
+            mock_client, positions
+        )
+
         # Long 400 CALL: max(0, 402-400) = 2, qty=1 -> 2
         # Short 405 CALL: max(0, 402-405) = 0, qty=-1 -> 0
         # Total: 2 + 0 = 2
         assert intrinsic_value == 2.0
 
     @pytest.mark.asyncio
-    async def test_monitor_time_value_safe_status(self, time_value_monitor, mock_service, mock_client):
+    async def test_monitor_time_value_safe_status(
+        self, time_value_monitor, mock_service, mock_client
+    ):
         """Test monitoring with safe time value."""
         mock_service.ibkr_manager.get_client.return_value = mock_client
         mock_client.get_positions.return_value = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 1.50
         mock_client.get_underlying_price.return_value = 410.0
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.SAFE
         mock_service.alert_manager.create_alert.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_monitor_time_value_risk_status(self, time_value_monitor, mock_service, mock_client):
+    async def test_monitor_time_value_risk_status(
+        self, time_value_monitor, mock_service, mock_client
+    ):
         """Test monitoring with risk time value."""
         mock_service.ibkr_manager.get_client.return_value = mock_client
         mock_client.get_positions.return_value = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 0.15
         mock_client.get_underlying_price.return_value = 410.0
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.RISK
-        
+
         mock_service.alert_manager.create_alert.assert_called_once_with(
             follower_id="follower1",
             alert_type=MockAlertType.RISK_WARNING,
@@ -314,41 +336,49 @@ class TestTimeValueMonitor:
         )
 
     @pytest.mark.asyncio
-    async def test_monitor_time_value_critical_status(self, time_value_monitor, mock_service, mock_client):
+    async def test_monitor_time_value_critical_status(
+        self, time_value_monitor, mock_service, mock_client
+    ):
         """Test monitoring with critical time value."""
         mock_service.ibkr_manager.get_client.return_value = mock_client
         mock_client.get_positions.return_value = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 0.05
         mock_client.get_underlying_price.return_value = 410.0
         mock_service.position_manager.close_positions.return_value = {"success": True}
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.SAFE
-        mock_service.position_manager.close_positions.assert_called_once_with("follower1")
+        mock_service.position_manager.close_positions.assert_called_once_with(
+            "follower1"
+        )
         assert mock_service.alert_manager.create_alert.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_monitor_time_value_critical_liquidation_failed(self, time_value_monitor, mock_service, mock_client):
+    async def test_monitor_time_value_critical_liquidation_failed(
+        self, time_value_monitor, mock_service, mock_client
+    ):
         """Test monitoring with critical time value when liquidation fails."""
         mock_service.ibkr_manager.get_client.return_value = mock_client
         mock_client.get_positions.return_value = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 0.05
         mock_client.get_underlying_price.return_value = 410.0
         mock_service.position_manager.close_positions.return_value = {
-            "success": False, 
-            "error": "Test error"
+            "success": False,
+            "error": "Test error",
         }
-        
+
         await time_value_monitor.monitor_time_value("follower1")
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.CRITICAL
 
     @pytest.mark.asyncio
-    async def test_update_risk_status_with_redis(self, time_value_monitor, mock_service):
+    async def test_update_risk_status_with_redis(
+        self, time_value_monitor, mock_service
+    ):
         """Test updating risk status with Redis."""
         await time_value_monitor._update_risk_status("follower1", RiskStatus.RISK)
-        
+
         assert time_value_monitor.risk_statuses["follower1"] == RiskStatus.RISK
         mock_service.redis_client.set.assert_called_with(
             "risk_status:follower1", "RISK", ex=300
@@ -358,19 +388,21 @@ class TestTimeValueMonitor:
     async def test_get_risk_status_from_redis(self, time_value_monitor, mock_service):
         """Test getting risk status from Redis."""
         mock_service.redis_client.get.return_value = b"CRITICAL"
-        
+
         status = await time_value_monitor.get_risk_status("follower1")
-        
+
         assert status == RiskStatus.CRITICAL
 
     @pytest.mark.asyncio
-    async def test_get_risk_status_fallback_to_cache(self, time_value_monitor, mock_service):
+    async def test_get_risk_status_fallback_to_cache(
+        self, time_value_monitor, mock_service
+    ):
         """Test getting risk status falls back to local cache."""
         mock_service.redis_client.get.return_value = None
         time_value_monitor.risk_statuses["follower1"] = RiskStatus.RISK
-        
+
         status = await time_value_monitor.get_risk_status("follower1")
-        
+
         assert status == RiskStatus.RISK
 
     @pytest.mark.asyncio
@@ -379,9 +411,9 @@ class TestTimeValueMonitor:
         time_value_monitor.risk_statuses["follower1"] = RiskStatus.RISK
         time_value_monitor.risk_statuses["follower2"] = RiskStatus.SAFE
         mock_service.redis_client.get.return_value = None
-        
+
         statuses = await time_value_monitor.get_all_risk_statuses()
-        
+
         expected = {
             "follower1": RiskStatus.RISK,
             "follower2": RiskStatus.SAFE,
@@ -389,14 +421,18 @@ class TestTimeValueMonitor:
         assert statuses == expected
 
     @pytest.mark.asyncio
-    async def test_calculate_time_value_negative_result(self, time_value_monitor, mock_client):
+    async def test_calculate_time_value_negative_result(
+        self, time_value_monitor, mock_client
+    ):
         """Test time value calculation with negative result."""
         positions = {"400.0-PUT": -1, "405.0-PUT": 1}
         mock_client.get_spread_mark_price.return_value = 0.50
         mock_client.get_underlying_price.return_value = 398.0  # Makes PUT more valuable
-        
-        time_value = await time_value_monitor._calculate_time_value(mock_client, positions)
-        
+
+        time_value = await time_value_monitor._calculate_time_value(
+            mock_client, positions
+        )
+
         # Should return 0 when time value would be negative
         assert time_value == 0.0
 
@@ -404,7 +440,7 @@ class TestTimeValueMonitor:
     async def test_stop_monitoring(self, time_value_monitor):
         """Test stopping monitoring."""
         time_value_monitor.monitoring_active = True
-        
+
         await time_value_monitor.stop_monitoring()
-        
+
         assert time_value_monitor.monitoring_active == False

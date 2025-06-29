@@ -1,7 +1,6 @@
 """Telegram messaging utilities for SpreadPilot."""
 
 import os
-from typing import Optional
 
 import aiohttp
 
@@ -23,7 +22,7 @@ class TelegramSender:
         self.bot_token = bot_token
         self.chat_id = chat_id
         self.api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        
+
         logger.info(
             "Initialized Telegram sender",
             chat_id=chat_id,
@@ -53,7 +52,7 @@ class TelegramSender:
                 "parse_mode": parse_mode,
                 "disable_web_page_preview": disable_web_page_preview,
             }
-            
+
             # Send request
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.api_url, json=payload) as response:
@@ -64,10 +63,12 @@ class TelegramSender:
                             logger.info(
                                 "Telegram message sent successfully",
                                 chat_id=self.chat_id,
-                                message_id=response_json.get("result", {}).get("message_id"),
+                                message_id=response_json.get("result", {}).get(
+                                    "message_id"
+                                ),
                             )
                             return True
-                    
+
                     # Log error
                     error_text = await response.text()
                     logger.error(
@@ -86,8 +87,8 @@ class TelegramSender:
 
 async def send_telegram_message(
     message: str,
-    bot_token: Optional[str] = None,
-    chat_id: Optional[str] = None,
+    bot_token: str | None = None,
+    chat_id: str | None = None,
     parse_mode: str = "HTML",
     disable_web_page_preview: bool = True,
 ) -> bool:
@@ -109,17 +110,17 @@ async def send_telegram_message(
         if not bot_token:
             logger.error("Telegram bot token not provided")
             return False
-    
+
     # Get chat ID from environment if not provided
     if not chat_id:
         chat_id = os.environ.get("TELEGRAM_CHAT_ID")
         if not chat_id:
             logger.error("Telegram chat ID not provided")
             return False
-    
+
     # Create Telegram sender
     sender = TelegramSender(bot_token, chat_id)
-    
+
     # Send message
     return await sender.send_message(
         message=message,
@@ -131,10 +132,10 @@ async def send_telegram_message(
 async def send_alert_message(
     alert_type: str,
     message: str,
-    follower_id: Optional[str] = None,
-    dashboard_url: Optional[str] = None,
-    bot_token: Optional[str] = None,
-    chat_id: Optional[str] = None,
+    follower_id: str | None = None,
+    dashboard_url: str | None = None,
+    bot_token: str | None = None,
+    chat_id: str | None = None,
 ) -> bool:
     """Send an alert message to Telegram.
 
@@ -151,22 +152,22 @@ async def send_alert_message(
     """
     # Create formatted message
     formatted_message = f"<b>🚨 ALERT: {alert_type}</b>\n\n"
-    
+
     # Add follower ID if provided
     if follower_id:
         formatted_message += f"<b>Follower:</b> {follower_id}\n\n"
-    
+
     # Add message
     formatted_message += f"{message}\n"
-    
+
     # Add dashboard link if provided
     if dashboard_url:
         # If follower ID is provided, add deep link to follower
         if follower_id and "?" not in dashboard_url:
             dashboard_url = f"{dashboard_url}?follower={follower_id}"
-        
+
         formatted_message += f"\n<a href='{dashboard_url}'>View in Dashboard</a>"
-    
+
     # Send message
     return await send_telegram_message(
         message=formatted_message,

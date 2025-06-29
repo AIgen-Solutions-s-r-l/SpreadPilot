@@ -9,26 +9,23 @@ This is the main entry point for the trading bot service, which:
 """
 
 import asyncio
+import logging  # Import logging for preload logger
 import os
 import signal
 import sys
-import logging # Import logging for preload logger
-from typing import Dict, Optional
-from motor.motor_asyncio import AsyncIOMotorClient # Import motor
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from motor.motor_asyncio import AsyncIOMotorClient  # Import motor
 from pydantic import BaseModel
 
 from spreadpilot_core.logging import get_logger, setup_logging
-from spreadpilot_core.models import Follower, Position, Trade, Alert, AlertType, AlertSeverity
-from spreadpilot_core.utils.secrets import get_secret_from_mongo # Import secret getter
+from spreadpilot_core.utils.secrets import get_secret_from_mongo  # Import secret getter
 
 from .config import Settings, get_settings
 from .service import TradingService
 from .sheets import GoogleSheetsClient
-
 
 # --- Secret Pre-loading ---
 
@@ -44,21 +41,30 @@ SECRETS_TO_FETCH = [
     # Add IBKR credentials if they were ever planned to be stored here
 ]
 
+
 async def load_secrets_into_env():
     """Fetches secrets from MongoDB and sets them as environment variables."""
-    preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
+    preload_logger.info(
+        "Attempting to load secrets from MongoDB into environment variables..."
+    )
     mongo_uri = os.environ.get("MONGO_URI")
-    mongo_db_name = os.environ.get("MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets"))
+    mongo_db_name = os.environ.get(
+        "MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")
+    )
 
     if not mongo_uri:
-        preload_logger.warning("MONGO_URI environment variable not set. Skipping MongoDB secret loading.")
+        preload_logger.warning(
+            "MONGO_URI environment variable not set. Skipping MongoDB secret loading."
+        )
         return
 
     client: AsyncIOMotorClient | None = None
     try:
-        preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
+        preload_logger.info(
+            f"Connecting to MongoDB at {mongo_uri} for secret loading..."
+        )
         client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
-        await client.admin.command('ping')
+        await client.admin.command("ping")
         db = client[mongo_db_name]
         preload_logger.info(f"Connected to MongoDB database '{mongo_db_name}'.")
 
@@ -66,17 +72,25 @@ async def load_secrets_into_env():
 
         for secret_name in SECRETS_TO_FETCH:
             preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
-            secret_value = await get_secret_from_mongo(db, secret_name, environment=app_env)
+            secret_value = await get_secret_from_mongo(
+                db, secret_name, environment=app_env
+            )
             if secret_value is not None:
                 os.environ[secret_name] = secret_value
-                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
+                preload_logger.info(
+                    f"Successfully loaded secret '{secret_name}' into environment."
+                )
             else:
-                preload_logger.info(f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set.")
+                preload_logger.info(
+                    f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set."
+                )
 
         preload_logger.info("Finished loading secrets into environment.")
 
     except Exception as e:
-        preload_logger.error(f"Failed to load secrets from MongoDB into environment: {e}", exc_info=True)
+        preload_logger.error(
+            f"Failed to load secrets from MongoDB into environment: {e}", exc_info=True
+        )
     finally:
         if client:
             client.close()
@@ -105,10 +119,10 @@ app.add_middleware(
 )
 
 # Global variables
-settings: Optional[Settings] = None
-trading_service: Optional[TradingService] = None
-sheets_client: Optional[GoogleSheetsClient] = None
-shutdown_event: Optional[asyncio.Event] = None
+settings: Settings | None = None
+trading_service: TradingService | None = None
+sheets_client: GoogleSheetsClient | None = None
+shutdown_event: asyncio.Event | None = None
 
 
 class TradeSignal(BaseModel):
@@ -118,7 +132,7 @@ class TradeSignal(BaseModel):
     qty_per_leg: int
     strike_long: float
     strike_short: float
-    follower_id: Optional[str] = None
+    follower_id: str | None = None
 
 
 @app.on_event("startup")
@@ -133,17 +147,21 @@ async def startup_event():
             await load_secrets_into_env()
         except Exception as e:
             # Log error but allow startup to continue if possible
-            preload_logger.error(f"Error during async secret loading in startup: {e}", exc_info=True)
+            preload_logger.error(
+                f"Error during async secret loading in startup: {e}", exc_info=True
+            )
     else:
-        preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading in startup.")
+        preload_logger.info(
+            "TESTING environment detected, skipping MongoDB secret pre-loading in startup."
+        )
 
     # --- Proceed with regular startup ---
 
     # Set up logging (Now uses the final logger instance)
     setup_logging(
         service_name="trading-bot",
-        enable_gcp=True, # Consider if GCP logging still needed
-        enable_otlp=True, # Consider if OTLP logging still needed
+        enable_gcp=True,  # Consider if GCP logging still needed
+        enable_otlp=True,  # Consider if OTLP logging still needed
     )
     # Re-get logger instance after setup_logging might have reconfigured handlers
     logger = get_logger(__name__)
@@ -153,22 +171,22 @@ async def startup_event():
 
     # Create shutdown event
     shutdown_event = asyncio.Event()
-    
+
     # Initialize Google Sheets client
     sheets_client = GoogleSheetsClient(
         sheet_url=settings.google_sheet_url,
         api_key=settings.google_sheets_api_key,
     )
-    
+
     # Initialize trading service
     trading_service = TradingService(
         settings=settings,
         sheets_client=sheets_client,
     )
-    
+
     # Start background tasks
     asyncio.create_task(trading_service.run(shutdown_event))
-    
+
     logger.info("Trading bot started")
 
 
@@ -176,15 +194,15 @@ async def startup_event():
 async def shutdown_event():
     """Clean up resources on shutdown."""
     logger.info("Shutting down trading bot")
-    
+
     # Signal shutdown to background tasks
     if shutdown_event:
         shutdown_event.set()
-    
+
     # Wait for background tasks to complete
     if trading_service:
         await trading_service.shutdown()
-    
+
     logger.info("Trading bot shutdown complete")
 
 
@@ -193,7 +211,7 @@ async def health_check():
     """Health check endpoint."""
     if not trading_service or not trading_service.is_healthy():
         raise HTTPException(status_code=503, detail="Trading bot is not healthy")
-    
+
     return {"status": "healthy"}
 
 
@@ -202,7 +220,7 @@ async def get_status():
     """Get trading bot status."""
     if not trading_service:
         raise HTTPException(status_code=503, detail="Trading bot is not initialized")
-    
+
     return {
         "status": trading_service.get_status(),
         "ibkr_connected": trading_service.is_ibkr_connected(),
@@ -216,7 +234,7 @@ async def process_trade_signal(signal: TradeSignal):
     """Process a trade signal manually."""
     if not trading_service:
         raise HTTPException(status_code=503, detail="Trading bot is not initialized")
-    
+
     logger.info(
         "Received manual trade signal",
         strategy=signal.strategy,
@@ -225,7 +243,7 @@ async def process_trade_signal(signal: TradeSignal):
         strike_short=signal.strike_short,
         follower_id=signal.follower_id,
     )
-    
+
     # Process signal
     result = await trading_service.signal_processor.process_signal(
         strategy=signal.strategy,
@@ -234,7 +252,7 @@ async def process_trade_signal(signal: TradeSignal):
         strike_short=signal.strike_short,
         follower_id=signal.follower_id,
     )
-    
+
     return result
 
 
@@ -243,12 +261,12 @@ async def close_positions(follower_id: str):
     """Close all positions for a follower."""
     if not trading_service:
         raise HTTPException(status_code=503, detail="Trading bot is not initialized")
-    
+
     logger.info("Closing positions for follower", follower_id=follower_id)
-    
+
     # Close positions
     result = await trading_service.close_positions(follower_id)
-    
+
     return result
 
 
@@ -257,12 +275,12 @@ async def close_all_positions():
     """Close all positions for all followers."""
     if not trading_service:
         raise HTTPException(status_code=503, detail="Trading bot is not initialized")
-    
+
     logger.info("Closing all positions for all followers")
-    
+
     # Close all positions
     result = await trading_service.close_all_positions()
-    
+
     return result
 
 
@@ -285,10 +303,10 @@ def handle_sigterm(signum, frame):
 if __name__ == "__main__":
     # Register signal handlers
     signal.signal(signal.SIGTERM, handle_sigterm)
-    
+
     # Run the application
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

@@ -1,19 +1,16 @@
 """Email sending utilities for SpreadPilot."""
 
 import os
-from typing import List, Optional
 
 import sendgrid
 from sendgrid.helpers.mail import (
     Attachment,
-    ContentId,
     Disposition,
     Email,
     FileContent,
     FileName,
     FileType,
     Mail,
-    MimeType,
 )
 
 from ..logging import get_logger
@@ -36,7 +33,7 @@ class EmailSender:
         self.from_email = from_email
         self.from_name = from_name
         self.client = sendgrid.SendGridAPIClient(api_key=api_key)
-        
+
         logger.info(
             "Initialized email sender",
             from_email=from_email,
@@ -48,9 +45,9 @@ class EmailSender:
         to_email: str,
         subject: str,
         html_content: str,
-        cc_emails: Optional[List[str]] = None,
-        bcc_emails: Optional[List[str]] = None,
-        attachments: Optional[List[str]] = None,
+        cc_emails: list[str] | None = None,
+        bcc_emails: list[str] | None = None,
+        attachments: list[str] | None = None,
     ) -> bool:
         """Send an email.
 
@@ -69,24 +66,24 @@ class EmailSender:
             # Create message
             from_email = Email(self.from_email, self.from_name)
             to_email = Email(to_email)
-            
+
             message = Mail(
                 from_email=from_email,
                 to_emails=to_email,
                 subject=subject,
                 html_content=html_content,
             )
-            
+
             # Add CC recipients
             if cc_emails:
                 for cc_email in cc_emails:
                     message.add_cc(Email(cc_email))
-            
+
             # Add BCC recipients
             if bcc_emails:
                 for bcc_email in bcc_emails:
                     message.add_bcc(Email(bcc_email))
-            
+
             # Add attachments
             if attachments:
                 for attachment_path in attachments:
@@ -97,22 +94,22 @@ class EmailSender:
                             subject=subject,
                         )
                         continue
-                    
+
                     # Get file name and extension
                     file_name = os.path.basename(attachment_path)
                     _, file_extension = os.path.splitext(file_name)
-                    
+
                     # Determine MIME type
                     mime_type = "application/octet-stream"
                     if file_extension.lower() == ".pdf":
                         mime_type = "application/pdf"
                     elif file_extension.lower() in [".xlsx", ".xls"]:
                         mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    
+
                     # Read file content
                     with open(attachment_path, "rb") as f:
                         file_content = f.read()
-                    
+
                     # Create attachment
                     encoded_file = FileContent(file_content)
                     attachment_obj = Attachment()
@@ -120,13 +117,13 @@ class EmailSender:
                     attachment_obj.file_name = FileName(file_name)
                     attachment_obj.file_type = FileType(mime_type)
                     attachment_obj.disposition = Disposition("attachment")
-                    
+
                     # Add attachment to message
                     message.add_attachment(attachment_obj)
-            
+
             # Send email
             response = self.client.send(message)
-            
+
             # Check response
             if response.status_code in [200, 201, 202]:
                 logger.info(
@@ -158,12 +155,12 @@ def send_email(
     to_email: str,
     subject: str,
     html_content: str,
-    cc_emails: Optional[List[str]] = None,
-    bcc_emails: Optional[List[str]] = None,
-    attachments: Optional[List[str]] = None,
-    api_key: Optional[str] = None,
-    from_email: Optional[str] = None,
-    from_name: Optional[str] = None,
+    cc_emails: list[str] | None = None,
+    bcc_emails: list[str] | None = None,
+    attachments: list[str] | None = None,
+    api_key: str | None = None,
+    from_email: str | None = None,
+    from_name: str | None = None,
 ) -> bool:
     """Send an email using SendGrid.
 
@@ -187,18 +184,18 @@ def send_email(
         if not api_key:
             logger.error("SendGrid API key not provided")
             return False
-    
+
     # Get from email from environment if not provided
     if not from_email:
         from_email = os.environ.get("SENDGRID_FROM_EMAIL", "capital@tradeautomation.it")
-    
+
     # Get from name from environment if not provided
     if not from_name:
         from_name = os.environ.get("SENDGRID_FROM_NAME", "SpreadPilot")
-    
+
     # Create email sender
     sender = EmailSender(api_key, from_email, from_name)
-    
+
     # Send email
     return sender.send_email(
         to_email=to_email,
@@ -217,9 +214,9 @@ def send_monthly_report_email(
     year: int,
     pdf_path: str,
     excel_path: str,
-    admin_email: Optional[str] = None,
-    api_key: Optional[str] = None,
-    from_email: Optional[str] = None,
+    admin_email: str | None = None,
+    api_key: str | None = None,
+    from_email: str | None = None,
 ) -> bool:
     """Send monthly report email to a follower.
 
@@ -239,10 +236,10 @@ def send_monthly_report_email(
     """
     # Generate month name
     month_name = datetime.date(year, month, 1).strftime("%B")
-    
+
     # Create subject
     subject = f"SpreadPilot Monthly Report - {month_name} {year}"
-    
+
     # Create HTML content
     html_content = f"""
     <html>
@@ -278,12 +275,12 @@ def send_monthly_report_email(
     </body>
     </html>
     """
-    
+
     # Create CC list
     cc_emails = []
     if admin_email:
         cc_emails.append(admin_email)
-    
+
     # Send email
     return send_email(
         to_email=to_email,

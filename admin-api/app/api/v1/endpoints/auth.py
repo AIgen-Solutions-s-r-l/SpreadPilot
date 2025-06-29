@@ -1,10 +1,12 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
-from pydantic import BaseModel
-from app.core.config import get_settings
 from passlib.context import CryptContext
+from pydantic import BaseModel
+
+from app.core.config import get_settings
 from spreadpilot_core.logging.logger import get_logger
 
 router = APIRouter()
@@ -17,23 +19,29 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
+
 # Models
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
     username: str | None = None
 
+
 class User(BaseModel):
     username: str
+
 
 # Helper functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password):
     return pwd_context.hash(password)
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -42,8 +50,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expiration_minutes)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm
+    )
     return encoded_jwt
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -52,20 +63,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    
+
     # In a real application, you would fetch the user from a database
     # For now, we'll just check if it matches the admin username
     if token_data.username != settings.admin_username:
         raise credentials_exception
-    
+
     return User(username=token_data.username)
+
 
 # Routes
 @router.post("/token", response_model=Token)
@@ -78,21 +92,25 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Check password if hash is provided
-    if settings.admin_password_hash and not verify_password(form_data.password, settings.admin_password_hash):
-        logger.warning(f"Failed login attempt for user: {form_data.username} (password mismatch)")
+    if settings.admin_password_hash and not verify_password(
+        form_data.password, settings.admin_password_hash
+    ):
+        logger.warning(
+            f"Failed login attempt for user: {form_data.username} (password mismatch)"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Create access token
     access_token_expires = timedelta(minutes=settings.jwt_expiration_minutes)
     access_token = create_access_token(
         data={"sub": form_data.username}, expires_delta=access_token_expires
     )
-    
+
     logger.info(f"Successful login for user: {form_data.username}")
     return {"access_token": access_token, "token_type": "bearer"}

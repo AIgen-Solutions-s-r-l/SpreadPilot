@@ -1,15 +1,14 @@
 """Enhanced alert router with Telegram priority and email fallback."""
 
-import logging
-from typing import Optional, Tuple, List
-import httpx
 import asyncio
-from datetime import datetime
-
-from spreadpilot_core.models.alert import AlertEvent, AlertType
-import aiosmtplib
+import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+import aiosmtplib
+import httpx
+
+from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 from ..config import settings
 
@@ -18,19 +17,19 @@ logger = logging.getLogger(__name__)
 
 class AlertRouter:
     """Routes alerts to notification channels with fallback support."""
-    
+
     def __init__(
         self,
-        telegram_token: Optional[str] = None,
-        telegram_admin_ids: Optional[List[str]] = None,
-        email_sender: Optional[str] = None,
-        email_recipients: Optional[List[str]] = None,
-        smtp_config: Optional[dict] = None,
-        dashboard_base_url: Optional[str] = None,
-        http_client: Optional[httpx.AsyncClient] = None,
+        telegram_token: str | None = None,
+        telegram_admin_ids: list[str] | None = None,
+        email_sender: str | None = None,
+        email_recipients: list[str] | None = None,
+        smtp_config: dict | None = None,
+        dashboard_base_url: str | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ):
         """Initialize the alert router with configuration.
-        
+
         Args:
             telegram_token: Telegram bot token
             telegram_admin_ids: List of Telegram chat IDs to notify
@@ -53,19 +52,19 @@ class AlertRouter:
         }
         self.dashboard_base_url = dashboard_base_url or settings.DASHBOARD_BASE_URL
         self._http_client = http_client
-        
+
     async def __aenter__(self):
         """Async context manager entry."""
         if not self._http_client:
             self._http_client = httpx.AsyncClient(timeout=30.0)
         return self
-        
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        if self._http_client and not hasattr(self._http_client, '_test_client'):
+        if self._http_client and not hasattr(self._http_client, "_test_client"):
             await self._http_client.aclose()
-    
-    def _generate_deep_link(self, event: AlertEvent) -> Optional[str]:
+
+    def _generate_deep_link(self, event: AlertEvent) -> str | None:
         """Generate a deep link to the dashboard based on the event type."""
         if not self.dashboard_base_url:
             return None
@@ -101,15 +100,15 @@ class AlertRouter:
                 return f"{base_url}/dashboard"
 
         return f"{base_url}/dashboard"
-    
-    def _format_alert_message(self, event: AlertEvent) -> Tuple[str, str, str]:
+
+    def _format_alert_message(self, event: AlertEvent) -> tuple[str, str, str]:
         """Format the alert for different channels.
-        
+
         Returns:
             Tuple of (subject, plain_text, html_content)
         """
         deep_link = self._generate_deep_link(event)
-        
+
         # Emoji based on severity
         emoji_map = {
             AlertType.COMPONENT_DOWN: "🔴",
@@ -124,25 +123,25 @@ class AlertRouter:
             AlertType.PARTIAL_FILL_HIGH: "📈",
         }
         emoji = emoji_map.get(event.event_type, "🚨")
-        
+
         subject = f"{emoji} SpreadPilot Alert: {event.event_type.value}"
-        
+
         # Plain text format for Telegram
         plain_text = (
             f"{emoji} *{event.event_type.value}*\n\n"
             f"🕐 {event.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
             f"📝 {event.message}\n"
         )
-        
+
         if event.params:
             plain_text += "\n*Details:*\n"
             for key, value in event.params.items():
-                formatted_key = key.replace('_', ' ').title()
+                formatted_key = key.replace("_", " ").title()
                 plain_text += f"• {formatted_key}: `{value}`\n"
-        
+
         if deep_link:
             plain_text += f"\n🔗 [View in Dashboard]({deep_link})"
-        
+
         # HTML format for email
         html_content = f"""
         <html>
@@ -163,35 +162,35 @@ class AlertRouter:
         </body>
         </html>
         """
-        
+
         return subject, plain_text, html_content
-    
+
     def _format_details_html(self, params: dict) -> str:
         """Format event parameters as HTML."""
         if not params:
             return ""
-            
+
         html = "<h3>Details:</h3><ul>"
         for key, value in params.items():
-            formatted_key = key.replace('_', ' ').title()
+            formatted_key = key.replace("_", " ").title()
             html += f"<li><strong>{formatted_key}:</strong> {value}</li>"
         html += "</ul>"
         return html
-    
+
     async def send_telegram_alert(self, chat_id: str, message: str) -> bool:
         """Send alert via Telegram.
-        
+
         Args:
             chat_id: Telegram chat ID
             message: Message to send (supports Markdown)
-            
+
         Returns:
             True if successful, False otherwise
         """
         if not self.telegram_token:
             logger.warning("Telegram token not configured")
             return False
-            
+
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
         payload = {
             "chat_id": chat_id,
@@ -199,63 +198,72 @@ class AlertRouter:
             "parse_mode": "Markdown",
             "disable_web_page_preview": False,
         }
-        
+
         try:
             if not self._http_client:
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(url, json=payload)
             else:
                 response = await self._http_client.post(url, json=payload)
-                
+
             response.raise_for_status()
             result = response.json()
-            
+
             if result.get("ok"):
                 logger.info(f"Telegram alert sent successfully to {chat_id}")
                 return True
             else:
-                logger.error(f"Telegram API error: {result.get('description', 'Unknown error')}")
+                logger.error(
+                    f"Telegram API error: {result.get('description', 'Unknown error')}"
+                )
                 return False
-                
+
         except httpx.HTTPStatusError as e:
-            logger.error(f"Telegram HTTP error {e.response.status_code}: {e.response.text}")
+            logger.error(
+                f"Telegram HTTP error {e.response.status_code}: {e.response.text}"
+            )
             return False
         except Exception as e:
-            logger.error(f"Failed to send Telegram alert to {chat_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to send Telegram alert to {chat_id}: {e}", exc_info=True
+            )
             return False
-    
-    async def send_email_alert(self, recipient: str, subject: str, html_content: str) -> bool:
+
+    async def send_email_alert(
+        self, recipient: str, subject: str, html_content: str
+    ) -> bool:
         """Send alert via email using async SMTP.
-        
+
         Args:
             recipient: Email recipient
             subject: Email subject
             html_content: HTML email content
-            
+
         Returns:
             True if successful, False otherwise
         """
         if not all([self.email_sender, self.smtp_config.get("host")]):
             logger.warning("Email configuration incomplete")
             return False
-            
+
         try:
             # Create message
             message = MIMEMultipart("alternative")
             message["From"] = self.email_sender
             message["To"] = recipient
             message["Subject"] = subject
-            
+
             # Create plain text version from HTML (simple conversion)
             import re
-            plain_text = re.sub('<[^<]+?>', '', html_content).strip()
-            
+
+            plain_text = re.sub("<[^<]+?>", "", html_content).strip()
+
             # Attach parts
             text_part = MIMEText(plain_text, "plain")
             html_part = MIMEText(html_content, "html")
             message.attach(text_part)
             message.attach(html_part)
-            
+
             # Send email asynchronously
             if self.smtp_config.get("tls", True):
                 await aiosmtplib.send(
@@ -274,44 +282,48 @@ class AlertRouter:
                     username=self.smtp_config.get("user"),
                     password=self.smtp_config.get("password"),
                 )
-            
+
             logger.info(f"Email alert sent successfully to {recipient}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send email alert to {recipient}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to send email alert to {recipient}: {e}", exc_info=True
+            )
             return False
-    
+
     async def route_alert(self, event: AlertEvent) -> dict:
         """Route alert to notification channels with fallback.
-        
+
         Args:
             event: Alert event to route
-            
+
         Returns:
             Dictionary with routing results
         """
         logger.info(f"Routing alert: {event.event_type.value}")
         subject, telegram_msg, email_html = self._format_alert_message(event)
-        
+
         results = {
             "telegram": {"attempted": 0, "success": 0, "failed": 0},
             "email": {"attempted": 0, "success": 0, "failed": 0},
             "fallback_used": False,
         }
-        
+
         # Try Telegram first
         telegram_success = False
         if self.telegram_token and self.telegram_admin_ids:
-            logger.info(f"Attempting Telegram delivery to {len(self.telegram_admin_ids)} recipients")
-            
+            logger.info(
+                f"Attempting Telegram delivery to {len(self.telegram_admin_ids)} recipients"
+            )
+
             tasks = []
             for chat_id in self.telegram_admin_ids:
                 results["telegram"]["attempted"] += 1
                 tasks.append(self.send_telegram_alert(chat_id, telegram_msg))
-            
+
             # Send all Telegram messages concurrently
             telegram_results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             for idx, result in enumerate(telegram_results):
                 if isinstance(result, Exception):
                     logger.error(f"Telegram send exception: {result}")
@@ -323,23 +335,27 @@ class AlertRouter:
                     results["telegram"]["failed"] += 1
         else:
             logger.warning("Telegram not configured, skipping")
-        
+
         # If Telegram failed (or not configured), fall back to email
         if not telegram_success:
-            logger.info("Telegram delivery failed or not configured, falling back to email")
+            logger.info(
+                "Telegram delivery failed or not configured, falling back to email"
+            )
             results["fallback_used"] = True
-            
+
             if self.email_sender and self.email_recipients:
-                logger.info(f"Attempting email delivery to {len(self.email_recipients)} recipients")
-                
+                logger.info(
+                    f"Attempting email delivery to {len(self.email_recipients)} recipients"
+                )
+
                 tasks = []
                 for recipient in self.email_recipients:
                     results["email"]["attempted"] += 1
                     tasks.append(self.send_email_alert(recipient, subject, email_html))
-                
+
                 # Send all emails concurrently
                 email_results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 for idx, result in enumerate(email_results):
                     if isinstance(result, Exception):
                         logger.error(f"Email send exception: {result}")
@@ -350,15 +366,15 @@ class AlertRouter:
                         results["email"]["failed"] += 1
             else:
                 logger.error("Email not configured, alert delivery failed completely!")
-        
+
         # Log summary
         logger.info(f"Alert routing complete: {results}")
-        
+
         # Raise if no notifications were sent successfully
         total_success = results["telegram"]["success"] + results["email"]["success"]
         if total_success == 0:
             raise Exception("Failed to deliver alert via any channel")
-        
+
         return results
 
 

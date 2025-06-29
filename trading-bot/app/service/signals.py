@@ -2,12 +2,12 @@
 
 import datetime
 import uuid
-from typing import Dict, Optional, Any
+from typing import Any
 
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import (
-    AlertType,
     AlertSeverity,
+    AlertType,
     Trade,
     TradeSide,
     TradeStatus,
@@ -26,7 +26,7 @@ class SignalProcessor:
             service: Trading service instance
         """
         self.service = service
-        
+
         logger.info("Initialized signal processor")
 
     async def process_signal(
@@ -35,8 +35,8 @@ class SignalProcessor:
         qty_per_leg: int,
         strike_long: float,
         strike_short: float,
-        follower_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        follower_id: str | None = None,
+    ) -> dict[str, Any]:
         """Process a trading signal.
 
         Args:
@@ -57,7 +57,7 @@ class SignalProcessor:
                     "success": False,
                     "error": f"Follower not found or not active: {follower_id}",
                 }
-            
+
             return await self._process_signal_for_follower(
                 follower_id=follower_id,
                 strategy=strategy,
@@ -65,7 +65,7 @@ class SignalProcessor:
                 strike_long=strike_long,
                 strike_short=strike_short,
             )
-        
+
         # Process for all active followers
         results = {}
         for follower_id in self.service.active_followers:
@@ -76,7 +76,7 @@ class SignalProcessor:
                 strike_long=strike_long,
                 strike_short=strike_short,
             )
-        
+
         return {
             "success": True,
             "results": results,
@@ -89,7 +89,7 @@ class SignalProcessor:
         qty_per_leg: int,
         strike_long: float,
         strike_short: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process a trading signal for a specific follower.
 
         Args:
@@ -104,19 +104,21 @@ class SignalProcessor:
         """
         try:
             # Check margin
-            has_margin, margin_error = await self.service.ibkr_manager.check_margin_for_trade(
-                follower_id=follower_id,
-                strategy=strategy,
-                qty_per_leg=qty_per_leg,
-                strike_long=strike_long,
-                strike_short=strike_short,
+            has_margin, margin_error = (
+                await self.service.ibkr_manager.check_margin_for_trade(
+                    follower_id=follower_id,
+                    strategy=strategy,
+                    qty_per_leg=qty_per_leg,
+                    strike_long=strike_long,
+                    strike_short=strike_short,
+                )
             )
-            
+
             if not has_margin:
                 logger.error(
                     f"Insufficient margin for follower {follower_id}: {margin_error}"
                 )
-                
+
                 # Create alert
                 await self.service.alert_manager.create_alert(
                     follower_id=follower_id,
@@ -124,12 +126,12 @@ class SignalProcessor:
                     severity=AlertSeverity.CRITICAL,
                     message=f"Insufficient margin for follower {follower_id}: {margin_error}",
                 )
-                
+
                 return {
                     "success": False,
                     "error": f"Insufficient margin: {margin_error}",
                 }
-            
+
             # Place vertical spread
             result = await self.service.ibkr_manager.place_vertical_spread(
                 follower_id=follower_id,
@@ -138,15 +140,19 @@ class SignalProcessor:
                 strike_long=strike_long,
                 strike_short=strike_short,
             )
-            
+
             # Check result
             if result["status"] == "REJECTED":
                 logger.error(
                     f"Order rejected for follower {follower_id}: {result.get('error')}"
                 )
-                
+
                 # Check if mid price is too low
-                if result.get("mid_price") and abs(result.get("mid_price", 0)) < self.service.settings.min_price:
+                if (
+                    result.get("mid_price")
+                    and abs(result.get("mid_price", 0))
+                    < self.service.settings.min_price
+                ):
                     # Create alert
                     await self.service.alert_manager.create_alert(
                         follower_id=follower_id,
@@ -162,12 +168,12 @@ class SignalProcessor:
                         severity=AlertSeverity.CRITICAL,
                         message=f"Order rejected for follower {follower_id}: {result.get('error')}",
                     )
-                
+
                 return {
                     "success": False,
                     "error": result.get("error", "Order rejected"),
                 }
-            
+
             # Create trade record
             trade_id = str(uuid.uuid4())
             trade = Trade(
@@ -180,20 +186,28 @@ class SignalProcessor:
                 status=TradeStatus(result["status"]),
                 timestamps={
                     "submitted": datetime.datetime.now(),
-                    "filled": datetime.datetime.now() if result["status"] == "FILLED" else None,
+                    "filled": (
+                        datetime.datetime.now()
+                        if result["status"] == "FILLED"
+                        else None
+                    ),
                 },
             )
-            
+
             # Save trade to MongoDB
             if not self.service.mongo_db:
                 logger.error("MongoDB not initialized, cannot save trade.")
                 # Decide how to handle this - maybe raise an error or return failure?
                 # For now, log and potentially skip saving.
-                raise RuntimeError("MongoDB client not available in SignalProcessor") # Make it explicit
-            
+                raise RuntimeError(
+                    "MongoDB client not available in SignalProcessor"
+                )  # Make it explicit
+
             trades_collection = self.service.mongo_db["trades"]
             # Use model_dump(by_alias=True) to get MongoDB-compatible dict (_id)
-            trade_dict = trade.model_dump(by_alias=True, exclude_none=True) # Exclude None values if desired
+            trade_dict = trade.model_dump(
+                by_alias=True, exclude_none=True
+            )  # Exclude None values if desired
             await trades_collection.insert_one(trade_dict)
             logger.debug(f"Saved trade {trade.id} to MongoDB.")
 
@@ -202,7 +216,7 @@ class SignalProcessor:
                 follower_id=follower_id,
                 trade=trade,
             )
-            
+
             # Check if partially filled
             if result["status"] == "PARTIAL":
                 # Create alert
@@ -212,7 +226,7 @@ class SignalProcessor:
                     severity=AlertSeverity.WARNING,
                     message=f"Order partially filled for follower {follower_id}: {result.get('filled', 0)}/{qty_per_leg}",
                 )
-            
+
             logger.info(
                 "Processed signal for follower",
                 follower_id=follower_id,
@@ -222,7 +236,7 @@ class SignalProcessor:
                 strike_short=strike_short,
                 status=result["status"],
             )
-            
+
             return {
                 "success": True,
                 "trade_id": trade_id,
@@ -235,7 +249,7 @@ class SignalProcessor:
                 f"Error processing signal for follower {follower_id}: {e}",
                 exc_info=True,
             )
-            
+
             return {
                 "success": False,
                 "error": str(e),

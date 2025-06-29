@@ -2,13 +2,13 @@
 
 import asyncio
 import datetime
-from typing import TYPE_CHECKING, Dict, Any, List
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from ib_insync import Order, Contract, BarData
+from ib_insync import BarData, Order
 
-from spreadpilot_core.logging import get_logger
 from spreadpilot_core.ibkr.client import IBKRClient
+from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models.alert import Alert
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ class OriginalStrategyHandler:
     Manages its own IBKR connection and state.
     """
 
-    def __init__(self, service: "TradingService", config: Dict[str, Any]):
+    def __init__(self, service: "TradingService", config: dict[str, Any]):
         """
         Initialize the OriginalStrategyHandler.
 
@@ -34,9 +34,11 @@ class OriginalStrategyHandler:
         self.service = service
         self.config = config
         self.ibkr_client: IBKRClient | None = None
-        self.positions: Dict[str, float] = {}  # Symbol -> Quantity
-        self.historical_data: Dict[str, pd.DataFrame] = {} # Symbol -> DataFrame
-        self.active_orders: Dict[str, List[Order]] = {} # Symbol -> List of active orders
+        self.positions: dict[str, float] = {}  # Symbol -> Quantity
+        self.historical_data: dict[str, pd.DataFrame] = {}  # Symbol -> DataFrame
+        self.active_orders: dict[str, list[Order]] = (
+            {}
+        )  # Symbol -> List of active orders
         self._initialized = False
         logger.info("OriginalStrategyHandler initialized.")
 
@@ -59,8 +61,9 @@ class OriginalStrategyHandler:
             ib_settings = {
                 "host": self.service.settings.ib_gateway_host,
                 "port": self.service.settings.ib_gateway_port,
-                "client_id": self.service.settings.ib_client_id + 10, # Use a different client ID
-                "account": None, # Let ib_insync determine account or fetch from secrets
+                "client_id": self.service.settings.ib_client_id
+                + 10,  # Use a different client ID
+                "account": None,  # Let ib_insync determine account or fetch from secrets
                 "trading_mode": self.service.settings.ib_trading_mode,
             }
             self.ibkr_client = IBKRClient(**ib_settings)
@@ -77,7 +80,9 @@ class OriginalStrategyHandler:
             logger.info("OriginalStrategyHandler initialization complete.")
 
         except Exception as e:
-            logger.error(f"Error initializing OriginalStrategyHandler: {e}", exc_info=True)
+            logger.error(
+                f"Error initializing OriginalStrategyHandler: {e}", exc_info=True
+            )
             self._initialized = False
             # Optionally re-raise or handle specific connection errors
 
@@ -100,7 +105,6 @@ class OriginalStrategyHandler:
             logger.error(f"Error fetching initial positions: {e}", exc_info=True)
             self.positions = {}
 
-
     async def _fetch_initial_historical_data(self):
         """Fetch initial historical data needed for EMA calculation."""
         if not self.ibkr_client or not self.ibkr_client.is_connected():
@@ -109,36 +113,52 @@ class OriginalStrategyHandler:
 
         logger.info("Fetching initial historical data...")
         # Determine required lookback period (at least slow_ema + buffer)
-        required_bars = self.config["slow_ema"] + 5 # Add a small buffer
-        duration_str = f"{required_bars * 2} D" # Request more days to be safe
+        required_bars = self.config["slow_ema"] + 5  # Add a small buffer
+        duration_str = f"{required_bars * 2} D"  # Request more days to be safe
 
         for symbol in self.config["symbols"]:
             try:
-                contract = await self.ibkr_client.get_contract_details(symbol, sec_type='STK', exchange='SMART')
+                contract = await self.ibkr_client.get_contract_details(
+                    symbol, sec_type="STK", exchange="SMART"
+                )
                 if not contract:
                     logger.warning(f"Could not find contract details for {symbol}")
                     continue
 
                 bars = await self.ibkr_client.get_historical_data(
-                    contract=contract[0].contract, # Use the first result
+                    contract=contract[0].contract,  # Use the first result
                     duration_str=duration_str,
                     bar_size_setting=self.config["bar_period"],
                     what_to_show="TRADES",
-                    use_rth=True
+                    use_rth=True,
                 )
                 if bars:
-                    df = pd.DataFrame([{'time': b.date, 'open': b.open, 'high': b.high, 'low': b.low, 'close': b.close, 'volume': b.volume} for b in bars])
-                    df['time'] = pd.to_datetime(df['time'])
-                    df.set_index('time', inplace=True)
+                    df = pd.DataFrame(
+                        [
+                            {
+                                "time": b.date,
+                                "open": b.open,
+                                "high": b.high,
+                                "low": b.low,
+                                "close": b.close,
+                                "volume": b.volume,
+                            }
+                            for b in bars
+                        ]
+                    )
+                    df["time"] = pd.to_datetime(df["time"])
+                    df.set_index("time", inplace=True)
                     self.historical_data[symbol] = df
                     logger.info(f"Fetched {len(df)} historical bars for {symbol}")
                 else:
                     logger.warning(f"No historical data returned for {symbol}")
-                    self.historical_data[symbol] = pd.DataFrame() # Empty DataFrame
+                    self.historical_data[symbol] = pd.DataFrame()  # Empty DataFrame
 
             except Exception as e:
-                logger.error(f"Error fetching historical data for {symbol}: {e}", exc_info=True)
-                self.historical_data[symbol] = pd.DataFrame() # Ensure key exists
+                logger.error(
+                    f"Error fetching historical data for {symbol}: {e}", exc_info=True
+                )
+                self.historical_data[symbol] = pd.DataFrame()  # Ensure key exists
 
     async def run(self, shutdown_event: asyncio.Event):
         """
@@ -175,7 +195,9 @@ class OriginalStrategyHandler:
         except asyncio.CancelledError:
             logger.info("OriginalStrategyHandler run loop cancelled.")
         except Exception as e:
-            logger.error(f"Error in OriginalStrategyHandler run loop: {e}", exc_info=True)
+            logger.error(
+                f"Error in OriginalStrategyHandler run loop: {e}", exc_info=True
+            )
         finally:
             logger.info("OriginalStrategyHandler run loop finished.")
             await self.shutdown()
@@ -191,22 +213,39 @@ class OriginalStrategyHandler:
         """
         logger.debug(f"Processing bar for {symbol}: {bar}")
         if symbol not in self.historical_data:
-            logger.warning(f"No historical data found for {symbol}, cannot process bar.")
+            logger.warning(
+                f"No historical data found for {symbol}, cannot process bar."
+            )
             return
 
         # 1. Append new bar to historical data
-        new_row = pd.DataFrame([{'time': pd.to_datetime(bar.date), 'open': bar.open, 'high': bar.high, 'low': bar.low, 'close': bar.close, 'volume': bar.volume}])
-        new_row.set_index('time', inplace=True)
-        self.historical_data[symbol] = pd.concat([self.historical_data[symbol], new_row])
+        new_row = pd.DataFrame(
+            [
+                {
+                    "time": pd.to_datetime(bar.date),
+                    "open": bar.open,
+                    "high": bar.high,
+                    "low": bar.low,
+                    "close": bar.close,
+                    "volume": bar.volume,
+                }
+            ]
+        )
+        new_row.set_index("time", inplace=True)
+        self.historical_data[symbol] = pd.concat(
+            [self.historical_data[symbol], new_row]
+        )
 
         # Ensure enough data for EMA calculation
         if len(self.historical_data[symbol]) < self.config["slow_ema"]:
-            logger.debug(f"Not enough historical data for {symbol} to calculate EMAs ({len(self.historical_data[symbol])}/{self.config['slow_ema']}).")
+            logger.debug(
+                f"Not enough historical data for {symbol} to calculate EMAs ({len(self.historical_data[symbol])}/{self.config['slow_ema']})."
+            )
             return
 
         # 2. Calculate EMAs
         try:
-            close_prices = self.historical_data[symbol]['close']
+            close_prices = self.historical_data[symbol]["close"]
             fast_ema = self._calculate_ema(close_prices, self.config["fast_ema"])
             slow_ema = self._calculate_ema(close_prices, self.config["slow_ema"])
         except Exception as e:
@@ -226,67 +265,127 @@ class OriginalStrategyHandler:
 
         # 4. Strategy Logic & Order Placement
         try:
-            contract = await self.ibkr_client.get_contract_details(symbol, sec_type='STK', exchange='SMART')
+            contract = await self.ibkr_client.get_contract_details(
+                symbol, sec_type="STK", exchange="SMART"
+            )
             if not contract:
-                logger.warning(f"Could not find contract for {symbol} during processing.")
+                logger.warning(
+                    f"Could not find contract for {symbol} during processing."
+                )
                 return
             contract = contract[0].contract
 
-            if is_bullish_crossover and current_position <= 0: # Enter long or close short
+            if (
+                is_bullish_crossover and current_position <= 0
+            ):  # Enter long or close short
                 # Close short position if exists
                 if current_position < 0:
-                    logger.info(f"Bullish Crossover: Closing short position for {symbol}")
-                    close_order = self._create_market_order('BUY', abs(current_position))
+                    logger.info(
+                        f"Bullish Crossover: Closing short position for {symbol}"
+                    )
+                    close_order = self._create_market_order(
+                        "BUY", abs(current_position)
+                    )
                     trade = await self.ibkr_client.place_order(contract, close_order)
                     logger.info(f"Placed order to close short {symbol}: {trade}")
-                    await self._send_alert(symbol, 'BUY', abs(current_position), current_price, 'MKT', 'Close Short (Bullish Crossover)')
-                    self.positions[symbol] = 0 # Assume filled for now, update on fill event later
+                    await self._send_alert(
+                        symbol,
+                        "BUY",
+                        abs(current_position),
+                        current_price,
+                        "MKT",
+                        "Close Short (Bullish Crossover)",
+                    )
+                    self.positions[symbol] = (
+                        0  # Assume filled for now, update on fill event later
+                    )
 
                 # Enter long position
                 logger.info(f"Bullish Crossover: Entering long position for {symbol}")
                 quantity = self._calculate_position_size(current_price)
-                entry_order = self._create_market_order('BUY', quantity)
+                entry_order = self._create_market_order("BUY", quantity)
                 trade = await self.ibkr_client.place_order(contract, entry_order)
                 logger.info(f"Placed order to enter long {symbol}: {trade}")
-                await self._send_alert(symbol, 'BUY', quantity, current_price, 'MKT', 'Enter Long (Bullish Crossover)')
-                self.positions[symbol] = quantity # Assume filled
+                await self._send_alert(
+                    symbol,
+                    "BUY",
+                    quantity,
+                    current_price,
+                    "MKT",
+                    "Enter Long (Bullish Crossover)",
+                )
+                self.positions[symbol] = quantity  # Assume filled
 
                 # Place trailing stop loss
                 if self.config["trailing_stop_pct"] > 0:
-                    stop_order = self._create_trailing_stop_order('SELL', quantity, self.config["trailing_stop_pct"])
-                    stop_trade = await self.ibkr_client.place_order(contract, stop_order)
-                    logger.info(f"Placed trailing stop loss for long {symbol}: {stop_trade}")
+                    stop_order = self._create_trailing_stop_order(
+                        "SELL", quantity, self.config["trailing_stop_pct"]
+                    )
+                    stop_trade = await self.ibkr_client.place_order(
+                        contract, stop_order
+                    )
+                    logger.info(
+                        f"Placed trailing stop loss for long {symbol}: {stop_trade}"
+                    )
                     # TODO: Track this stop order
 
-            elif is_bearish_crossover and current_position >= 0: # Enter short or close long
-                 # Close long position if exists
+            elif (
+                is_bearish_crossover and current_position >= 0
+            ):  # Enter short or close long
+                # Close long position if exists
                 if current_position > 0:
-                    logger.info(f"Bearish Crossover: Closing long position for {symbol}")
-                    close_order = self._create_market_order('SELL', abs(current_position))
+                    logger.info(
+                        f"Bearish Crossover: Closing long position for {symbol}"
+                    )
+                    close_order = self._create_market_order(
+                        "SELL", abs(current_position)
+                    )
                     trade = await self.ibkr_client.place_order(contract, close_order)
                     logger.info(f"Placed order to close long {symbol}: {trade}")
-                    await self._send_alert(symbol, 'SELL', abs(current_position), current_price, 'MKT', 'Close Long (Bearish Crossover)')
-                    self.positions[symbol] = 0 # Assume filled
+                    await self._send_alert(
+                        symbol,
+                        "SELL",
+                        abs(current_position),
+                        current_price,
+                        "MKT",
+                        "Close Long (Bearish Crossover)",
+                    )
+                    self.positions[symbol] = 0  # Assume filled
 
                 # Enter short position
                 logger.info(f"Bearish Crossover: Entering short position for {symbol}")
                 quantity = self._calculate_position_size(current_price)
-                entry_order = self._create_market_order('SELL', quantity)
+                entry_order = self._create_market_order("SELL", quantity)
                 trade = await self.ibkr_client.place_order(contract, entry_order)
                 logger.info(f"Placed order to enter short {symbol}: {trade}")
-                await self._send_alert(symbol, 'SELL', quantity, current_price, 'MKT', 'Enter Short (Bearish Crossover)')
-                self.positions[symbol] = -quantity # Assume filled
+                await self._send_alert(
+                    symbol,
+                    "SELL",
+                    quantity,
+                    current_price,
+                    "MKT",
+                    "Enter Short (Bearish Crossover)",
+                )
+                self.positions[symbol] = -quantity  # Assume filled
 
                 # Place trailing stop loss (buy back)
                 if self.config["trailing_stop_pct"] > 0:
-                    stop_order = self._create_trailing_stop_order('BUY', quantity, self.config["trailing_stop_pct"])
-                    stop_trade = await self.ibkr_client.place_order(contract, stop_order)
-                    logger.info(f"Placed trailing stop loss for short {symbol}: {stop_trade}")
+                    stop_order = self._create_trailing_stop_order(
+                        "BUY", quantity, self.config["trailing_stop_pct"]
+                    )
+                    stop_trade = await self.ibkr_client.place_order(
+                        contract, stop_order
+                    )
+                    logger.info(
+                        f"Placed trailing stop loss for short {symbol}: {stop_trade}"
+                    )
                     # TODO: Track this stop order
 
         except Exception as e:
-            logger.error(f"Error processing bar and placing orders for {symbol}: {e}", exc_info=True)
-
+            logger.error(
+                f"Error processing bar and placing orders for {symbol}: {e}",
+                exc_info=True,
+            )
 
     async def _process_eod(self):
         """
@@ -301,29 +400,37 @@ class OriginalStrategyHandler:
             logger.warning("IBKR client not connected, cannot process EOD.")
             return
 
-        for symbol, position in list(self.positions.items()): # Iterate over a copy
+        for symbol, position in list(self.positions.items()):  # Iterate over a copy
             if position != 0:
                 logger.info(f"EOD: Closing position for {symbol} ({position})")
                 try:
-                    contract = await self.ibkr_client.get_contract_details(symbol, sec_type='STK', exchange='SMART')
+                    contract = await self.ibkr_client.get_contract_details(
+                        symbol, sec_type="STK", exchange="SMART"
+                    )
                     if not contract:
-                        logger.warning(f"Could not find contract for {symbol} during EOD.")
+                        logger.warning(
+                            f"Could not find contract for {symbol} during EOD."
+                        )
                         continue
                     contract = contract[0].contract
 
-                    action = 'SELL' if position > 0 else 'BUY'
+                    action = "SELL" if position > 0 else "BUY"
                     quantity = abs(position)
                     close_order = self._create_market_order(action, quantity)
                     trade = await self.ibkr_client.place_order(contract, close_order)
                     logger.info(f"Placed EOD closing order for {symbol}: {trade}")
-                    await self._send_alert(symbol, action, quantity, None, 'MKT', 'EOD Close') # Price unknown for MKT EOD
-                    self.positions[symbol] = 0 # Assume closed
+                    await self._send_alert(
+                        symbol, action, quantity, None, "MKT", "EOD Close"
+                    )  # Price unknown for MKT EOD
+                    self.positions[symbol] = 0  # Assume closed
 
                 except Exception as e:
-                    logger.error(f"Error closing position for {symbol} at EOD: {e}", exc_info=True)
+                    logger.error(
+                        f"Error closing position for {symbol} at EOD: {e}",
+                        exc_info=True,
+                    )
 
         logger.info("End-of-Day processing complete.")
-
 
     async def shutdown(self):
         """
@@ -341,7 +448,9 @@ class OriginalStrategyHandler:
         """Calculates the Exponential Moving Average."""
         return series.ewm(span=span, adjust=False).mean()
 
-    def _check_bullish_crossover(self, fast_ema: pd.Series, slow_ema: pd.Series) -> bool:
+    def _check_bullish_crossover(
+        self, fast_ema: pd.Series, slow_ema: pd.Series
+    ) -> bool:
         """Checks if the fast EMA crossed above the slow EMA."""
         if len(fast_ema) < 2 or len(slow_ema) < 2:
             return False
@@ -351,7 +460,9 @@ class OriginalStrategyHandler:
         prev_slow = slow_ema.iloc[-2]
         return prev_fast < prev_slow and current_fast >= current_slow
 
-    def _check_bearish_crossover(self, fast_ema: pd.Series, slow_ema: pd.Series) -> bool:
+    def _check_bearish_crossover(
+        self, fast_ema: pd.Series, slow_ema: pd.Series
+    ) -> bool:
         """Checks if the fast EMA crossed below the slow EMA."""
         if len(fast_ema) < 2 or len(slow_ema) < 2:
             return False
@@ -363,38 +474,50 @@ class OriginalStrategyHandler:
 
     def _create_market_order(self, action: str, quantity: float) -> Order:
         """Creates an IBKR Market Order."""
-        return Order(orderType='MKT', action=action, totalQuantity=abs(quantity))
+        return Order(orderType="MKT", action=action, totalQuantity=abs(quantity))
 
-    def _create_trailing_stop_order(self, action: str, quantity: float, trailing_percent: float) -> Order:
+    def _create_trailing_stop_order(
+        self, action: str, quantity: float, trailing_percent: float
+    ) -> Order:
         """Creates an IBKR Trailing Stop Order."""
         return Order(
-            orderType='TRAIL',
+            orderType="TRAIL",
             action=action,
             totalQuantity=abs(quantity),
             trailingPercent=trailing_percent,
-            tif='GTC' # Good Till Cancelled for stops usually
+            tif="GTC",  # Good Till Cancelled for stops usually
         )
 
     def _calculate_position_size(self, price: float) -> int:
         """Calculates position size based on dollar amount and price."""
         if price <= 0:
             return 0
-        dollar_amount = self.config.get("dollar_amount", 1000) # Default to 1000 if not set
+        dollar_amount = self.config.get(
+            "dollar_amount", 1000
+        )  # Default to 1000 if not set
         quantity = int(dollar_amount / price)
-        return max(1, quantity) # Ensure at least 1 share
+        return max(1, quantity)  # Ensure at least 1 share
 
-    async def _send_alert(self, symbol: str, action: str, quantity: float, price: float | None, order_type: str, signal_type: str):
+    async def _send_alert(
+        self,
+        symbol: str,
+        action: str,
+        quantity: float,
+        price: float | None,
+        order_type: str,
+        signal_type: str,
+    ):
         """Sends an alert using the main service's alert manager."""
         try:
             alert = Alert(
                 symbol=symbol,
                 action=action,
                 quantity=quantity,
-                price=price, # Can be None for market orders filled later
+                price=price,  # Can be None for market orders filled later
                 order_type=order_type,
                 strategy="ORIGINAL_EMA",
                 signal_type=signal_type,
-                timestamp=datetime.datetime.now(datetime.timezone.utc)
+                timestamp=datetime.datetime.now(datetime.UTC),
             )
             await self.service.alert_manager.create_alert(alert)
             logger.info(f"Sent alert: {signal_type} {action} {quantity} {symbol}")

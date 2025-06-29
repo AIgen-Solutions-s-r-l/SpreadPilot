@@ -64,7 +64,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
         console.error('Failed to parse WebSocket message:', event.data, error);
       }
     };
-  }, [url, token]); // Reconnect if URL or token changes
+  }, [url]); // Reconnect if URL changes
 
   useEffect(() => {
     // Connect when the component mounts or URL/token changes

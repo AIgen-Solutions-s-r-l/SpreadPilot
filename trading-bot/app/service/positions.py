@@ -2,12 +2,12 @@
 
 import asyncio
 import datetime
-from typing import Dict, Any
+from typing import Any
 
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import (
-    AlertType,
     AlertSeverity,
+    AlertType,
     AssignmentState,
     Position,
     Trade,
@@ -27,8 +27,8 @@ class PositionManager:
             service: Trading service instance
         """
         self.service = service
-        self.positions: Dict[str, Position] = {}
-        
+        self.positions: dict[str, Position] = {}
+
         logger.info("Initialized position manager")
 
     async def update_position(self, follower_id: str, trade: Trade):
@@ -65,8 +65,8 @@ class PositionManager:
                     # Pydantic handles default created_at/updated_at
                 )
                 # Clear the generated 'id' field before upsert if it exists, Mongo will assign _id
-                if hasattr(position, 'id'):
-                    delattr(position, 'id')
+                if hasattr(position, "id"):
+                    delattr(position, "id")
             else:
                 # Load existing position using Pydantic validation
                 position = Position.model_validate(existing_doc)
@@ -76,27 +76,29 @@ class PositionManager:
                 position.long_qty += trade.qty
             else:
                 position.short_qty += trade.qty
-            
+
             # Update timestamp
             position.updated_at = datetime.datetime.now()
-            
+
             # Update timestamp
-            position.updated_at = datetime.datetime.now(datetime.timezone.utc) # Ensure UTC
+            position.updated_at = datetime.datetime.now(datetime.UTC)  # Ensure UTC
 
             # Save position to MongoDB (Upsert: update if exists, insert if not)
-            position_dict = position.model_dump(by_alias=True, exclude={'id'} if not existing_doc else {}) # Exclude 'id' on insert
+            position_dict = position.model_dump(
+                by_alias=True, exclude={"id"} if not existing_doc else {}
+            )  # Exclude 'id' on insert
             await positions_collection.update_one(
-                query,
-                {"$set": position_dict},
-                upsert=True
+                query, {"$set": position_dict}, upsert=True
             )
-            logger.debug(f"Upserted position for follower {follower_id} on {trading_date} to MongoDB.")
+            logger.debug(
+                f"Upserted position for follower {follower_id} on {trading_date} to MongoDB."
+            )
 
             # Update cache (use the potentially updated model instance)
             # If it was an insert, the model won't have the DB _id yet.
             # If needed later, it should be re-fetched or the insert result processed.
             self.positions[follower_id] = position
-            
+
             logger.info(
                 "Updated position",
                 follower_id=follower_id,
@@ -115,7 +117,7 @@ class PositionManager:
         """
         try:
             logger.info("Starting position check task")
-            
+
             while not shutdown_event.is_set():
                 try:
                     # Check if market is open
@@ -123,20 +125,22 @@ class PositionManager:
                         # Check positions for all active followers
                         for follower_id in self.service.active_followers:
                             await self.check_positions(follower_id)
-                    
+
                     # Wait for next check
-                    await asyncio.sleep(self.service.settings.position_check_interval_seconds)
-                
+                    await asyncio.sleep(
+                        self.service.settings.position_check_interval_seconds
+                    )
+
                 except Exception as e:
                     logger.error(f"Error checking positions: {e}", exc_info=True)
                     await asyncio.sleep(10)  # Wait before retrying
-            
+
             logger.info("Position check task stopped")
-        
+
         except asyncio.CancelledError:
             logger.info("Position check task cancelled")
             raise
-        
+
         except Exception as e:
             logger.error(f"Error in position check task: {e}", exc_info=True)
 
@@ -152,10 +156,10 @@ class PositionManager:
             if not client:
                 logger.error(f"Failed to get IBKR client for follower {follower_id}")
                 return
-            
+
             # Check for assignment
             assignment_state, short_qty, long_qty = await client.check_assignment()
-            
+
             if not self.service.mongo_db:
                 logger.error("MongoDB not initialized, cannot check position.")
                 raise RuntimeError("MongoDB client not available in PositionManager")
@@ -174,27 +178,27 @@ class PositionManager:
                 position = Position(
                     follower_id=follower_id,
                     date=trading_date,
-                    short_qty=short_qty, # Use quantities from IBKR check
-                    long_qty=long_qty,   # Use quantities from IBKR check
+                    short_qty=short_qty,  # Use quantities from IBKR check
+                    long_qty=long_qty,  # Use quantities from IBKR check
                     pnl_realized=0.0,
                     pnl_mtm=0.0,
-                    assignment_state=assignment_state, # Use state from IBKR check
+                    assignment_state=assignment_state,  # Use state from IBKR check
                 )
                 # Clear the generated 'id' field before upsert if it exists
-                if hasattr(position, 'id'):
-                    delattr(position, 'id')
+                if hasattr(position, "id"):
+                    delattr(position, "id")
             else:
                 # Load existing position
                 position = Position.model_validate(existing_doc)
                 # Update quantities based on latest IBKR check
                 position.short_qty = short_qty
                 position.long_qty = long_qty
-            
+
             # Check for assignment
             if assignment_state == AssignmentState.ASSIGNED:
                 # Calculate missing short positions
                 missing_short_qty = long_qty - short_qty
-                
+
                 logger.warning(
                     "Assignment detected",
                     follower_id=follower_id,
@@ -202,7 +206,7 @@ class PositionManager:
                     long_qty=long_qty,
                     missing_short_qty=missing_short_qty,
                 )
-                
+
                 # Create alert
                 await self.service.alert_manager.create_alert(
                     follower_id=follower_id,
@@ -210,33 +214,35 @@ class PositionManager:
                     severity=AlertSeverity.CRITICAL,
                     message=f"Assignment detected for follower {follower_id}: {missing_short_qty} positions",
                 )
-                
+
                 # Update position state
                 position.assignment_state = AssignmentState.ASSIGNED
-                
+
                 # Update position state
                 position.assignment_state = AssignmentState.ASSIGNED
-                position.updated_at = datetime.datetime.now(datetime.timezone.utc) # Ensure UTC
+                position.updated_at = datetime.datetime.now(datetime.UTC)  # Ensure UTC
 
                 # Save position to MongoDB (Upsert)
-                position_dict = position.model_dump(by_alias=True, exclude={'id'} if not existing_doc else {})
-                await positions_collection.update_one(
-                    query,
-                    {"$set": position_dict},
-                    upsert=True
+                position_dict = position.model_dump(
+                    by_alias=True, exclude={"id"} if not existing_doc else {}
                 )
-                logger.debug(f"Upserted assigned position for follower {follower_id} on {trading_date} to MongoDB.")
+                await positions_collection.update_one(
+                    query, {"$set": position_dict}, upsert=True
+                )
+                logger.debug(
+                    f"Upserted assigned position for follower {follower_id} on {trading_date} to MongoDB."
+                )
 
                 # Update cache
                 self.positions[follower_id] = position
-                
+
                 # Exercise long options to compensate
                 # Note: This is a simplified implementation, in a real system we would need to
                 # determine the correct strike price for the long options to exercise
                 if missing_short_qty > 0:
                     # Get position details from IBKR to determine which long options to exercise
                     positions = await client.get_positions(force_update=True)
-                    
+
                     # Find long positions
                     long_positions = {}
                     for key, qty in positions.items():
@@ -247,12 +253,12 @@ class PositionManager:
                                 "right": right,
                                 "qty": qty,
                             }
-                    
+
                     if long_positions:
                         # Exercise the first long position we find
                         # In a real system, we would need to be more selective
                         key, pos = next(iter(long_positions.items()))
-                        
+
                         logger.info(
                             "Exercising long options",
                             follower_id=follower_id,
@@ -260,7 +266,7 @@ class PositionManager:
                             right=pos["right"],
                             qty=min(missing_short_qty, pos["qty"]),
                         )
-                        
+
                         # Exercise options
                         result = await self.service.ibkr_manager.exercise_options(
                             follower_id=follower_id,
@@ -268,28 +274,34 @@ class PositionManager:
                             right=pos["right"],
                             quantity=min(missing_short_qty, pos["qty"]),
                         )
-                        
+
                         if result["success"]:
                             # Update position state
                             position.assignment_state = AssignmentState.COMPENSATED
-                            
+
                             # Update position state
                             position.assignment_state = AssignmentState.COMPENSATED
-                            position.updated_at = datetime.datetime.now(datetime.timezone.utc) # Ensure UTC
+                            position.updated_at = datetime.datetime.now(
+                                datetime.UTC
+                            )  # Ensure UTC
 
                             # Save position to MongoDB (Update existing)
                             # We know it exists because we just updated it to ASSIGNED
-                            position_dict = position.model_dump(by_alias=True) # Don't exclude ID on update
+                            position_dict = position.model_dump(
+                                by_alias=True
+                            )  # Don't exclude ID on update
                             await positions_collection.update_one(
                                 query,
-                                {"$set": position_dict}
+                                {"$set": position_dict},
                                 # No upsert needed here, we expect it to exist
                             )
-                            logger.debug(f"Updated compensated position for follower {follower_id} on {trading_date} to MongoDB.")
+                            logger.debug(
+                                f"Updated compensated position for follower {follower_id} on {trading_date} to MongoDB."
+                            )
 
                             # Update cache
                             self.positions[follower_id] = position
-                            
+
                             # Create alert
                             await self.service.alert_manager.create_alert(
                                 follower_id=follower_id,
@@ -307,27 +319,29 @@ class PositionManager:
                             "No long positions found to exercise",
                             follower_id=follower_id,
                         )
-            
+
             # Update P&L
             pnl = await client.get_pnl()
             if pnl:
                 position.pnl_realized = pnl.get("realized_pnl", 0.0)
                 position.pnl_mtm = pnl.get("unrealized_pnl", 0.0)
-                
-                position.updated_at = datetime.datetime.now(datetime.timezone.utc) # Ensure UTC
+
+                position.updated_at = datetime.datetime.now(datetime.UTC)  # Ensure UTC
 
                 # Save position to MongoDB (Upsert, as PNL update might be the first write)
-                position_dict = position.model_dump(by_alias=True, exclude={'id'} if not existing_doc else {})
-                await positions_collection.update_one(
-                    query,
-                    {"$set": position_dict},
-                    upsert=True
+                position_dict = position.model_dump(
+                    by_alias=True, exclude={"id"} if not existing_doc else {}
                 )
-                logger.debug(f"Upserted PNL position for follower {follower_id} on {trading_date} to MongoDB.")
+                await positions_collection.update_one(
+                    query, {"$set": position_dict}, upsert=True
+                )
+                logger.debug(
+                    f"Upserted PNL position for follower {follower_id} on {trading_date} to MongoDB."
+                )
 
                 # Update cache
                 self.positions[follower_id] = position
-            
+
             logger.debug(
                 "Checked positions",
                 follower_id=follower_id,
@@ -337,11 +351,11 @@ class PositionManager:
                 pnl_realized=position.pnl_realized,
                 pnl_mtm=position.pnl_mtm,
             )
-        
+
         except Exception as e:
             logger.error(f"Error checking positions for follower {follower_id}: {e}")
 
-    async def close_positions(self, follower_id: str) -> Dict[str, Any]:
+    async def close_positions(self, follower_id: str) -> dict[str, Any]:
         """Close all positions for a follower.
 
         Args:
@@ -358,10 +372,10 @@ class PositionManager:
                     "success": False,
                     "error": f"Follower not found or not active: {follower_id}",
                 }
-            
+
             # Close positions
             result = await self.service.ibkr_manager.close_positions(follower_id)
-            
+
             # Log result
             if result["success"]:
                 logger.info(
@@ -373,18 +387,18 @@ class PositionManager:
                 logger.error(
                     f"Failed to close positions for follower {follower_id}: {result.get('error')}",
                 )
-            
+
             return result
-        
+
         except Exception as e:
             logger.error(f"Error closing positions for follower {follower_id}: {e}")
-            
+
             return {
                 "success": False,
                 "error": str(e),
             }
 
-    async def close_all_positions(self) -> Dict[str, Any]:
+    async def close_all_positions(self) -> dict[str, Any]:
         """Close all positions for all followers.
 
         Returns:
@@ -392,16 +406,16 @@ class PositionManager:
         """
         results = {}
         success = True
-        
+
         # Close positions for each follower
         for follower_id in self.service.active_followers:
             result = await self.close_positions(follower_id)
             results[follower_id] = result
-            
+
             # Update overall success
             if not result["success"]:
                 success = False
-        
+
         return {
             "success": success,
             "results": results,

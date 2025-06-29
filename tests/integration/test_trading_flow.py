@@ -1,16 +1,15 @@
 """Integration tests for the trading signal processing flow."""
 
-import asyncio
 import datetime
-import pytest
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
-from spreadpilot_core.ibkr.client import OrderStatus
 import importlib
+import uuid
+from unittest.mock import AsyncMock, patch
 
-trading_bot_service = importlib.import_module('trading-bot.app.service.signals')
+import pytest
+
+from spreadpilot_core.ibkr.client import OrderStatus
+
+trading_bot_service = importlib.import_module("trading-bot.app.service.signals")
 SignalProcessor = trading_bot_service.SignalProcessor
 
 
@@ -69,7 +68,7 @@ async def test_process_trading_signal(
 
     # Verify trade record was stored in MongoDB
     trade_id = result["trade_id"]
-    
+
     # Mock MongoDB to verify trade storage
     mock_trades_collection = AsyncMock()
     mock_trades_collection.find_one.return_value = {
@@ -79,11 +78,14 @@ async def test_process_trading_signal(
         "qty_per_leg": test_signal["qty_per_leg"],
         "strike_long": test_signal["strike_long"],
         "strike_short": test_signal["strike_short"],
-        "status": "FILLED"
+        "status": "FILLED",
     }
-    
+
     # Patch the database access
-    with patch('trading-bot.app.service.signals.get_mongo_db', return_value={"trades": mock_trades_collection}):
+    with patch(
+        "trading-bot.app.service.signals.get_mongo_db",
+        return_value={"trades": mock_trades_collection},
+    ):
         # Verify trade was stored
         stored_trade = await mock_trades_collection.find_one({"_id": trade_id})
         assert stored_trade is not None
@@ -106,7 +108,12 @@ async def test_process_trading_signal_insufficient_margin(
     3. Order is not placed
     """
     # Apply mock within the test scope using 'with patch', targeting the correct object
-    with patch.object(signal_processor.service.ibkr_manager, 'check_margin_for_trade', new_callable=AsyncMock, return_value=(False, "Insufficient funds")):
+    with patch.object(
+        signal_processor.service.ibkr_manager,
+        "check_margin_for_trade",
+        new_callable=AsyncMock,
+        return_value=(False, "Insufficient funds"),
+    ):
         # Process signal
         result = await signal_processor.process_signal(
             strategy="Long",
@@ -144,12 +151,17 @@ async def test_process_trading_signal_mid_price_too_low(
     3. Trade record is not stored
     """
     # Apply mock within the test scope using 'with patch', targeting the correct object
-    with patch.object(signal_processor.service.ibkr_manager, 'place_vertical_spread', new_callable=AsyncMock, return_value={
-        "status": OrderStatus.REJECTED,
-        "error": "Mid price too low",
-        "mid_price": 0.50,  # Below min_price of 0.70
-        "trade_id": None,
-    }):
+    with patch.object(
+        signal_processor.service.ibkr_manager,
+        "place_vertical_spread",
+        new_callable=AsyncMock,
+        return_value={
+            "status": OrderStatus.REJECTED,
+            "error": "Mid price too low",
+            "mid_price": 0.50,  # Below min_price of 0.70
+            "trade_id": None,
+        },
+    ):
         # Process signal
         result = await signal_processor.process_signal(
             strategy="Long",
@@ -192,7 +204,12 @@ async def test_process_trading_signal_partial_fill(
         "fill_price": 0.75,
         "fill_time": datetime.datetime.now().isoformat(),
     }
-    with patch.object(signal_processor.service.ibkr_manager, 'place_vertical_spread', new_callable=AsyncMock, return_value=partial_fill_return):
+    with patch.object(
+        signal_processor.service.ibkr_manager,
+        "place_vertical_spread",
+        new_callable=AsyncMock,
+        return_value=partial_fill_return,
+    ):
         # Process signal
         result = await signal_processor.process_signal(
             strategy="Long",
@@ -212,7 +229,7 @@ async def test_process_trading_signal_partial_fill(
 
         # Verify trade record was stored in MongoDB
         trade_id = result["trade_id"]
-        
+
         # Mock MongoDB verification for partial fill
         mock_trades_collection = AsyncMock()
         mock_trades_collection.find_one.return_value = {
@@ -220,10 +237,13 @@ async def test_process_trading_signal_partial_fill(
             "follower_id": test_follower.id,
             "status": OrderStatus.PARTIAL,
             "filled": 1,
-            "remaining": 1
+            "remaining": 1,
         }
-        
-        with patch('trading-bot.app.service.signals.get_mongo_db', return_value={"trades": mock_trades_collection}):
+
+        with patch(
+            "trading-bot.app.service.signals.get_mongo_db",
+            return_value={"trades": mock_trades_collection},
+        ):
             stored_trade = await mock_trades_collection.find_one({"_id": trade_id})
             assert stored_trade is not None
             assert stored_trade["status"] == OrderStatus.PARTIAL
@@ -247,9 +267,7 @@ async def test_process_trading_signal_for_all_followers(
     """
     # Setup multiple active followers in the service
     follower_ids = [f"follower-{i}" for i in range(3)]
-    signal_processor.service.active_followers = {
-        follower_id: True for follower_id in follower_ids
-    }
+    signal_processor.service.active_followers = dict.fromkeys(follower_ids, True)
 
     # Process signal for all followers
     result = await signal_processor.process_signal(
@@ -273,16 +291,19 @@ async def test_process_trading_signal_for_all_followers(
 
         # Verify trade record was stored in MongoDB
         trade_id = follower_result["trade_id"]
-        
+
         # Mock MongoDB verification for each follower
         mock_trades_collection = AsyncMock()
         mock_trades_collection.find_one.return_value = {
             "_id": trade_id,
             "follower_id": follower_id,
-            "status": OrderStatus.FILLED
+            "status": OrderStatus.FILLED,
         }
-        
-        with patch('trading-bot.app.service.signals.get_mongo_db', return_value={"trades": mock_trades_collection}):
+
+        with patch(
+            "trading-bot.app.service.signals.get_mongo_db",
+            return_value={"trades": mock_trades_collection},
+        ):
             stored_trade = await mock_trades_collection.find_one({"_id": trade_id})
             assert stored_trade is not None
             assert stored_trade["follower_id"] == follower_id

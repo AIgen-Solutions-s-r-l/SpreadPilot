@@ -1,7 +1,5 @@
 """IBKR manager for SpreadPilot trading service."""
 
-from typing import Dict, Optional, Tuple
-
 from spreadpilot_core.ibkr import IBKRClient
 from spreadpilot_core.logging import get_logger
 
@@ -18,11 +16,11 @@ class IBKRManager:
             service: Trading service instance
         """
         self.service = service
-        self.ibkr_clients: Dict[str, IBKRClient] = {}
-        
+        self.ibkr_clients: dict[str, IBKRClient] = {}
+
         logger.info("Initialized IBKR manager")
 
-    async def get_client(self, follower_id: str) -> Optional[IBKRClient]:
+    async def get_client(self, follower_id: str) -> IBKRClient | None:
         """Get IBKR client for a follower.
 
         Args:
@@ -37,22 +35,22 @@ class IBKRManager:
             client = self.ibkr_clients[follower_id]
             if await client.ensure_connected():
                 return client
-            
+
             # Client is not connected, remove it
             del self.ibkr_clients[follower_id]
-        
+
         # Get follower
         follower = self.service.active_followers.get(follower_id)
         if not follower:
             logger.error(f"Follower not found: {follower_id}")
             return None
-        
+
         # Get IBKR password from Secret Manager
         ibkr_password = await self.service.get_secret(follower.ibkr_secret_ref)
         if not ibkr_password:
             logger.error(f"Failed to get IBKR password for follower {follower_id}")
             return None
-        
+
         # Create IBKR client
         client = IBKRClient(
             username=follower.ibkr_username,
@@ -62,21 +60,21 @@ class IBKRManager:
             port=self.service.settings.ib_gateway_port,
             client_id=self.service.settings.ib_client_id,
         )
-        
+
         # Connect to IBKR
         if not await client.connect():
             logger.error(f"Failed to connect to IBKR for follower {follower_id}")
             return None
-        
+
         # Store client
         self.ibkr_clients[follower_id] = client
-        
+
         logger.info(
             "Connected to IBKR",
             follower_id=follower_id,
             username=follower.ibkr_username,
         )
-        
+
         return client
 
     async def disconnect_all(self):
@@ -86,8 +84,10 @@ class IBKRManager:
                 await client.disconnect()
                 logger.info(f"Disconnected from IBKR for follower {follower_id}")
             except Exception as e:
-                logger.error(f"Error disconnecting from IBKR for follower {follower_id}: {e}")
-        
+                logger.error(
+                    f"Error disconnecting from IBKR for follower {follower_id}: {e}"
+                )
+
         # Clear clients
         self.ibkr_clients = {}
 
@@ -98,7 +98,7 @@ class IBKRManager:
         qty_per_leg: int,
         strike_long: float,
         strike_short: float,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Check if account has enough margin for a trade.
 
         Args:
@@ -115,7 +115,7 @@ class IBKRManager:
         client = await self.get_client(follower_id)
         if not client:
             return False, "Failed to connect to IBKR"
-        
+
         # Check margin
         return await client.check_margin_for_trade(
             strategy=strategy,
@@ -131,7 +131,7 @@ class IBKRManager:
         qty_per_leg: int,
         strike_long: float,
         strike_short: float,
-    ) -> Dict:
+    ) -> dict:
         """Place a vertical spread order.
 
         Args:
@@ -151,7 +151,7 @@ class IBKRManager:
                 "status": "REJECTED",
                 "error": "Failed to connect to IBKR",
             }
-        
+
         # Place vertical spread
         return await client.place_vertical_spread(
             strategy=strategy,
@@ -164,7 +164,7 @@ class IBKRManager:
             timeout_seconds=self.service.settings.timeout_seconds,
         )
 
-    async def close_positions(self, follower_id: str) -> Dict:
+    async def close_positions(self, follower_id: str) -> dict:
         """Close all positions for a follower.
 
         Args:
@@ -180,10 +180,10 @@ class IBKRManager:
                 "success": False,
                 "error": "Failed to connect to IBKR",
             }
-        
+
         # Close positions
         result = await client.close_all_positions()
-        
+
         return {
             "success": result.get("status") == "SUCCESS",
             "results": result.get("results", []),
@@ -196,7 +196,7 @@ class IBKRManager:
         strike: float,
         right: str,
         quantity: int,
-    ) -> Dict:
+    ) -> dict:
         """Exercise options.
 
         Args:
@@ -215,14 +215,14 @@ class IBKRManager:
                 "success": False,
                 "error": "Failed to connect to IBKR",
             }
-        
+
         # Exercise options
         result = await client.exercise_options(
             strike=strike,
             right=right,
             quantity=quantity,
         )
-        
+
         return {
             "success": result.get("status") == "SUCCESS",
             "error": result.get("error"),

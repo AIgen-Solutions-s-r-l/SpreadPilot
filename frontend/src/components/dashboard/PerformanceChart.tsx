@@ -25,7 +25,7 @@ import {
 // Mock data for the chart
 const generateChartData = (timeRange: string) => {
   // Different data sets based on time range
-  const dataSets: Record<string, any[]> = {
+  const dataSets: Record<string, Array<{ time: string; value: number }>> = {
     '1D': [
       { time: '9:30', value: 5000 },
       { time: '10:30', value: 5200 },
@@ -87,7 +87,13 @@ const generateChartData = (timeRange: string) => {
 };
 
 // Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number; color: string }>;
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <Box

@@ -2,11 +2,11 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any, Annotated # Added Annotated
-from bson import ObjectId # Added ObjectId
-from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
+from typing import Annotated, Any  # Added Annotated
 
+from bson import ObjectId  # Added ObjectId
 from pydantic import BaseModel, Field
+from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
 # Validator function to convert ObjectId to str
@@ -17,7 +17,7 @@ def validate_objectid_to_str(v: Any) -> str:
     if isinstance(v, str):
         return v
     # Raise error for other unexpected types
-    raise TypeError('ObjectId or str required')
+    raise TypeError("ObjectId or str required")
 
 
 class AlertSeverity(str, Enum):
@@ -45,20 +45,30 @@ class AlertType(str, Enum):
 
 class Alert(BaseModel):
     """Alert model.
-    
+
     Maps to MongoDB collection: alerts
     """
 
     # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
-    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique Alert ID", alias='_id')
-    follower_id: Optional[str] = Field(None, description="Follower ID (optional)")
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(
+        ..., description="Unique Alert ID", alias="_id"
+    )
+    follower_id: str | None = Field(None, description="Follower ID (optional)")
     severity: AlertSeverity = Field(..., description="Alert severity")
     type: AlertType = Field(..., description="Alert type")
     message: str = Field(..., description="Alert message")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    acknowledged: bool = Field(default=False, description="Whether the alert has been acknowledged")
-    acknowledged_at: Optional[datetime] = Field(None, description="Acknowledgement timestamp")
-    acknowledged_by: Optional[str] = Field(None, description="User who acknowledged the alert")
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    acknowledged: bool = Field(
+        default=False, description="Whether the alert has been acknowledged"
+    )
+    acknowledged_at: datetime | None = Field(
+        None, description="Acknowledgement timestamp"
+    )
+    acknowledged_by: str | None = Field(
+        None, description="User who acknowledged the alert"
+    )
 
     # Removed custom to_dict and from_dict methods.
     # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization
@@ -72,8 +82,8 @@ class Alert(BaseModel):
 
 class AlertEvent(BaseModel):
     """Alert event model for routing alerts."""
-    
+
     event_type: AlertType
     message: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    params: Optional[Dict[str, Any]] = None
+    params: dict[str, Any] | None = None

@@ -1,11 +1,13 @@
 import bcrypt
 
+
 def generate_password_hash(password):
     """Generate a bcrypt hash for the given password."""
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
-    return hashed.decode('utf-8')
+    return hashed.decode("utf-8")
+
 
 if __name__ == "__main__":
     password = input("Enter password to hash: ")

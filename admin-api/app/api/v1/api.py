@@ -1,5 +1,15 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import dashboard, followers, auth, websocket, pnl, logs, manual_operations, health
+
+from app.api.v1.endpoints import (
+    auth,
+    dashboard,
+    followers,
+    health,
+    logs,
+    manual_operations,
+    pnl,
+    websocket,
+)
 
 # Create the main API router
 api_router = APIRouter()

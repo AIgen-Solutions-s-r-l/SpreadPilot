@@ -6,8 +6,8 @@ for unit and integration testing of the Original EMA Strategy.
 """
 
 import datetime
+
 import pandas as pd
-from typing import Dict, List
 
 # Test parameters matching the original strategy
 TEST_ORIGINAL_EMA_STRATEGY = {
@@ -21,7 +21,7 @@ TEST_ORIGINAL_EMA_STRATEGY = {
     "trading_end_time": "15:29:00",
     "dollar_amount": 10000,
     "trailing_stop_pct": 1.0,
-    "close_at_eod": True
+    "close_at_eod": True,
 }
 
 # Test credentials for IBKR
@@ -31,8 +31,9 @@ TEST_IBKR_CREDENTIALS = {
     "host": "127.0.0.1",
     "port": 4002,  # Paper trading port
     "client_id": 1,
-    "trading_mode": "paper"
+    "trading_mode": "paper",
 }
+
 
 # Mock historical data for SOXS (uptrend scenario)
 def create_mock_soxs_uptrend_data() -> pd.DataFrame:
@@ -40,10 +41,10 @@ def create_mock_soxs_uptrend_data() -> pd.DataFrame:
     # Create a date range for the last 30 days with 5-minute intervals during market hours
     now = datetime.datetime.now()
     start_date = now - datetime.timedelta(days=30)
-    
+
     # Create an empty list to store data
     data = []
-    
+
     # Generate data for each day
     current_date = start_date
     while current_date <= now:
@@ -51,7 +52,7 @@ def create_mock_soxs_uptrend_data() -> pd.DataFrame:
         if current_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             current_date += datetime.timedelta(days=1)
             continue
-        
+
         # Generate data for market hours (9:30 AM to 4:00 PM)
         market_open = datetime.datetime.combine(
             current_date.date(), datetime.time(9, 30, 0)
@@ -59,45 +60,50 @@ def create_mock_soxs_uptrend_data() -> pd.DataFrame:
         market_close = datetime.datetime.combine(
             current_date.date(), datetime.time(16, 0, 0)
         )
-        
+
         # Start with a base price and create an uptrend
         base_price = 20.0 + (current_date - start_date).days * 0.5  # Gradual uptrend
-        
+
         # Generate 5-minute bars
         current_time = market_open
         while current_time <= market_close:
             # Add some random variation to the price
-            open_price = base_price + (current_time.hour + current_time.minute/60) * 0.1
+            open_price = (
+                base_price + (current_time.hour + current_time.minute / 60) * 0.1
+            )
             close_price = open_price + 0.2  # Slight uptrend within the day
             high_price = max(open_price, close_price) + 0.1
             low_price = min(open_price, close_price) - 0.1
-            
+
             # Add some random volume
             volume = 1000 + (current_time.hour * 100)
-            
+
             # Add the data point
-            data.append({
-                "timestamp": current_time,
-                "open": open_price,
-                "high": high_price,
-                "low": low_price,
-                "close": close_price,
-                "volume": volume
-            })
-            
+            data.append(
+                {
+                    "timestamp": current_time,
+                    "open": open_price,
+                    "high": high_price,
+                    "low": low_price,
+                    "close": close_price,
+                    "volume": volume,
+                }
+            )
+
             # Move to the next 5-minute interval
             current_time += datetime.timedelta(minutes=5)
-        
+
         # Move to the next day
         current_date += datetime.timedelta(days=1)
-    
+
     # Create a DataFrame
     df = pd.DataFrame(data)
-    
+
     # Set timestamp as index
     df.set_index("timestamp", inplace=True)
-    
+
     return df
+
 
 # Mock historical data for SOXL (downtrend scenario)
 def create_mock_soxl_downtrend_data() -> pd.DataFrame:
@@ -105,10 +111,10 @@ def create_mock_soxl_downtrend_data() -> pd.DataFrame:
     # Create a date range for the last 30 days with 5-minute intervals during market hours
     now = datetime.datetime.now()
     start_date = now - datetime.timedelta(days=30)
-    
+
     # Create an empty list to store data
     data = []
-    
+
     # Generate data for each day
     current_date = start_date
     while current_date <= now:
@@ -116,7 +122,7 @@ def create_mock_soxl_downtrend_data() -> pd.DataFrame:
         if current_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             current_date += datetime.timedelta(days=1)
             continue
-        
+
         # Generate data for market hours (9:30 AM to 4:00 PM)
         market_open = datetime.datetime.combine(
             current_date.date(), datetime.time(9, 30, 0)
@@ -124,59 +130,61 @@ def create_mock_soxl_downtrend_data() -> pd.DataFrame:
         market_close = datetime.datetime.combine(
             current_date.date(), datetime.time(16, 0, 0)
         )
-        
+
         # Start with a base price and create a downtrend
         base_price = 50.0 - (current_date - start_date).days * 0.3  # Gradual downtrend
-        
+
         # Generate 5-minute bars
         current_time = market_open
         while current_time <= market_close:
             # Add some random variation to the price
-            open_price = base_price - (current_time.hour + current_time.minute/60) * 0.05
+            open_price = (
+                base_price - (current_time.hour + current_time.minute / 60) * 0.05
+            )
             close_price = open_price - 0.1  # Slight downtrend within the day
             high_price = max(open_price, close_price) + 0.1
             low_price = min(open_price, close_price) - 0.1
-            
+
             # Add some random volume
             volume = 1500 + (current_time.hour * 150)
-            
+
             # Add the data point
-            data.append({
-                "timestamp": current_time,
-                "open": open_price,
-                "high": high_price,
-                "low": low_price,
-                "close": close_price,
-                "volume": volume
-            })
-            
+            data.append(
+                {
+                    "timestamp": current_time,
+                    "open": open_price,
+                    "high": high_price,
+                    "low": low_price,
+                    "close": close_price,
+                    "volume": volume,
+                }
+            )
+
             # Move to the next 5-minute interval
             current_time += datetime.timedelta(minutes=5)
-        
+
         # Move to the next day
         current_date += datetime.timedelta(days=1)
-    
+
     # Create a DataFrame
     df = pd.DataFrame(data)
-    
+
     # Set timestamp as index
     df.set_index("timestamp", inplace=True)
-    
+
     return df
 
+
 # Mock historical data for crossover scenarios
-def create_mock_crossover_data() -> Dict[str, pd.DataFrame]:
+def create_mock_crossover_data() -> dict[str, pd.DataFrame]:
     """Create mock historical data with specific crossover patterns."""
     # Create a date range for 5 days with 5-minute intervals during market hours
     now = datetime.datetime.now()
     start_date = now - datetime.timedelta(days=5)
-    
+
     # Create empty DataFrames for each symbol
-    data = {
-        "SOXS": [],
-        "SOXL": []
-    }
-    
+    data = {"SOXS": [], "SOXL": []}
+
     # Generate data for each day
     current_date = start_date
     day_count = 0
@@ -185,7 +193,7 @@ def create_mock_crossover_data() -> Dict[str, pd.DataFrame]:
         if current_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             current_date += datetime.timedelta(days=1)
             continue
-        
+
         # Generate data for market hours (9:30 AM to 4:00 PM)
         market_open = datetime.datetime.combine(
             current_date.date(), datetime.time(9, 30, 0)
@@ -193,7 +201,7 @@ def create_mock_crossover_data() -> Dict[str, pd.DataFrame]:
         market_close = datetime.datetime.combine(
             current_date.date(), datetime.time(16, 0, 0)
         )
-        
+
         # Generate 5-minute bars
         current_time = market_open
         bar_count = 0
@@ -216,10 +224,10 @@ def create_mock_crossover_data() -> Dict[str, pd.DataFrame]:
                 # Normal price action
                 soxs_open = 25.0 + day_count * 0.5 + bar_count * 0.01
                 soxs_close = soxs_open + 0.2
-            
+
             soxs_high = max(soxs_open, soxs_close) + 0.1
             soxs_low = min(soxs_open, soxs_close) - 0.1
-            
+
             # SOXL: Create a bearish crossover on day 3 around 2 PM
             if day_count == 2 and current_time.hour == 14:
                 # Before crossover: fast EMA above slow EMA
@@ -238,59 +246,61 @@ def create_mock_crossover_data() -> Dict[str, pd.DataFrame]:
                 # Normal price action
                 soxl_open = 45.0 - day_count * 0.3 - bar_count * 0.005
                 soxl_close = soxl_open - 0.1
-            
+
             soxl_high = max(soxl_open, soxl_close) + 0.1
             soxl_low = min(soxl_open, soxl_close) - 0.1
-            
+
             # Add the data points
-            data["SOXS"].append({
-                "timestamp": current_time,
-                "open": soxs_open,
-                "high": soxs_high,
-                "low": soxs_low,
-                "close": soxs_close,
-                "volume": 1000 + bar_count * 10
-            })
-            
-            data["SOXL"].append({
-                "timestamp": current_time,
-                "open": soxl_open,
-                "high": soxl_high,
-                "low": soxl_low,
-                "close": soxl_close,
-                "volume": 1500 + bar_count * 15
-            })
-            
+            data["SOXS"].append(
+                {
+                    "timestamp": current_time,
+                    "open": soxs_open,
+                    "high": soxs_high,
+                    "low": soxs_low,
+                    "close": soxs_close,
+                    "volume": 1000 + bar_count * 10,
+                }
+            )
+
+            data["SOXL"].append(
+                {
+                    "timestamp": current_time,
+                    "open": soxl_open,
+                    "high": soxl_high,
+                    "low": soxl_low,
+                    "close": soxl_close,
+                    "volume": 1500 + bar_count * 15,
+                }
+            )
+
             # Move to the next 5-minute interval
             current_time += datetime.timedelta(minutes=5)
             bar_count += 1
-        
+
         # Move to the next day
         current_date += datetime.timedelta(days=1)
         day_count += 1
-    
+
     # Create DataFrames
     dfs = {}
     for symbol, symbol_data in data.items():
         df = pd.DataFrame(symbol_data)
         df.set_index("timestamp", inplace=True)
         dfs[symbol] = df
-    
+
     return dfs
 
+
 # Mock data for trailing stop scenarios
-def create_mock_trailing_stop_data() -> Dict[str, pd.DataFrame]:
+def create_mock_trailing_stop_data() -> dict[str, pd.DataFrame]:
     """Create mock historical data with patterns that trigger trailing stops."""
     # Create a date range for 3 days with 5-minute intervals during market hours
     now = datetime.datetime.now()
     start_date = now - datetime.timedelta(days=3)
-    
+
     # Create empty DataFrames for each symbol
-    data = {
-        "SOXS": [],
-        "SOXL": []
-    }
-    
+    data = {"SOXS": [], "SOXL": []}
+
     # Generate data for each day
     current_date = start_date
     day_count = 0
@@ -299,7 +309,7 @@ def create_mock_trailing_stop_data() -> Dict[str, pd.DataFrame]:
         if current_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             current_date += datetime.timedelta(days=1)
             continue
-        
+
         # Generate data for market hours (9:30 AM to 4:00 PM)
         market_open = datetime.datetime.combine(
             current_date.date(), datetime.time(9, 30, 0)
@@ -307,7 +317,7 @@ def create_mock_trailing_stop_data() -> Dict[str, pd.DataFrame]:
         market_close = datetime.datetime.combine(
             current_date.date(), datetime.time(16, 0, 0)
         )
-        
+
         # Generate 5-minute bars
         current_time = market_open
         bar_count = 0
@@ -340,11 +350,11 @@ def create_mock_trailing_stop_data() -> Dict[str, pd.DataFrame]:
                 soxs_open = 20.0 + day_count * 0.5 + bar_count * 0.01
                 soxs_close = soxs_open + 0.1
                 soxs_low = soxs_open - 0.2
-            
+
             soxs_high = max(soxs_open, soxs_close) + 0.1
-            if 'soxs_low' not in locals():
+            if "soxs_low" not in locals():
                 soxs_low = min(soxs_open, soxs_close) - 0.1
-            
+
             # SOXL: Create a pattern that triggers a trailing stop for a short position on day 2
             if day_count == 1:
                 if current_time.hour < 11:
@@ -373,62 +383,67 @@ def create_mock_trailing_stop_data() -> Dict[str, pd.DataFrame]:
                 soxl_open = 40.0 - day_count * 0.3 - bar_count * 0.005
                 soxl_close = soxl_open - 0.1
                 soxl_high = soxl_open + 0.2
-            
-            if 'soxl_high' not in locals():
+
+            if "soxl_high" not in locals():
                 soxl_high = max(soxl_open, soxl_close) + 0.1
             soxl_low = min(soxl_open, soxl_close) - 0.1
-            
+
             # Add the data points
-            data["SOXS"].append({
-                "timestamp": current_time,
-                "open": soxs_open,
-                "high": soxs_high,
-                "low": soxs_low,
-                "close": soxs_close,
-                "volume": 1000 + bar_count * 10
-            })
-            
-            data["SOXL"].append({
-                "timestamp": current_time,
-                "open": soxl_open,
-                "high": soxl_high,
-                "low": soxl_low,
-                "close": soxl_close,
-                "volume": 1500 + bar_count * 15
-            })
-            
+            data["SOXS"].append(
+                {
+                    "timestamp": current_time,
+                    "open": soxs_open,
+                    "high": soxs_high,
+                    "low": soxs_low,
+                    "close": soxs_close,
+                    "volume": 1000 + bar_count * 10,
+                }
+            )
+
+            data["SOXL"].append(
+                {
+                    "timestamp": current_time,
+                    "open": soxl_open,
+                    "high": soxl_high,
+                    "low": soxl_low,
+                    "close": soxl_close,
+                    "volume": 1500 + bar_count * 15,
+                }
+            )
+
             # Reset local variables
-            if 'soxs_low' in locals():
+            if "soxs_low" in locals():
                 del soxs_low
-            if 'soxl_high' in locals():
+            if "soxl_high" in locals():
                 del soxl_high
-            
+
             # Move to the next 5-minute interval
             current_time += datetime.timedelta(minutes=5)
             bar_count += 1
-        
+
         # Move to the next day
         current_date += datetime.timedelta(days=1)
         day_count += 1
-    
+
     # Create DataFrames
     dfs = {}
     for symbol, symbol_data in data.items():
         df = pd.DataFrame(symbol_data)
         df.set_index("timestamp", inplace=True)
         dfs[symbol] = df
-    
+
     return dfs
 
+
 # Function to get mock data for testing
-def get_mock_data(scenario: str = "crossover") -> Dict[str, pd.DataFrame]:
+def get_mock_data(scenario: str = "crossover") -> dict[str, pd.DataFrame]:
     """
     Get mock data for testing based on the specified scenario.
-    
+
     Args:
         scenario: The scenario to get mock data for.
             Options: "crossover", "trailing_stop", "uptrend", "downtrend"
-    
+
     Returns:
         Dictionary mapping symbols to DataFrames with historical data
     """
@@ -437,8 +452,14 @@ def get_mock_data(scenario: str = "crossover") -> Dict[str, pd.DataFrame]:
     elif scenario == "trailing_stop":
         return create_mock_trailing_stop_data()
     elif scenario == "uptrend":
-        return {"SOXS": create_mock_soxs_uptrend_data(), "SOXL": create_mock_soxl_downtrend_data()}
+        return {
+            "SOXS": create_mock_soxs_uptrend_data(),
+            "SOXL": create_mock_soxl_downtrend_data(),
+        }
     elif scenario == "downtrend":
-        return {"SOXS": create_mock_soxl_downtrend_data(), "SOXL": create_mock_soxs_uptrend_data()}
+        return {
+            "SOXS": create_mock_soxl_downtrend_data(),
+            "SOXL": create_mock_soxs_uptrend_data(),
+        }
     else:
         raise ValueError(f"Unknown scenario: {scenario}")

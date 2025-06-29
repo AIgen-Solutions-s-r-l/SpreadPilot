@@ -62,7 +62,7 @@ const ServiceHealthWidget: React.FC<ServiceHealthWidgetProps> = ({
         await restartService(selectedService.name);
         setRestartDialogOpen(false);
         setSelectedService(null);
-      } catch (error) {
+      } catch (_error) {
         // Error is handled in the hook
       }
     }
@@ -181,22 +181,22 @@ const ServiceHealthWidget: React.FC<ServiceHealthWidgetProps> = ({
             </Box>
             <Box display="flex" gap={2} flexWrap="wrap">
               <Chip
-                label={`CPU: ${health?.system.cpu_percent.toFixed(1)}%`}
+                label={`CPU: ${health?.system.cpu_percent?.toFixed(1) ?? 'N/A'}%`}
                 size="small"
-                color={health?.system.cpu_percent! > 80 ? 'error' : 'default'}
-                variant={health?.system.cpu_percent! > 80 ? 'filled' : 'outlined'}
+                color={(health?.system.cpu_percent ?? 0) > 80 ? 'error' : 'default'}
+                variant={(health?.system.cpu_percent ?? 0) > 80 ? 'filled' : 'outlined'}
               />
               <Chip
-                label={`Memory: ${health?.system.memory_percent.toFixed(1)}%`}
+                label={`Memory: ${health?.system.memory_percent?.toFixed(1) ?? 'N/A'}%`}
                 size="small"
-                color={health?.system.memory_percent! > 80 ? 'error' : 'default'}
-                variant={health?.system.memory_percent! > 80 ? 'filled' : 'outlined'}
+                color={(health?.system.memory_percent ?? 0) > 80 ? 'error' : 'default'}
+                variant={(health?.system.memory_percent ?? 0) > 80 ? 'filled' : 'outlined'}
               />
               <Chip
-                label={`Disk: ${health?.system.disk_percent.toFixed(1)}%`}
+                label={`Disk: ${health?.system.disk_percent?.toFixed(1) ?? 'N/A'}%`}
                 size="small"
-                color={health?.system.disk_percent! > 90 ? 'error' : 'default'}
-                variant={health?.system.disk_percent! > 90 ? 'filled' : 'outlined'}
+                color={(health?.system.disk_percent ?? 0) > 90 ? 'error' : 'default'}
+                variant={(health?.system.disk_percent ?? 0) > 90 ? 'filled' : 'outlined'}
               />
             </Box>
           </Box>

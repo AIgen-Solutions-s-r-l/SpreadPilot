@@ -1,15 +1,13 @@
 import logging
-from typing import Optional, Tuple
 
 from spreadpilot_core.models.alert import AlertEvent, AlertType
-from spreadpilot_core.utils.email import send_email
-from spreadpilot_core.utils.telegram import send_telegram_message
 
 from ..config import settings
 
 logger = logging.getLogger(__name__)
 
-def _generate_deep_link(event: AlertEvent) -> Optional[str]:
+
+def _generate_deep_link(event: AlertEvent) -> str | None:
     """Generates a deep link to the dashboard based on the event type."""
     if not settings.DASHBOARD_BASE_URL:
         return None
@@ -46,7 +44,8 @@ def _generate_deep_link(event: AlertEvent) -> Optional[str]:
 
     return f"{base_url}/dashboard"  # Default fallback
 
-def _format_alert_message(event: AlertEvent) -> Tuple[str, str]:
+
+def _format_alert_message(event: AlertEvent) -> tuple[str, str]:
     """Formats the alert subject and body."""
     deep_link = _generate_deep_link(event)
     link_text = f"\n\nDashboard Link: {deep_link}" if deep_link else ""
@@ -66,6 +65,7 @@ def _format_alert_message(event: AlertEvent) -> Tuple[str, str]:
     body += link_text
     return subject, body
 
+
 async def route_alert(event: AlertEvent):
     """
     Routes the alert event to configured notification channels
@@ -73,6 +73,6 @@ async def route_alert(event: AlertEvent):
     """
     # Import here to avoid circular imports
     from .alert_router import AlertRouter
-    
+
     async with AlertRouter() as router:
         await router.route_alert(event)

@@ -1,5 +1,5 @@
 """Trading service module for SpreadPilot."""
 
-from .base import TradingService, ServiceStatus
+from .base import ServiceStatus, TradingService
 
-__all__ = ["TradingService", "ServiceStatus"]
+__all__ = ["ServiceStatus", "TradingService"]

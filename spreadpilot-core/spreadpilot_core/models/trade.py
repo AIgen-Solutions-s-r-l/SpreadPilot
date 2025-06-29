@@ -2,11 +2,11 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, Any, Annotated # Added Any, Annotated
-from bson import ObjectId # Added ObjectId
-from pydantic.functional_validators import BeforeValidator # Added BeforeValidator
+from typing import Annotated, Any  # Added Any, Annotated
 
+from bson import ObjectId  # Added ObjectId
 from pydantic import BaseModel, Field
+from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
 # Validator function to convert ObjectId to str
@@ -17,7 +17,7 @@ def validate_objectid_to_str(v: Any) -> str:
     if isinstance(v, str):
         return v
     # Raise error for other unexpected types
-    raise TypeError('ObjectId or str required')
+    raise TypeError("ObjectId or str required")
 
 
 class TradeSide(str, Enum):
@@ -38,23 +38,32 @@ class TradeStatus(str, Enum):
 
 class Trade(BaseModel):
     """Trade model.
-    
+
     Maps to MongoDB collection: trades
     """
 
     # Use alias for MongoDB compatibility (_id) and validator for ObjectId -> str conversion
-    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(..., description="Unique Trade ID", alias='_id')
+    id: Annotated[str, BeforeValidator(validate_objectid_to_str)] = Field(
+        ..., description="Unique Trade ID", alias="_id"
+    )
     follower_id: str = Field(..., description="Follower ID (Index this field)")
     side: TradeSide = Field(..., description="Trade side")
     qty: int = Field(..., description="Quantity")
     strike: float = Field(..., description="Strike price")
     limit_price_requested: float = Field(..., description="Requested limit price")
     status: TradeStatus = Field(..., description="Trade status")
-    timestamps: Dict[str, Optional[datetime]] = Field(default_factory=dict, description="Timestamps (e.g., 'submitted', 'filled', 'closed')")
-    error_code: Optional[str] = Field(None, description="Error code (if any)")
-    error_msg: Optional[str] = Field(None, description="Error message (if any)")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    timestamps: dict[str, datetime | None] = Field(
+        default_factory=dict,
+        description="Timestamps (e.g., 'submitted', 'filled', 'closed')",
+    )
+    error_code: str | None = Field(None, description="Error code (if any)")
+    error_msg: str | None = Field(None, description="Error message (if any)")
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="Last update timestamp"
+    )
 
     # Removed custom to_dict and from_dict methods.
     # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization

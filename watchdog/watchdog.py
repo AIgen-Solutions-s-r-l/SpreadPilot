@@ -8,10 +8,10 @@ import os
 import subprocess
 import sys
 from datetime import datetime
-from typing import Dict, Optional
 
 import httpx
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 # Configure logging
@@ -60,9 +60,9 @@ class ServiceWatchdog:
     """Monitors service health and performs auto-recovery"""
 
     def __init__(self):
-        self.failure_counts: Dict[str, int] = {service: 0 for service in SERVICES}
-        self.http_client: Optional[httpx.AsyncClient] = None
-        self.mongo_client: Optional[AsyncIOMotorClient] = None
+        self.failure_counts: dict[str, int] = dict.fromkeys(SERVICES, 0)
+        self.http_client: httpx.AsyncClient | None = None
+        self.mongo_client: AsyncIOMotorClient | None = None
         self.mongo_db = None
 
     async def __aenter__(self):
@@ -91,11 +91,11 @@ class ServiceWatchdog:
         """
         service_config = SERVICES[service_name]
         health_url = service_config["health_url"]
-        
+
         try:
             logger.debug(f"Checking health of {service_name} at {health_url}")
             response = await self.http_client.get(health_url)
-            
+
             if response.status_code == 200:
                 logger.debug(f"{service_name} is healthy")
                 return True
@@ -104,7 +104,7 @@ class ServiceWatchdog:
                     f"{service_name} returned unhealthy status: {response.status_code}"
                 )
                 return False
-                
+
         except httpx.RequestError as e:
             logger.error(f"Failed to reach {service_name}: {type(e).__name__}: {e}")
             return False
@@ -123,7 +123,7 @@ class ServiceWatchdog:
             True if restart was successful, False otherwise
         """
         container_name = SERVICES[service_name]["container_name"]
-        
+
         try:
             logger.info(f"Attempting to restart {container_name}")
             result = subprocess.run(
@@ -132,7 +132,7 @@ class ServiceWatchdog:
                 text=True,
                 timeout=30,
             )
-            
+
             if result.returncode == 0:
                 logger.info(f"Successfully restarted {container_name}")
                 return True
@@ -141,7 +141,7 @@ class ServiceWatchdog:
                     f"Failed to restart {container_name}: {result.stderr}"
                 )
                 return False
-                
+
         except subprocess.TimeoutExpired:
             logger.error(f"Timeout while restarting {container_name}")
             return False
@@ -159,7 +159,7 @@ class ServiceWatchdog:
             success: Whether the action was successful
         """
         service_config = SERVICES[service_name]
-        
+
         # Determine alert type based on action and success
         if action == "recovery":
             event_type = AlertType.COMPONENT_RECOVERED
@@ -167,7 +167,7 @@ class ServiceWatchdog:
             event_type = AlertType.COMPONENT_DOWN
         else:
             event_type = AlertType.COMPONENT_RECOVERED
-        
+
         alert = AlertEvent(
             event_type=event_type,
             timestamp=datetime.utcnow(),
@@ -180,7 +180,7 @@ class ServiceWatchdog:
                 "consecutive_failures": self.failure_counts[service_name],
             },
         )
-        
+
         # Store alert in MongoDB
         try:
             if self.mongo_db:
@@ -191,7 +191,7 @@ class ServiceWatchdog:
                 logger.warning("MongoDB not connected, alert not stored")
         except Exception as e:
             logger.error(f"Failed to store alert in MongoDB: {e}")
-        
+
         # Log the alert
         logger.info(f"Alert published: {alert.message}")
 
@@ -203,7 +203,7 @@ class ServiceWatchdog:
             service_name: Name of the service to monitor
         """
         is_healthy = await self.check_service_health(service_name)
-        
+
         if is_healthy:
             # Reset failure count on successful health check
             if self.failure_counts[service_name] > 0:
@@ -217,20 +217,20 @@ class ServiceWatchdog:
                 f"{service_name} failed health check "
                 f"({self.failure_counts[service_name]}/{MAX_CONSECUTIVE_FAILURES})"
             )
-            
+
             # Take action after max consecutive failures
             if self.failure_counts[service_name] >= MAX_CONSECUTIVE_FAILURES:
                 logger.error(
                     f"{service_name} exceeded max consecutive failures. "
                     "Attempting restart..."
                 )
-                
+
                 # Restart the service
                 restart_success = self.restart_service(service_name)
-                
+
                 # Publish alert about the restart attempt
                 await self.publish_alert(service_name, "restart", restart_success)
-                
+
                 # Reset failure count after restart attempt
                 if restart_success:
                     self.failure_counts[service_name] = 0
@@ -241,7 +241,7 @@ class ServiceWatchdog:
         logger.info(f"Monitoring services: {', '.join(SERVICES.keys())}")
         logger.info(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
         logger.info(f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}")
-        
+
         while True:
             try:
                 # Check all services concurrently
@@ -250,10 +250,10 @@ class ServiceWatchdog:
                     for service_name in SERVICES
                 ]
                 await asyncio.gather(*tasks)
-                
+
                 # Wait before next check cycle
                 await asyncio.sleep(CHECK_INTERVAL_SECONDS)
-                
+
             except asyncio.CancelledError:
                 logger.info("Watchdog service cancelled")
                 break

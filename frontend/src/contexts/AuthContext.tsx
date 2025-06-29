@@ -5,7 +5,7 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 // Define the shape of the context data
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: any; // Replace 'any' with a proper User type/interface later
+  user: { username: string; email: string } | null; // Proper User type
   token: string | null;
   isLoading: boolean;
   login: (/* credentials */) => Promise<void>; // Define credentials type later

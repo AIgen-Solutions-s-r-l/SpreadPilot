@@ -2,6 +2,9 @@
 
 import asyncio
 import os
+
+# Add project root to path for imports
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -10,12 +13,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
-# Add project root to path for imports
-import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from spreadpilot_core.models.pnl import Base
 from spreadpilot_core.db.postgresql import get_postgres_url
+from spreadpilot_core.models.pnl import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
