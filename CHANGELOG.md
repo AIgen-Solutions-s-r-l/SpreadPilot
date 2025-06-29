@@ -5,6 +5,29 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.13.0] - 2025-06-29
+
+### Added
+- **Comprehensive E2E Test Suite**: End-to-end testing framework validating complete trading workflow
+  - Three test scenarios: complete workflow, error handling, and performance monitoring
+  - Isolated test environment using Docker Compose with all services
+  - Mock IBKR Gateway service for testing without real broker connection
+  - MailHog integration for email capture and verification
+  - pytest-asyncio based async test execution
+- **Testing Documentation**: Complete testing guide covering unit, integration, and E2E tests
+  - Testing pyramid strategy and best practices
+  - Detailed examples and patterns for writing tests
+  - CI/CD integration guidelines
+  - Coverage requirements and reporting
+- **Makefile E2E Targets**: Convenient commands for E2E test execution
+  - `make e2e` - Start environment and run tests
+  - `make e2e-clean` - Clean up test containers
+
+### Enhanced
+- **Project Documentation**: Updated main README with E2E testing instructions
+- **Docs Structure**: Added Testing Guide to core documentation set
+- **pytest Configuration**: Added E2E marker for test isolation
+
 ## [v1.1.12.3] - 2025-06-29
 
 ### Fixed
