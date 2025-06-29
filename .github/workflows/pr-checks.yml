@@ -1,0 +1,142 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  # Check PR title follows conventional commits
+  pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+
+  # Check for file size
+  file-size-check:
+    name: Check File Sizes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for large files
+        run: |
+          # Find files larger than 1MB
+          large_files=$(find . -type f -size +1M -not -path "./.git/*" -not -path "./node_modules/*" -not -path "./.venv/*" | head -20)
+          if [ -n "$large_files" ]; then
+            echo "⚠️ Large files detected (>1MB):"
+            echo "$large_files"
+            echo "Consider using Git LFS for large files."
+          fi
+
+  # License check
+  license-check:
+    name: License Compatibility Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install license checker
+        run: |
+          pip install pip-licenses
+
+      - name: Check licenses
+        run: |
+          pip-licenses --format=json --output-file=licenses.json || true
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses.json
+
+  # Documentation check
+  docs-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if docs need updating
+        run: |
+          # Get list of changed files
+          changed_files=$(git diff --name-only origin/main...HEAD)
+          
+          # Check if source files were changed
+          source_changed=$(echo "$changed_files" | grep -E '\.(py|js|ts|tsx)$' || true)
+          
+          # Check if docs were updated
+          docs_changed=$(echo "$changed_files" | grep -E '(README|docs/|\.md$)' || true)
+          
+          if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
+            echo "⚠️ Source files changed but no documentation updates detected."
+            echo "Please consider updating relevant documentation."
+          fi
+
+  # Security policy check
+  security-policy:
+    name: Security Policy Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for security policy
+        run: |
+          if [ ! -f "SECURITY.md" ] && [ ! -f ".github/SECURITY.md" ]; then
+            echo "⚠️ No SECURITY.md file found. Consider adding a security policy."
+          fi
+
+  # PR size check
+  pr-size:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          # Count lines changed
+          lines_changed=$(git diff --shortstat origin/main...HEAD | awk '{print $4 + $6}')
+          
+          echo "Total lines changed: $lines_changed"
+          
+          if [ "$lines_changed" -gt 1000 ]; then
+            echo "⚠️ Large PR detected (>1000 lines). Consider breaking it into smaller PRs."
+          fi
