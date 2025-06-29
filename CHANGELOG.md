@@ -5,6 +5,34 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.18.0] - 2025-06-29
+
+### Added
+- **Autonomous Container Health Monitoring**: Dynamic discovery and monitoring of all 'spreadpilot' labeled containers
+  - Automatically discovers containers via Docker API
+  - Performs HTTP health checks every 30 seconds on exposed ports
+  - Restarts failed containers after 3 consecutive failures
+  - Publishes critical alerts to Redis stream
+- **Docker Container Labels**: All services now labeled with 'spreadpilot' for watchdog discovery
+- **Redis Service**: Added Redis for alert stream publishing and caching
+- **Comprehensive Tests**: Unit and integration tests for watchdog functionality
+  - Docker Compose test environment with mock services
+  - Unit tests with mocked Docker and Redis clients
+  - Integration tests validating full monitoring workflow
+
+### Changed
+- **Watchdog Architecture**: Complete rewrite from placeholder to fully functional service
+  - Uses docker-py SDK instead of subprocess for container management
+  - Automatic port detection from container configuration
+  - Dynamic container discovery replaces hardcoded service list
+  - Redis stream alerts replace MongoDB storage
+
+### Documentation
+- Enhanced watchdog README with container labeling details
+- Updated operations guide with troubleshooting steps
+- Enhanced architecture docs with dynamic discovery details
+- Updated Mermaid diagram showing watchdog Redis connections
+
 ## [v1.1.17.0] - 2025-06-29
 
 ### Added
