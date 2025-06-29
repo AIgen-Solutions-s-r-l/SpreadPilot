@@ -3,7 +3,7 @@ import { getFollowers } from '../services/followerService';
 import { getTodayPnl, getMonthlyPnl, calculatePeriodPnl } from '../services/pnlService';
 import { getLogs } from '../services/logService';
 import type { Follower } from '../schemas/follower.schema';
-import type { DailyPnl, MonthlyPnl } from '../schemas/pnl.schema';
+// import type { DailyPnl, MonthlyPnl } from '../schemas/pnl.schema';
 import type { LogEntry, LogLevel } from '../schemas/log.schema';
 
 interface DashboardMetrics {
@@ -117,7 +117,7 @@ export const useDashboard = (): DashboardData => {
 
 // Hook for real-time metrics updates via WebSocket
 export const useRealtimeMetrics = () => {
-  const [realtimeData, setRealtimeData] = useState({
+  const [realtimeData, _setRealtimeData] = useState({
     lastUpdate: new Date(),
     pnlChange: 0,
     newTrades: 0,

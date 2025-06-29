@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from './AuthContext'; // To potentially use auth token for connection
+import React, { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../hooks/useAuth'; // To potentially use auth token for connection
 import { WebSocketMessage } from '../types/websocket';
 
 // Define the shape of the context data
@@ -23,7 +23,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const ws = useRef<WebSocket | null>(null);
-  const { token } = useAuth(); // Get token if needed for authentication
+  const { token: _token } = useAuth(); // Get token if needed for authentication
 
   const connectWebSocket = useCallback(() => {
     // Close existing connection if any
@@ -101,13 +101,4 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
   };
 
   return <WebSocketContext.Provider value={value}>{children}</WebSocketContext.Provider>;
-};
-
-// Custom hook to use the WebSocketContext
-export const useWebSocket = (): WebSocketContextType => {
-  const context = useContext(WebSocketContext);
-  if (context === undefined) {
-    throw new Error('useWebSocket must be used within a WebSocketProvider');
-  }
-  return context;
 };

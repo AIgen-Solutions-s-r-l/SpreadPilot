@@ -25,7 +25,7 @@ export const getLogs = async (
     // Validate response data with Zod
     const validatedData = LogsResponseSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to fetch logs:', error);
     if (error.issues) {
       // Zod validation error

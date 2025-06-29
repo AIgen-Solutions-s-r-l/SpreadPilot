@@ -24,7 +24,7 @@ import { useDashboard } from '../hooks/useDashboard';
 
 const DashboardPageV2: React.FC = () => {
   const navigate = useNavigate();
-  const { metrics, activeFollowers, recentLogs, pnlHistory, loading, error, refresh } = useDashboard();
+  const { metrics, activeFollowers, recentLogs, pnlHistory: _pnlHistory, loading, error, refresh } = useDashboard();
 
   const handleViewAllFollowers = () => {
     navigate('/followers');

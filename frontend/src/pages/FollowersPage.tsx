@@ -79,7 +79,7 @@ const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, the
     case 'CONN':
       return {
         label: status,
-        color: 'success' as 'success',
+        color: 'success' as const,
         icon: <CheckCircleOutlineIcon />,
         sx: { backgroundColor: alpha(theme.palette.success.main, 0.1), color: 'success.dark', fontWeight:'medium' }
       };
@@ -88,26 +88,26 @@ const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, the
     case 'DISC':
       return {
         label: status,
-        color: 'default' as 'default',
+        color: 'default' as const,
         icon: <HighlightOffIcon />,
         sx: { backgroundColor: alpha(theme.palette.grey[500], 0.1), color: 'text.secondary', fontWeight:'medium' }
       };
     case 'WARN':
       return {
         label: status,
-        color: 'warning' as 'warning',
+        color: 'warning' as const,
         icon: <WarningAmberOutlinedIcon />,
         sx: { backgroundColor: alpha(theme.palette.warning.main, 0.1), color: 'warning.dark', fontWeight:'medium' }
       };
     case 'ERROR':
       return {
         label: status,
-        color: 'error' as 'error',
+        color: 'error' as const,
         icon: <ErrorOutlineIcon />,
         sx: { backgroundColor: alpha(theme.palette.error.main, 0.1), color: 'error.dark', fontWeight:'medium' }
       };
     default:
-      return { label: status, color: 'default' as 'default', sx: {fontWeight:'medium'} };
+      return { label: status, color: 'default' as const, sx: {fontWeight:'medium'} };
   }
 };
 

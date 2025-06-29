@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { WebSocketProvider } from './contexts/WebSocketContext'; // Import WebSocketProvider
 import ThemeProvider from './theme/ThemeProvider';
 import LoginPage from './pages/LoginPage';

@@ -1,10 +1,10 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { User, LoginCredentials } from '../types/auth';
 // Placeholder for API service - will be created later
 // import * as authService from '../services/authService';
 
 // Define the shape of the context data
-interface AuthContextType {
+export interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
@@ -14,7 +14,7 @@ interface AuthContextType {
 }
 
 // Create the context with a default undefined value initially
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Define the props for the provider component
 interface AuthProviderProps {
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false); // Finished initial check
   }, []);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (_credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
       // TODO: Call actual authService.login(credentials)
@@ -75,13 +75,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// Custom hook to use the AuthContext
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };

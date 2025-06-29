@@ -5,6 +5,7 @@ import {
   CreateFollowerRequest,
   type Follower 
 } from '../schemas/follower.schema';
+import { ZodError } from 'zod';
 
 // Get all followers
 export const getFollowers = async (): Promise<Follower[]> => {
@@ -13,9 +14,9 @@ export const getFollowers = async (): Promise<Follower[]> => {
     // Validate response data with Zod
     const validatedData = FollowersResponseSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to fetch followers:', error);
-    if (error.issues) {
+    if (error instanceof ZodError) {
       // Zod validation error
       console.error('Validation errors:', error.issues);
     }
@@ -30,9 +31,9 @@ export const addFollower = async (followerData: CreateFollowerRequest): Promise<
     // Validate response data with Zod
     const validatedData = FollowerSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to add follower:', error);
-    if (error.issues) {
+    if (error instanceof ZodError) {
       console.error('Validation errors:', error.issues);
     }
     throw error;
@@ -68,7 +69,7 @@ export const closeFollowerPosition = async (followerId: string, pin: string): Pr
       close_all: true,
       reason: 'Manual close requested from dashboard'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Failed to close position for follower ${followerId}:`, error);
     if (error.response?.status === 403) {
       throw new Error('Invalid PIN');
@@ -101,9 +102,9 @@ export const getFollowerById = async (followerId: string): Promise<Follower> => 
     const response = await apiClient.get(`/followers/${followerId}`);
     const validatedData = FollowerSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Failed to fetch follower ${followerId}:`, error);
-    if (error.issues) {
+    if (error instanceof ZodError) {
       console.error('Validation errors:', error.issues);
     }
     throw error;
@@ -116,9 +117,9 @@ export const updateFollower = async (followerId: string, data: Partial<CreateFol
     const response = await apiClient.put(`/followers/${followerId}`, data);
     const validatedData = FollowerSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error(`Failed to update follower ${followerId}:`, error);
-    if (error.issues) {
+    if (error instanceof ZodError) {
       console.error('Validation errors:', error.issues);
     }
     throw error;

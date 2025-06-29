@@ -13,7 +13,7 @@ export const getTodayPnl = async (): Promise<DailyPnl> => {
     // Validate response data with Zod
     const validatedData = DailyPnlSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to fetch today\'s P&L:', error);
     if (error.issues) {
       console.error('Validation errors:', error.issues);
@@ -33,7 +33,7 @@ export const getMonthlyPnl = async (year?: number, month?: number): Promise<Mont
     // Validate response data with Zod
     const validatedData = MonthlyPnlSchema.parse(response.data);
     return validatedData;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to fetch monthly P&L:', error);
     if (error.issues) {
       console.error('Validation errors:', error.issues);

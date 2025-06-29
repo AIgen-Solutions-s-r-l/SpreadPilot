@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogEntry, LogLevel } from '../types/logEntry';
 import * as logService from '../services/logService';
-import { useWebSocket } from '../contexts/WebSocketContext'; // Import WebSocket hook
+import { useWebSocket } from '../hooks/useWebSocket'; // Import WebSocket hook
 
 const LogsPage: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);

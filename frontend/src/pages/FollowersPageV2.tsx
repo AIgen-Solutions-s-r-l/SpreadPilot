@@ -18,12 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Select,
-  FormControl,
-  InputLabel,
   useTheme,
   alpha,
-  Tooltip as MuiTooltip,
   Alert,
   CircularProgress,
 } from '@mui/material';
@@ -32,23 +28,17 @@ import { DataGrid, GridColDef, GridRenderCellParams, GridActionsCellItem } from 
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  SortByAlpha as SortByAlphaIcon,
-  GetApp as GetAppIcon,
-  Tune as TuneIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   HighlightOff as HighlightOffIcon,
   WarningAmberOutlined as WarningAmberOutlinedIcon,
   ErrorOutline as ErrorOutlineIcon,
-  Edit as EditIcon,
   MoreVert as MoreVertIcon,
-  Visibility as VisibilityIcon,
-  Article as ArticleIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Close as CloseIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
+// import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 
 // Hooks and services
 import { useFollowers } from '../hooks/useFollowers';

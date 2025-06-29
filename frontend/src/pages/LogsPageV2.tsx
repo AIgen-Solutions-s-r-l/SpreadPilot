@@ -37,7 +37,7 @@ import {
 
 // Hooks and services  
 import { useLogs, useLogStats } from '../hooks/useLogs';
-import { useWebSocket } from '../contexts/WebSocketContext';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { LogLevel } from '../schemas/log.schema';
 
 // Helper function to get log level color and icon
@@ -97,7 +97,7 @@ const LogsPageV2: React.FC = () => {
     totalCount,
     loading,
     error,
-    filters,
+    filters: _filters,
     refresh,
     setFilters,
   } = useLogs({

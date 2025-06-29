@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getLogs, streamLogs } from '../services/logService';
-import type { LogEntry, LogLevel, LogsResponse } from '../schemas/log.schema';
+import type { LogEntry, LogLevel } from '../schemas/log.schema';
 
 interface UseLogsOptions {
   limit?: number;
