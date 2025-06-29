@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Google Cloud Project
     project_id: str = Field(
-        default="spreadpilot-dev",
+        ...,
         env="GOOGLE_CLOUD_PROJECT",
         description="Google Cloud Project ID",
     )
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
         description="Default commission percentage",
     )
     report_sender_email: str = Field(
-        default="capital@tradeautomation.it",
+        ...,
         env="REPORT_SENDER_EMAIL",
         description="Email address for sending reports",
     )

@@ -244,21 +244,19 @@ class GatewayManager:
                 pass
             
             # Get IBKR credentials from Vault
-            ibkr_password = 'placeholder'  # Default fallback
             if hasattr(follower, 'vault_secret_ref') and follower.vault_secret_ref:
                 # Try to get credentials from Vault using follower's secret reference
                 credentials = self._get_ibkr_credentials_from_vault(follower.vault_secret_ref)
                 if credentials:
                     ibkr_username = credentials.get('IB_USER', follower.ibkr_username)
-                    ibkr_password = credentials.get('IB_PASS', 'placeholder')
+                    ibkr_password = credentials.get('IB_PASS')
+                    if not ibkr_password:
+                        raise ValueError(f"No password found in Vault for follower {follower.id}")
                     logger.info(f"Using Vault credentials for follower {follower.id}")
                 else:
-                    logger.warning(f"Failed to retrieve Vault credentials for follower {follower.id}, using fallback")
-                    ibkr_username = follower.ibkr_username
+                    raise ValueError(f"Failed to retrieve Vault credentials for follower {follower.id}")
             else:
-                # Fall back to using follower's stored username
-                logger.info(f"No Vault secret reference for follower {follower.id}, using stored username")
-                ibkr_username = follower.ibkr_username
+                raise ValueError(f"No Vault secret reference configured for follower {follower.id}")
             
             # Start container
             container = self.docker_client.containers.run(
