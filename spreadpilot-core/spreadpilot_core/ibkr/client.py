@@ -402,7 +402,7 @@ class IBKRClient:
             logger.error("Not connected to IB Gateway, cannot request positions")
             return {}
 
-        logger.info("Requesting stock positions", symbols=symbols)
+        logger.info(f"Requesting stock positions for symbols: {symbols}")
         try:
             # Fetch all current positions from IB
             all_positions = await self.ib.reqPositionsAsync()
@@ -426,7 +426,7 @@ class IBKRClient:
 
             # No need for the second loop, as all requested symbols are already keys
 
-            logger.info("Stock positions retrieved", positions=stock_positions)
+            logger.info(f"Stock positions retrieved: {stock_positions}")
             return stock_positions
         except Exception:
             logger.error("Error requesting stock positions", exc_info=True)

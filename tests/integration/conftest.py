@@ -291,7 +291,7 @@ def mock_sheets_client():
 async def patched_sheets_client(mock_sheets_client):
     """Fixture to patch the GoogleSheetsClient with the mock."""
     with patch(
-        "trading_bot.app.sheets.GoogleSheetsClient", return_value=mock_sheets_client
+        "app.sheets.GoogleSheetsClient", return_value=mock_sheets_client
     ):
         yield mock_sheets_client
 

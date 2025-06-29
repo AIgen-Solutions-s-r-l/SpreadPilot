@@ -10,7 +10,7 @@ import pytz
 from freezegun import freeze_time
 
 from spreadpilot_core.models import Signal
-from trading_bot.app.signal_listener import SignalListener
+from app.signal_listener import SignalListener
 
 
 class TestSignalListenerIntegration:
@@ -33,7 +33,7 @@ class TestSignalListenerIntegration:
         """Create SignalListener with fake Redis."""
         with (
             patch(
-                "trading_bot.app.signal_listener.get_settings",
+                "app.signal_listener.get_settings",
                 return_value=mock_settings,
             ),
             patch("redis.Redis", return_value=fake_redis),
@@ -189,7 +189,7 @@ class TestSignalListenerIntegration:
 
         # Mock scheduler to avoid actual scheduling
         with patch(
-            "trading_bot.app.signal_listener.AsyncIOScheduler"
+            "app.signal_listener.AsyncIOScheduler"
         ) as mock_scheduler_class:
             mock_scheduler = Mock()
             mock_scheduler.running = True

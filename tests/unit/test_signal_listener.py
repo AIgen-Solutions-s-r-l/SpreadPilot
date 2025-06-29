@@ -33,7 +33,7 @@ class TestSignalListener:
     def signal_listener(self, mock_settings):
         """Create SignalListener instance for testing."""
         with patch(
-            "trading_bot.app.signal_listener.get_settings", return_value=mock_settings
+            "app.signal_listener.get_settings", return_value=mock_settings
         ):
             return SignalListener(
                 google_sheet_url="https://docs.google.com/spreadsheets/test",
@@ -84,7 +84,7 @@ class TestSignalListener:
         with (
             patch("redis.Redis", return_value=mock_redis),
             patch(
-                "trading_bot.app.signal_listener.AsyncIOScheduler"
+                "app.signal_listener.AsyncIOScheduler"
             ) as mock_scheduler_class,
         ):
 
