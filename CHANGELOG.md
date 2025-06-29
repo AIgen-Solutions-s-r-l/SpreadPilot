@@ -5,6 +5,32 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.16.0] - 2025-06-29
+
+### Added
+- **Redis Alert Publishing in Executor**: Trading bot executor now publishes alerts to Redis stream
+  - Publishes AlertEvent to Redis 'alerts' stream on execution failures
+  - Four alert types: NO_MARGIN, MID_TOO_LOW, LIMIT_REACHED, GATEWAY_UNREACHABLE
+  - Async Redis connection management with context manager support
+  - Comprehensive unit tests with fakeredis
+- **Enhanced Executor Error Handling**: All execution failures now trigger specific alerts
+  - Margin check failures → NO_MARGIN with margin details
+  - MID price below threshold → MID_TOO_LOW with price info
+  - Ladder attempts exhausted → LIMIT_REACHED with attempt count
+  - IB connection issues → GATEWAY_UNREACHABLE with error details
+
+### Changed
+- **VerticalSpreadExecutor Architecture**: Integrated Redis client for alert streaming
+  - Added optional `redis_url` parameter (defaults to "redis://localhost:6379")
+  - Refactored `_send_alert` to publish AlertEvent to Redis
+  - Added `_publish_alert` method for Redis stream publishing
+  - Added async context manager support for connection lifecycle
+
+### Documentation
+- Updated trading-bot README with Redis configuration and alert types
+- Enhanced order-execution.md with Redis stream integration details
+- Updated system architecture diagrams to show Redis alert flow
+
 ## [v1.1.15.0] - 2025-06-29
 
 ### Added
