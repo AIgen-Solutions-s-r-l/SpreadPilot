@@ -96,10 +96,19 @@ class GatewayManager:
         self._monitor_task: asyncio.Task | None = None
         self._shutdown = False
 
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=3,
+        max_time=30,
+        on_backoff=lambda details: logger.warning(
+            f"Retrying Vault fetch (attempt {details['tries']}): {details['exception']}"
+        ),
+    )
     def _get_ibkr_credentials_from_vault(
         self, secret_ref: str
     ) -> dict[str, str] | None:
-        """Get IBKR credentials from Vault.
+        """Get IBKR credentials from Vault with retry logic.
 
         Args:
             secret_ref: Secret reference/path for IBKR credentials
@@ -128,7 +137,7 @@ class GatewayManager:
 
         except Exception as e:
             logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
-            return None
+            raise  # Re-raise to trigger backoff retry
 
     async def start(self) -> None:
         """Start the gateway manager and load enabled followers."""
@@ -147,22 +156,60 @@ class GatewayManager:
             raise
 
     async def stop(self) -> None:
-        """Stop the gateway manager and all containers."""
-        logger.info("Stopping IBGateway Manager")
+        """Stop the gateway manager and all containers with graceful shutdown."""
+        logger.info("Starting graceful shutdown of IBGateway Manager")
 
         self._shutdown = True
 
-        # Cancel monitoring task
+        # Cancel monitoring task first to prevent new health checks
         if self._monitor_task:
+            logger.debug("Cancelling monitoring task")
             self._monitor_task.cancel()
             try:
                 await self._monitor_task
             except asyncio.CancelledError:
-                pass
+                logger.debug("Monitoring task cancelled")
 
-        # Stop all gateways
-        for follower_id in list(self.gateways.keys()):
-            await self._stop_gateway(follower_id)
+        # Gracefully stop all gateways in parallel with timeout
+        if self.gateways:
+            logger.info(f"Stopping {len(self.gateways)} gateway containers")
+
+            # Create tasks for parallel shutdown
+            shutdown_tasks = []
+            for follower_id in list(self.gateways.keys()):
+                task = asyncio.create_task(self._stop_gateway(follower_id))
+                shutdown_tasks.append(task)
+
+            # Wait for all shutdowns with timeout
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*shutdown_tasks, return_exceptions=True),
+                    timeout=45,  # 45 seconds total timeout
+                )
+                logger.info("All gateways stopped successfully")
+            except TimeoutError:
+                logger.warning(
+                    "Some gateways did not stop within timeout, forcing cleanup"
+                )
+                # Force cleanup any remaining containers
+                for follower_id, gateway in list(self.gateways.items()):
+                    if gateway.container:
+                        try:
+                            gateway.container.remove(force=True)
+                            logger.warning(
+                                f"Force removed container for follower {follower_id}"
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to force remove container for {follower_id}: {e}"
+                            )
+
+        # Close Docker client
+        try:
+            self.docker_client.close()
+            logger.debug("Docker client closed")
+        except Exception as e:
+            logger.error(f"Error closing Docker client: {e}")
 
         logger.info("Gateway Manager stopped")
 
@@ -329,7 +376,7 @@ class GatewayManager:
         await self._stop_gateway(follower_id)
 
     async def _stop_gateway(self, follower_id: str) -> None:
-        """Stop the IBGateway container for a follower.
+        """Stop the IBGateway container for a follower with enhanced graceful shutdown.
 
         Args:
             follower_id: The follower ID
@@ -338,60 +385,110 @@ class GatewayManager:
         if not gateway:
             return
 
-        logger.info(f"Stopping IBGateway for follower {follower_id}")
+        logger.info(f"Starting graceful shutdown for IBGateway {follower_id}")
+        start_time = time.time()
 
-        # Disconnect IB client
+        # Step 1: Gracefully disconnect IB client with retry
         if gateway.ib_client:
-            try:
-                gateway.ib_client.disconnect()
-            except Exception as e:
-                logger.warning(
-                    f"Error disconnecting IB client for follower {follower_id}: {e}"
+            disconnect_success = False
+            for attempt in range(3):
+                try:
+                    if gateway.ib_client.isConnected():
+                        # Send disconnect request
+                        gateway.ib_client.disconnect()
+                        # Wait a moment for disconnect to complete
+                        await asyncio.sleep(0.5)
+                    disconnect_success = True
+                    logger.debug(f"IB client disconnected for follower {follower_id}")
+                    break
+                except Exception as e:
+                    logger.warning(
+                        f"Attempt {attempt + 1} to disconnect IB client for follower {follower_id} failed: {e}"
+                    )
+                    if attempt < 2:
+                        await asyncio.sleep(1)
+
+            if not disconnect_success:
+                logger.error(
+                    f"Failed to disconnect IB client for follower {follower_id} after 3 attempts"
                 )
 
-        # Stop container gracefully
+            # Clear the client reference
+            gateway.ib_client = None
+
+        # Step 2: Stop container with graceful shutdown sequence
         if gateway.container:
             try:
-                logger.debug(
-                    f"Sending stop signal to container for follower {follower_id}"
-                )
-                gateway.container.stop(
-                    timeout=30
-                )  # Give container 30 seconds to stop gracefully
-                logger.debug(
-                    f"Waiting for container to stop for follower {follower_id}"
-                )
-                gateway.container.wait()
+                # Check if container is still running
+                gateway.container.reload()
+                if gateway.container.status == "running":
+                    logger.debug(
+                        f"Sending SIGTERM to container for follower {follower_id}"
+                    )
+
+                    # Send graceful stop signal (SIGTERM)
+                    gateway.container.stop(timeout=30)
+
+                    # Wait for container to exit
+                    exit_result = gateway.container.wait(timeout=35)
+                    exit_code = exit_result.get("StatusCode", -1)
+
+                    if exit_code == 0:
+                        logger.info(
+                            f"Container for follower {follower_id} stopped gracefully (exit code: 0)"
+                        )
+                    else:
+                        logger.warning(
+                            f"Container for follower {follower_id} stopped with exit code: {exit_code}"
+                        )
+
+                        # Get final logs for debugging
+                        try:
+                            logs = gateway.container.logs(tail=20)
+                            logger.debug(
+                                f"Final container logs for {follower_id}: {logs.decode('utf-8', errors='ignore')}"
+                            )
+                        except Exception:
+                            pass
+
+                # Remove container
                 logger.debug(f"Removing container for follower {follower_id}")
                 gateway.container.remove()
-                logger.info(f"Container stopped and removed for follower {follower_id}")
+                logger.info(
+                    f"Container removed for follower {follower_id} (shutdown took {time.time() - start_time:.1f}s)"
+                )
+
             except docker.errors.NotFound:
                 logger.warning(
                     f"Container for follower {follower_id} was already removed"
                 )
             except Exception as e:
                 logger.error(
-                    f"Error stopping container for follower {follower_id}: {e}"
+                    f"Error during graceful shutdown for follower {follower_id}: {e}"
                 )
-                # Force remove if graceful stop failed
+
+                # Last resort: force remove
                 try:
+                    gateway.container.kill()
                     gateway.container.remove(force=True)
                     logger.warning(
-                        f"Force removed container for follower {follower_id}"
+                        f"Force removed container for follower {follower_id} after graceful shutdown failed"
                     )
                 except Exception as e2:
                     logger.error(
                         f"Failed to force remove container for follower {follower_id}: {e2}"
                     )
 
-        # Free resources
+        # Step 3: Clean up resources
         self.used_ports.discard(gateway.host_port)
         self.used_client_ids.discard(gateway.client_id)
 
-        # Remove from tracking
+        # Step 4: Remove from tracking
         del self.gateways[follower_id]
 
-        logger.info(f"Stopped IBGateway for follower {follower_id}")
+        logger.info(
+            f"Completed shutdown for IBGateway {follower_id} (total time: {time.time() - start_time:.1f}s)"
+        )
 
     @backoff.on_exception(
         backoff.expo, (ConnectionError, OSError, Exception), max_tries=5, max_time=60
@@ -510,7 +607,25 @@ class GatewayManager:
                 gateway.container.reload()
                 container_status = gateway.container.status
 
+                # Get container logs for debugging
+                logs = gateway.container.logs(tail=10, timestamps=True)
+                if logs and gateway.status == GatewayStatus.STARTING:
+                    logger.debug(
+                        f"Recent container logs for follower {gateway.follower_id}: {logs.decode('utf-8', errors='ignore')[-500:]}"
+                    )
+
                 if container_status == "running":
+                    # Check container health status if available
+                    health_status = (
+                        gateway.container.attrs.get("State", {})
+                        .get("Health", {})
+                        .get("Status")
+                    )
+                    if health_status and health_status != "healthy":
+                        logger.warning(
+                            f"Gateway container for follower {gateway.follower_id} is {health_status}"
+                        )
+
                     if gateway.status == GatewayStatus.STARTING:
                         # Check if gateway is ready by attempting connection
                         try:
@@ -519,59 +634,108 @@ class GatewayManager:
                             logger.info(
                                 f"Gateway for follower {gateway.follower_id} is now running"
                             )
-                        except Exception:
-                            # Still starting up
-                            startup_time = (
-                                current_time - gateway.container.attrs["Created"]
+                        except Exception as e:
+                            # Still starting up - check startup time
+                            created_timestamp = gateway.container.attrs.get(
+                                "Created", ""
                             )
-                            if startup_time > self.max_startup_time:
-                                gateway.status = GatewayStatus.FAILED
-                                logger.error(
-                                    f"Gateway for follower {gateway.follower_id} failed to start within {self.max_startup_time}s"
+                            if created_timestamp:
+                                # Parse ISO timestamp
+                                from datetime import datetime
+
+                                created_dt = datetime.fromisoformat(
+                                    created_timestamp.replace("Z", "+00:00")
                                 )
+                                startup_time = current_time - created_dt.timestamp()
+
+                                if startup_time > self.max_startup_time:
+                                    gateway.status = GatewayStatus.FAILED
+                                    logger.error(
+                                        f"Gateway for follower {gateway.follower_id} failed to start within {self.max_startup_time}s: {e}"
+                                    )
+                                else:
+                                    logger.debug(
+                                        f"Gateway for follower {gateway.follower_id} still starting ({startup_time:.0f}s): {e}"
+                                    )
 
                     elif gateway.status == GatewayStatus.RUNNING:
-                        # Verify IB connection is still alive using isConnected()
+                        # Enhanced health check with connection validation
+                        connection_healthy = False
+
                         if gateway.ib_client:
-                            if not gateway.ib_client.isConnected():
+                            try:
+                                # Check if connected
+                                if gateway.ib_client.isConnected():
+                                    # Perform a lightweight API call to verify connection is truly alive
+                                    server_time = gateway.ib_client.reqCurrentTime()
+                                    if server_time:
+                                        connection_healthy = True
+                                        logger.debug(
+                                            f"Gateway for follower {gateway.follower_id} health check passed (server time: {server_time})"
+                                        )
+                            except Exception as e:
                                 logger.warning(
-                                    f"IB client disconnected for follower {gateway.follower_id}, attempting reconnect"
+                                    f"Health probe failed for follower {gateway.follower_id}: {e}"
                                 )
-                                try:
-                                    await self._connect_ib_client(gateway)
-                                    logger.info(
-                                        f"Successfully reconnected IB client for follower {gateway.follower_id}"
-                                    )
-                                except Exception as e:
-                                    logger.error(
-                                        f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}"
-                                    )
-                                    gateway.status = GatewayStatus.FAILED
-                        else:
-                            # No client connection exists, try to establish one
+
+                        if not connection_healthy:
                             logger.warning(
-                                f"No IB client for follower {gateway.follower_id}, attempting to connect"
+                                f"IB connection unhealthy for follower {gateway.follower_id}, attempting reconnect"
                             )
                             try:
+                                # Disconnect existing client if any
+                                if gateway.ib_client:
+                                    try:
+                                        gateway.ib_client.disconnect()
+                                    except Exception:
+                                        pass
+                                    gateway.ib_client = None
+
+                                # Reconnect
                                 await self._connect_ib_client(gateway)
                                 logger.info(
-                                    f"Successfully connected IB client for follower {gateway.follower_id}"
+                                    f"Successfully reconnected IB client for follower {gateway.follower_id}"
                                 )
                             except Exception as e:
                                 logger.error(
-                                    f"Failed to connect IB client for follower {gateway.follower_id}: {e}"
+                                    f"Failed to reconnect IB client for follower {gateway.follower_id}: {e}"
+                                )
+                                gateway.status = GatewayStatus.FAILED
+
+                                # Schedule container restart in the background
+                                logger.info(
+                                    f"Scheduling container restart for follower {gateway.follower_id}"
+                                )
+                                asyncio.create_task(
+                                    self._restart_failed_gateway(gateway.follower_id)
                                 )
 
-                elif container_status in ["exited", "dead"]:
+                elif container_status in ["exited", "dead", "removing"]:
                     gateway.status = GatewayStatus.STOPPED
-                    logger.warning(
-                        f"Gateway container for follower {gateway.follower_id} has stopped"
+                    exit_code = gateway.container.attrs.get("State", {}).get(
+                        "ExitCode", "unknown"
                     )
+                    logger.warning(
+                        f"Gateway container for follower {gateway.follower_id} has stopped (status: {container_status}, exit code: {exit_code})"
+                    )
+
+                    # Get container logs for debugging
+                    try:
+                        logs = gateway.container.logs(tail=50)
+                        logger.error(
+                            f"Container logs for stopped gateway {gateway.follower_id}: {logs.decode('utf-8', errors='ignore')}"
+                        )
+                    except Exception:
+                        pass
 
             except docker.errors.NotFound:
                 gateway.status = GatewayStatus.STOPPED
                 logger.warning(
                     f"Gateway container for follower {gateway.follower_id} not found"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error checking health for follower {gateway.follower_id}: {e}"
                 )
 
     def _allocate_port(self) -> int:
@@ -611,6 +775,62 @@ class GatewayManager:
 
         raise RuntimeError("No available client IDs for TWS connection")
 
+    async def _restart_failed_gateway(self, follower_id: str) -> bool:
+        """Restart a failed gateway container.
+
+        Args:
+            follower_id: The follower ID
+
+        Returns:
+            True if restart was successful, False otherwise
+        """
+        logger.info(f"Attempting to restart gateway for follower {follower_id}")
+
+        # First, clean up the existing gateway
+        await self._stop_gateway(follower_id)
+
+        # Get follower configuration from database
+        db = get_mongo_db()
+        if not db:
+            logger.error("MongoDB connection not available for gateway restart")
+            return False
+
+        try:
+            followers_collection = db["followers"]
+            follower_doc = await followers_collection.find_one(
+                {
+                    "id": follower_id,
+                    "enabled": True,
+                    "state": FollowerState.ACTIVE.value,
+                }
+            )
+
+            if not follower_doc:
+                logger.warning(f"Follower {follower_id} not found or not active")
+                return False
+
+            follower = Follower.model_validate(follower_doc)
+
+            # Restart the gateway
+            await self._start_gateway(follower)
+
+            # Wait a moment and check if it started successfully
+            await asyncio.sleep(5)
+
+            gateway = self.gateways.get(follower_id)
+            if gateway and gateway.status != GatewayStatus.FAILED:
+                logger.info(
+                    f"Successfully restarted gateway for follower {follower_id}"
+                )
+                return True
+            else:
+                logger.error(f"Gateway restart failed for follower {follower_id}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error restarting gateway for follower {follower_id}: {e}")
+            return False
+
     async def reload_followers(self) -> None:
         """Reload followers from database and update gateways accordingly."""
         logger.info("Reloading followers configuration")
@@ -635,6 +855,14 @@ class GatewayManager:
                 # Start gateway if not already running
                 if follower.id not in self.gateways:
                     await self._start_gateway(follower)
+                else:
+                    # Check if existing gateway needs restart
+                    gateway = self.gateways.get(follower.id)
+                    if gateway and gateway.status == GatewayStatus.FAILED:
+                        logger.info(
+                            f"Restarting failed gateway for follower {follower.id}"
+                        )
+                        await self._restart_failed_gateway(follower.id)
 
             except Exception as e:
                 logger.error(f"Failed to process follower during reload: {e}")

@@ -5,6 +5,26 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Enhanced
+- **Gateway Manager**: Completed remaining 20% of gateway orchestration implementation
+  - Enhanced container health-probe loop with comprehensive health checks
+  - Added lightweight API calls (reqCurrentTime) to verify connection health
+  - Improved container log collection for debugging startup and failure issues
+  - Enhanced graceful shutdown with proper disconnect sequence and timeout handling
+  - Added automatic gateway restart capability for failed containers
+  - Implemented parallel shutdown for multiple gateways with 45-second timeout
+  - Added container exit code tracking and final log capture on shutdown
+  - Improved error handling with detailed status tracking
+
+### Fixed
+- **Gateway Manager Tests**: Updated unit tests to match enhanced implementation
+  - Fixed MockFollower to include all required Follower fields
+  - Updated graceful shutdown test expectations for new timeout parameters
+  - Fixed force removal test to match new kill/remove sequence
+  - Corrected reconnection backoff test to avoid real connection attempts
+
 ## [v1.1.25.0] - 2025-06-29
 
 ### Fixed
