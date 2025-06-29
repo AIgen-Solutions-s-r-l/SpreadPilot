@@ -931,8 +931,8 @@ class IBKRClient:
                 # For Bull Put, margin is approximately (short_strike - long_strike) * 100 * qty
                 margin_required = (strike_short - strike_long) * 100 * qty_per_leg
             else:  # Bear Call
-                # For Bear Call, margin is approximately (long_strike - short_strike) * 100 * qty
-                margin_required = (long_strike - strike_short) * 100 * qty_per_leg
+                # For Bear Call, margin is approximately (strike_long - strike_short) * 100 * qty
+                margin_required = (strike_long - strike_short) * 100 * qty_per_leg
 
             # Add buffer (20%)
             margin_required *= 1.2

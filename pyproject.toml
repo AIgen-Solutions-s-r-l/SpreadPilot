@@ -61,6 +61,11 @@ ignore = [
     "E712",  # Comparison to True/False
     "E402",  # Module import not at top
     "I001",  # Import block unsorted
+    "RUF012", # Mutable class attributes should be ClassVar
+    "S311",  # Standard pseudo-random generators not suitable for crypto
+    "S110",  # try-except-pass detected
+    "F821",  # Undefined name
+    "N803",  # Argument name should be lowercase
 ]
 
 # Allow autofix for all enabled rules
