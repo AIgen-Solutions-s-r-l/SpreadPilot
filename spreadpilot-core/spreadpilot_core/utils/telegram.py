@@ -63,9 +63,7 @@ class TelegramSender:
                             logger.info(
                                 "Telegram message sent successfully",
                                 chat_id=self.chat_id,
-                                message_id=response_json.get("result", {}).get(
-                                    "message_id"
-                                ),
+                                message_id=response_json.get("result", {}).get("message_id"),
                             )
                             return True
 

@@ -153,15 +153,12 @@ class ContainerWatchdog:
             reason=reason,
             severity=severity,
             service="watchdog",
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         try:
             if self.redis_client:
-                await self.redis_client.xadd(
-                    "alerts",
-                    {"data": alert.model_dump_json()}
-                )
+                await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
                 logger.info(f"Published alert: {reason}")
             else:
                 logger.warning("Redis not connected, alert not published")
@@ -192,7 +189,7 @@ class ContainerWatchdog:
                 await self.publish_alert(
                     service_name=container_name,
                     reason=f"SERVICE_RECOVERED: {container_name} recovered after {self.failure_counts[container_name]} failed health checks",
-                    severity=AlertSeverity.INFO
+                    severity=AlertSeverity.INFO,
                 )
             self.failure_counts[container_name] = 0
         else:
@@ -206,8 +203,7 @@ class ContainerWatchdog:
             # Take action after max consecutive failures
             if self.failure_counts[container_name] >= MAX_CONSECUTIVE_FAILURES:
                 logger.error(
-                    f"{container_name} exceeded max consecutive failures. "
-                    "Attempting restart..."
+                    f"{container_name} exceeded max consecutive failures. " "Attempting restart..."
                 )
 
                 # Restart the container
@@ -218,14 +214,14 @@ class ContainerWatchdog:
                     await self.publish_alert(
                         service_name=container_name,
                         reason=f"SERVICE_RESTART: {container_name} was restarted after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
-                        severity=AlertSeverity.WARNING
+                        severity=AlertSeverity.WARNING,
                     )
                     self.failure_counts[container_name] = 0
                 else:
                     await self.publish_alert(
                         service_name=container_name,
                         reason=f"SERVICE_RESTART_FAILED: Failed to restart {container_name} after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
-                        severity=AlertSeverity.CRITICAL
+                        severity=AlertSeverity.CRITICAL,
                     )
 
     async def cleanup_stale_containers(self):
@@ -241,9 +237,7 @@ class ContainerWatchdog:
         """Main monitoring loop"""
         logger.info("Container watchdog service starting...")
         logger.info(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
-        logger.info(
-            f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}"
-        )
+        logger.info(f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}")
         logger.info("Monitoring all containers labeled 'spreadpilot'")
 
         while True:
@@ -255,18 +249,14 @@ class ContainerWatchdog:
                 current_names = {c.name for c in containers}
                 new_containers = current_names - self.monitored_containers
                 if new_containers:
-                    logger.info(
-                        f"Discovered new containers: {', '.join(new_containers)}"
-                    )
+                    logger.info(f"Discovered new containers: {', '.join(new_containers)}")
                 self.monitored_containers = current_names
 
                 if not containers:
                     logger.warning("No containers with 'spreadpilot' label found")
                 else:
                     # Check all containers concurrently
-                    tasks = [
-                        self.monitor_container(container) for container in containers
-                    ]
+                    tasks = [self.monitor_container(container) for container in containers]
                     await asyncio.gather(*tasks)
 
                 # Cleanup stale containers from failure counts

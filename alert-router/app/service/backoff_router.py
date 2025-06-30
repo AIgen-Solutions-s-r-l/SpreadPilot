@@ -102,16 +102,12 @@ class BackoffAlertRouter:
             "error": error,
             "results": results,
             "status": (
-                "success"
-                if success
-                else ("failed" if attempt >= self.max_retries else "retrying")
+                "success" if success else ("failed" if attempt >= self.max_retries else "retrying")
             ),
         }
 
         await collection.insert_one(document)
-        logger.info(
-            f"Saved alert attempt {attempt} for {alert_event.event_type.value} to MongoDB"
-        )
+        logger.info(f"Saved alert attempt {attempt} for {alert_event.event_type.value} to MongoDB")
 
     async def mark_alert_failed(self, alert_event: AlertEvent, final_error: str):
         """Mark an alert as permanently failed in MongoDB.
@@ -167,9 +163,7 @@ class BackoffAlertRouter:
                 results = await self.alert_router.route_alert(alert_event)
 
                 # Save successful attempt
-                await self.save_alert_attempt(
-                    alert_event, attempt, success=True, results=results
-                )
+                await self.save_alert_attempt(alert_event, attempt, success=True, results=results)
 
                 logger.info(
                     f"Successfully routed alert {alert_event.event_type.value} on attempt {attempt}"

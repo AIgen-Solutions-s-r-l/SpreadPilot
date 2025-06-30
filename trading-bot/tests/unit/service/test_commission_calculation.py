@@ -39,9 +39,7 @@ class TestCommissionCalculation:
         }
 
     @pytest.mark.asyncio
-    async def test_commission_calculation_positive_pnl(
-        self, pnl_service, sample_follower_data
-    ):
+    async def test_commission_calculation_positive_pnl(self, pnl_service, sample_follower_data):
         """Test commission calculation for positive monthly P&L."""
         # Test case: month +$1,000, 20% => €200 commission entry
 
@@ -54,9 +52,7 @@ class TestCommissionCalculation:
         mock_session.add = AsyncMock()
 
         # Mock follower data retrieval
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=sample_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=sample_follower_data):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="follower1",
@@ -87,9 +83,7 @@ class TestCommissionCalculation:
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_commission_calculation_negative_pnl(
-        self, pnl_service, sample_follower_data
-    ):
+    async def test_commission_calculation_negative_pnl(self, pnl_service, sample_follower_data):
         """Test commission calculation for negative monthly P&L."""
 
         mock_session = AsyncMock()
@@ -99,9 +93,7 @@ class TestCommissionCalculation:
         mock_session.commit = AsyncMock()
         mock_session.add = AsyncMock()
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=sample_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=sample_follower_data):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="follower1",
@@ -117,15 +109,11 @@ class TestCommissionCalculation:
 
         # Verify no commission for negative P&L
         assert commission_entry.monthly_pnl == Decimal("-500.00")
-        assert commission_entry.commission_amount == Decimal(
-            "0.00"
-        )  # No commission for loss
+        assert commission_entry.commission_amount == Decimal("0.00")  # No commission for loss
         assert commission_entry.is_payable == False  # Not payable for negative P&L
 
     @pytest.mark.asyncio
-    async def test_commission_calculation_zero_pnl(
-        self, pnl_service, sample_follower_data
-    ):
+    async def test_commission_calculation_zero_pnl(self, pnl_service, sample_follower_data):
         """Test commission calculation for zero monthly P&L."""
 
         mock_session = AsyncMock()
@@ -135,9 +123,7 @@ class TestCommissionCalculation:
         mock_session.commit = AsyncMock()
         mock_session.add = AsyncMock()
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=sample_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=sample_follower_data):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="follower1",
@@ -152,9 +138,7 @@ class TestCommissionCalculation:
         assert commission_entry.is_payable == False
 
     @pytest.mark.asyncio
-    async def test_commission_calculation_update_existing(
-        self, pnl_service, sample_follower_data
-    ):
+    async def test_commission_calculation_update_existing(self, pnl_service, sample_follower_data):
         """Test updating existing commission entry."""
 
         # Mock existing commission entry
@@ -164,15 +148,11 @@ class TestCommissionCalculation:
 
         mock_session = AsyncMock()
         mock_result = AsyncMock()
-        mock_result.scalar.return_value = (
-            existing_commission  # Existing commission found
-        )
+        mock_result.scalar.return_value = existing_commission  # Existing commission found
         mock_session.execute.return_value = mock_result
         mock_session.commit = AsyncMock()
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=sample_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=sample_follower_data):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="follower1",
@@ -205,9 +185,7 @@ class TestCommissionCalculation:
         mock_session.commit = AsyncMock()
         mock_session.add = AsyncMock()
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=follower_data_10pct
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=follower_data_10pct):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="follower1",
@@ -338,9 +316,7 @@ class TestCommissionCalculation:
             mock_session.execute.return_value = mock_result
             mock_session_ctx.return_value.__aenter__.return_value = mock_session
 
-            success = await pnl_service.mark_commission_paid(
-                "nonexistent", "PAY-REF-001"
-            )
+            success = await pnl_service.mark_commission_paid("nonexistent", "PAY-REF-001")
 
         assert success == False
 
@@ -381,9 +357,7 @@ class TestCommissionCalculation:
         mock_session.commit = AsyncMock()
         mock_session.add = AsyncMock()
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=follower_data):
             await pnl_service._calculate_monthly_commission(
                 session=mock_session,
                 follower_id="test_follower",

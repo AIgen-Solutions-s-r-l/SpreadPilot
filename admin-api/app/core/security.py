@@ -117,13 +117,9 @@ class PINVerification:
             # Check if user should be locked out
             attempts = self._get_recent_attempts(user_id)
             if len(attempts) >= MAX_PIN_ATTEMPTS:
-                lockout_end = datetime.utcnow() + timedelta(
-                    seconds=PIN_LOCKOUT_DURATION
-                )
+                lockout_end = datetime.utcnow() + timedelta(seconds=PIN_LOCKOUT_DURATION)
                 locked_users[user_id] = lockout_end
-                logger.warning(
-                    f"User {user_id} locked out due to multiple failed PIN attempts"
-                )
+                logger.warning(f"User {user_id} locked out due to multiple failed PIN attempts")
 
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -187,9 +183,7 @@ class PINVerification:
 
         # Clean up old attempts
         cutoff = datetime.utcnow() - timedelta(seconds=PIN_LOCKOUT_DURATION)
-        pin_attempts[user_id] = [
-            attempt for attempt in pin_attempts[user_id] if attempt > cutoff
-        ]
+        pin_attempts[user_id] = [attempt for attempt in pin_attempts[user_id] if attempt > cutoff]
 
     def _get_recent_attempts(self, user_id: str) -> list[datetime]:
         """Get recent PIN attempts within the lockout window."""

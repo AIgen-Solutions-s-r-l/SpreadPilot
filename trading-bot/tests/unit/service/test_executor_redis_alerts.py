@@ -10,9 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import fakeredis.aioredis as fakeredis
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core"))
 
 from app.service.executor import VerticalSpreadExecutor
 
@@ -34,9 +32,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
         self.mock_ibkr_client.get_account_summary = AsyncMock()
 
         # Create executor with fake Redis
-        self.executor = VerticalSpreadExecutor(
-            self.mock_ibkr_client, redis_url="redis://fake"
-        )
+        self.executor = VerticalSpreadExecutor(self.mock_ibkr_client, redis_url="redis://fake")
 
         # Test signal
         self.test_signal = {
@@ -59,9 +55,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             mock_whatif_result.initMarginChange = "10000"
             mock_whatif_result.maintMarginChange = "8000"
             mock_whatif_result.equityWithLoanAfter = "50000"
-            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(
-                return_value=mock_whatif_result
-            )
+            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(return_value=mock_whatif_result)
 
             # Mock account summary with insufficient funds
             self.mock_ibkr_client.get_account_summary = AsyncMock(
@@ -69,9 +63,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             )
 
             # Execute and expect failure
-            result = await self.executor.execute_vertical_spread(
-                self.test_signal, self.follower_id
-            )
+            result = await self.executor.execute_vertical_spread(self.test_signal, self.follower_id)
 
             # Check that order was rejected
             self.assertEqual(result["status"], OrderStatus.REJECTED)
@@ -106,9 +98,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             mock_whatif_result.initMarginChange = "1000"
             mock_whatif_result.maintMarginChange = "800"
             mock_whatif_result.equityWithLoanAfter = "50000"
-            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(
-                return_value=mock_whatif_result
-            )
+            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(return_value=mock_whatif_result)
 
             # Mock account summary with sufficient funds
             self.mock_ibkr_client.get_account_summary = AsyncMock(
@@ -157,9 +147,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             mock_whatif_result.initMarginChange = "1000"
             mock_whatif_result.maintMarginChange = "800"
             mock_whatif_result.equityWithLoanAfter = "50000"
-            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(
-                return_value=mock_whatif_result
-            )
+            self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(return_value=mock_whatif_result)
 
             # Mock account summary with sufficient funds
             self.mock_ibkr_client.get_account_summary = AsyncMock(
@@ -219,9 +207,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             self.mock_ibkr_client.ensure_connected = AsyncMock(return_value=False)
 
             # Execute and expect failure
-            result = await self.executor.execute_vertical_spread(
-                self.test_signal, self.follower_id
-            )
+            result = await self.executor.execute_vertical_spread(self.test_signal, self.follower_id)
 
             # Check that order was rejected
             self.assertEqual(result["status"], OrderStatus.REJECTED)
@@ -237,9 +223,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             alert_data = json.loads(alert_json)
 
             # Verify alert content
-            self.assertEqual(
-                alert_data["event_type"], AlertType.GATEWAY_UNREACHABLE.value
-            )
+            self.assertEqual(alert_data["event_type"], AlertType.GATEWAY_UNREACHABLE.value)
             self.assertIn("Execution error", alert_data["message"])
             self.assertEqual(alert_data["params"]["follower_id"], self.follower_id)
 
@@ -254,9 +238,7 @@ class TestVerticalSpreadExecutorRedisAlerts(unittest.TestCase):
             self.assertIsNotNone(self.executor.redis_client)
 
             # Test disconnection
-            with patch.object(
-                fake_redis, "close", new_callable=AsyncMock
-            ) as mock_close:
+            with patch.object(fake_redis, "close", new_callable=AsyncMock) as mock_close:
                 await self.executor.disconnect_redis()
                 mock_close.assert_called_once()
                 self.assertIsNone(self.executor.redis_client)

@@ -129,9 +129,7 @@ class SignalListener:
             # Test connection
             await asyncio.get_event_loop().run_in_executor(None, self.redis_client.ping)
 
-            logger.info(
-                f"Redis connection established: {self.redis_host}:{self.redis_port}"
-            )
+            logger.info(f"Redis connection established: {self.redis_host}:{self.redis_port}")
 
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
@@ -141,9 +139,7 @@ class SignalListener:
         """Initialize Google Sheets connection."""
         try:
             if self.credentials_path:
-                self.gsheet_client = gspread.service_account(
-                    filename=self.credentials_path
-                )
+                self.gsheet_client = gspread.service_account(filename=self.credentials_path)
             else:
                 # Try to use default credentials or environment
                 self.gsheet_client = gspread.service_account()
@@ -201,9 +197,7 @@ class SignalListener:
                 signal = self._find_signal_for_date(all_values, today)
 
                 if signal:
-                    logger.info(
-                        f"Found signal for today on attempt {attempt}: {signal}"
-                    )
+                    logger.info(f"Found signal for today on attempt {attempt}: {signal}")
                     return signal
 
                 if attempt % 10 == 0:  # Log every 10 attempts (50 seconds)
@@ -218,14 +212,10 @@ class SignalListener:
                 logger.error(f"Error during polling attempt {attempt}: {e}")
                 await asyncio.sleep(self.poll_interval_seconds)
 
-        logger.warning(
-            f"Signal polling timed out after {self.max_poll_attempts} attempts"
-        )
+        logger.warning(f"Signal polling timed out after {self.max_poll_attempts} attempts")
         return None
 
-    def _find_signal_for_date(
-        self, all_values: list, target_date: date
-    ) -> Signal | None:
+    def _find_signal_for_date(self, all_values: list, target_date: date) -> Signal | None:
         """Find and parse signal for specific date from sheet values.
 
         Args:
@@ -288,9 +278,7 @@ class SignalListener:
                 None, self.redis_client.publish, self.redis_channel, signal_json
             )
 
-            logger.info(
-                f"Signal emitted to Redis channel '{self.redis_channel}': {signal}"
-            )
+            logger.info(f"Signal emitted to Redis channel '{self.redis_channel}': {signal}")
 
         except Exception as e:
             logger.error(f"Failed to emit signal to Redis: {e}")

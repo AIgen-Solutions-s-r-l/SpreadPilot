@@ -62,9 +62,7 @@ async def test_get_month_pnl_success(client: TestClient, auth_headers: dict):
 
         mock_db.return_value = {"daily_pnl": mock_collection}
 
-        response = client.get(
-            "/api/v1/pnl/month?year=2024&month=1", headers=auth_headers
-        )
+        response = client.get("/api/v1/pnl/month?year=2024&month=1", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()

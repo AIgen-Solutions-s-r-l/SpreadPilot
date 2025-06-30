@@ -44,9 +44,7 @@ SECRETS_TO_FETCH = [
 
 async def load_secrets_into_env():
     """Fetches secrets from MongoDB and sets them as environment variables."""
-    preload_logger.info(
-        "Attempting to load secrets from MongoDB into environment variables..."
-    )
+    preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
     mongo_uri = os.environ.get("MONGO_URI")
     mongo_db_name = os.environ.get(
         "MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")
@@ -60,9 +58,7 @@ async def load_secrets_into_env():
 
     client: AsyncIOMotorClient | None = None
     try:
-        preload_logger.info(
-            f"Connecting to MongoDB at {mongo_uri} for secret loading..."
-        )
+        preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
         client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
         await client.admin.command("ping")
         db = client[mongo_db_name]
@@ -72,14 +68,10 @@ async def load_secrets_into_env():
 
         for secret_name in SECRETS_TO_FETCH:
             preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
-            secret_value = await get_secret_from_mongo(
-                db, secret_name, environment=app_env
-            )
+            secret_value = await get_secret_from_mongo(db, secret_name, environment=app_env)
             if secret_value is not None:
                 os.environ[secret_name] = secret_value
-                preload_logger.info(
-                    f"Successfully loaded secret '{secret_name}' into environment."
-                )
+                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
             else:
                 preload_logger.info(
                     f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set."

@@ -89,9 +89,7 @@ class TestReportGenerator:
 
     def test_init_with_gcs_bucket(self, mock_settings):
         """Test initialization with GCS bucket configured."""
-        with patch(
-            "report_worker.app.service.report_generator.storage.Client"
-        ) as mock_client:
+        with patch("report_worker.app.service.report_generator.storage.Client") as mock_client:
             mock_bucket = MagicMock()
             mock_client.return_value.bucket.return_value = mock_bucket
 
@@ -113,9 +111,7 @@ class TestReportGenerator:
 
     def test_init_gcs_error(self, mock_settings):
         """Test initialization with GCS error."""
-        with patch(
-            "report_worker.app.service.report_generator.storage.Client"
-        ) as mock_client:
+        with patch("report_worker.app.service.report_generator.storage.Client") as mock_client:
             mock_client.side_effect = Exception("GCS error")
 
             generator = ReportGenerator(mock_settings)
@@ -135,9 +131,7 @@ class TestReportGenerator:
         mock_result.scalars.return_value.all.return_value = mock_pnl_daily_records
         mock_session.execute.return_value = mock_result
 
-        with patch(
-            "report_worker.app.service.report_generator.get_async_db_session"
-        ) as mock_db:
+        with patch("report_worker.app.service.report_generator.get_async_db_session") as mock_db:
             mock_db.return_value.__aenter__.return_value = mock_session
 
             result = await generator.get_daily_pnl_data(sample_follower.id, 2024, 12)
@@ -155,9 +149,7 @@ class TestReportGenerator:
         """Test error handling in daily P&L data retrieval."""
         generator = ReportGenerator(mock_settings)
 
-        with patch(
-            "report_worker.app.service.report_generator.get_async_db_session"
-        ) as mock_db:
+        with patch("report_worker.app.service.report_generator.get_async_db_session") as mock_db:
             mock_db.side_effect = Exception("Database error")
 
             result = await generator.get_daily_pnl_data(sample_follower.id, 2024, 12)
@@ -176,9 +168,7 @@ class TestReportGenerator:
         mock_result.scalar_one_or_none.return_value = mock_commission_record
         mock_session.execute.return_value = mock_result
 
-        with patch(
-            "report_worker.app.service.report_generator.get_async_db_session"
-        ) as mock_db:
+        with patch("report_worker.app.service.report_generator.get_async_db_session") as mock_db:
             mock_db.return_value.__aenter__.return_value = mock_session
 
             total_pnl, commission = await generator.get_commission_data(
@@ -198,9 +188,7 @@ class TestReportGenerator:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
 
-        with patch(
-            "report_worker.app.service.report_generator.get_async_db_session"
-        ) as mock_db:
+        with patch("report_worker.app.service.report_generator.get_async_db_session") as mock_db:
             mock_db.return_value.__aenter__.return_value = mock_session
 
             total_pnl, commission = await generator.get_commission_data(
@@ -214,9 +202,7 @@ class TestReportGenerator:
         """Test error handling in commission data retrieval."""
         generator = ReportGenerator(mock_settings)
 
-        with patch(
-            "report_worker.app.service.report_generator.get_async_db_session"
-        ) as mock_db:
+        with patch("report_worker.app.service.report_generator.get_async_db_session") as mock_db:
             mock_db.side_effect = Exception("Database error")
 
             total_pnl, commission = await generator.get_commission_data(
@@ -236,9 +222,7 @@ class TestReportGenerator:
         generator.get_daily_pnl_data = AsyncMock(return_value=sample_daily_pnl)
         generator.get_commission_data = AsyncMock(return_value=(350.25, 70.05))
 
-        with patch(
-            "report_worker.app.service.report_generator.generate_pdf_report"
-        ) as mock_pdf:
+        with patch("report_worker.app.service.report_generator.generate_pdf_report") as mock_pdf:
             mock_pdf.return_value = "/tmp/test_report.pdf"
 
             result = await generator.generate_pdf_report(sample_follower, 2024, 12)
@@ -316,9 +300,7 @@ class TestReportGenerator:
 
             # Mock upload error
             mock_blob = MagicMock()
-            mock_blob.upload_from_filename.side_effect = GoogleCloudError(
-                "Upload failed"
-            )
+            mock_blob.upload_from_filename.side_effect = GoogleCloudError("Upload failed")
             generator.bucket = MagicMock()
             generator.bucket.blob.return_value = mock_blob
 
@@ -333,9 +315,7 @@ class TestReportGenerator:
 
             # Mock successful signed URL generation
             mock_blob = MagicMock()
-            mock_blob.generate_signed_url.return_value = (
-                "https://storage.googleapis.com/signed-url"
-            )
+            mock_blob.generate_signed_url.return_value = "https://storage.googleapis.com/signed-url"
             generator.bucket = MagicMock()
             generator.bucket.blob.return_value = mock_blob
 
@@ -361,9 +341,7 @@ class TestReportGenerator:
 
             # Mock signed URL error
             mock_blob = MagicMock()
-            mock_blob.generate_signed_url.side_effect = GoogleCloudError(
-                "URL generation failed"
-            )
+            mock_blob.generate_signed_url.side_effect = GoogleCloudError("URL generation failed")
             generator.bucket = MagicMock()
             generator.bucket.blob.return_value = mock_blob
 
@@ -371,9 +349,7 @@ class TestReportGenerator:
 
             assert result is None
 
-    async def test_generate_and_store_reports_success(
-        self, mock_settings, sample_follower
-    ):
+    async def test_generate_and_store_reports_success(self, mock_settings, sample_follower):
         """Test successful report generation and storage."""
         with patch("report_worker.app.service.report_generator.storage.Client"):
             generator = ReportGenerator(mock_settings)
@@ -403,9 +379,7 @@ class TestReportGenerator:
                 assert mock_remove.call_count == 2
                 assert mock_rmdir.call_count == 2
 
-    async def test_generate_and_store_reports_upload_failure(
-        self, mock_settings, sample_follower
-    ):
+    async def test_generate_and_store_reports_upload_failure(self, mock_settings, sample_follower):
         """Test report generation with upload failure."""
         with patch("report_worker.app.service.report_generator.storage.Client"):
             generator = ReportGenerator(mock_settings)
@@ -438,9 +412,7 @@ class TestReportGenerator:
 
 
 @pytest.mark.asyncio
-async def test_generate_follower_reports_convenience_function(
-    mock_settings, sample_follower
-):
+async def test_generate_follower_reports_convenience_function(mock_settings, sample_follower):
     """Test the convenience function for generating follower reports."""
     with patch(
         "report_worker.app.service.report_generator.ReportGenerator"

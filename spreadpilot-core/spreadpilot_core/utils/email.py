@@ -112,7 +112,9 @@ class EmailSender:
                     if file_extension.lower() == ".pdf":
                         mime_type = "application/pdf"
                     elif file_extension.lower() in [".xlsx", ".xls"]:
-                        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        mime_type = (
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
 
                     # Read file content
                     with open(attachment_path, "rb") as f:
@@ -162,9 +164,17 @@ class EmailSender:
 class SMTPEmailSender:
     """Email sender using SMTP."""
 
-    def __init__(self, smtp_uri: str = None, smtp_host: str = None, smtp_port: int = 587, 
-                 smtp_user: str = None, smtp_password: str = None, smtp_tls: bool = True,
-                 from_email: str = None, from_name: str = "SpreadPilot"):
+    def __init__(
+        self,
+        smtp_uri: str = None,
+        smtp_host: str = None,
+        smtp_port: int = 587,
+        smtp_user: str = None,
+        smtp_password: str = None,
+        smtp_tls: bool = True,
+        from_email: str = None,
+        from_name: str = "SpreadPilot",
+    ):
         """Initialize the SMTP email sender.
 
         Args:
@@ -191,7 +201,7 @@ class SMTPEmailSender:
             self.smtp_user = smtp_user
             self.smtp_password = smtp_password
             self.smtp_tls = smtp_tls
-            
+
         self.from_email = from_email
         self.from_name = from_name
 
@@ -227,54 +237,56 @@ class SMTPEmailSender:
         """
         try:
             # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = f"{self.from_name} <{self.from_email}>"
-            msg['To'] = to_email
-            
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"{self.from_name} <{self.from_email}>"
+            msg["To"] = to_email
+
             if cc_emails:
-                msg['Cc'] = ', '.join(cc_emails)
-            
+                msg["Cc"] = ", ".join(cc_emails)
+
             # Add HTML content
-            html_part = MIMEText(html_content, 'html')
+            html_part = MIMEText(html_content, "html")
             msg.attach(html_part)
-            
+
             # Add attachments
             if attachments:
                 for attachment in attachments:
-                    file_path = attachment.get('path')
-                    filename = attachment.get('filename')
-                    
+                    file_path = attachment.get("path")
+                    filename = attachment.get("filename")
+
                     if not file_path or not os.path.exists(file_path):
                         logger.warning(f"Attachment file not found: {file_path}")
                         continue
-                    
-                    with open(file_path, 'rb') as f:
+
+                    with open(file_path, "rb") as f:
                         file_content = f.read()
-                    
+
                     # Determine MIME type
-                    if filename.lower().endswith('.pdf'):
-                        mime_type = 'application/pdf'
-                    elif filename.lower().endswith(('.xlsx', '.xls')):
-                        mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    if filename.lower().endswith(".pdf"):
+                        mime_type = "application/pdf"
+                    elif filename.lower().endswith((".xlsx", ".xls")):
+                        mime_type = (
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
                     else:
-                        mime_type = 'application/octet-stream'
-                    
+                        mime_type = "application/octet-stream"
+
                     attachment_part = MIMEApplication(file_content, mime_type)
                     attachment_part.add_header(
-                        'Content-Disposition',
-                        'attachment',
-                        filename=filename or os.path.basename(file_path)
+                        "Content-Disposition",
+                        "attachment",
+                        filename=filename or os.path.basename(file_path),
                     )
                     msg.attach(attachment_part)
-            
+
             # Prepare recipient list
             recipients = [to_email]
             if cc_emails:
                 recipients.extend(cc_emails)
             if bcc_emails:
                 recipients.extend(bcc_emails)
-            
+
             # Send email using aiosmtplib
             await aiosmtplib.send(
                 msg,
@@ -284,7 +296,7 @@ class SMTPEmailSender:
                 password=self.smtp_password,
                 use_tls=self.smtp_tls,
             )
-            
+
             logger.info(
                 "Email sent successfully via SMTP",
                 to_email=to_email,
@@ -292,7 +304,7 @@ class SMTPEmailSender:
                 smtp_host=self.smtp_host,
             )
             return True
-            
+
         except Exception as e:
             logger.error(
                 f"Error sending email via SMTP: {e}",
@@ -332,7 +344,9 @@ def send_email(
     """
     # Get from email and name from environment if not provided
     if not from_email:
-        from_email = os.environ.get("REPORT_SENDER_EMAIL") or os.environ.get("SENDGRID_FROM_EMAIL", "capital@tradeautomation.it")
+        from_email = os.environ.get("REPORT_SENDER_EMAIL") or os.environ.get(
+            "SENDGRID_FROM_EMAIL", "capital@tradeautomation.it"
+        )
 
     if not from_name:
         from_name = os.environ.get("SENDGRID_FROM_NAME", "SpreadPilot")
@@ -340,11 +354,11 @@ def send_email(
     # Check if SMTP is configured
     smtp_uri = os.environ.get("SMTP_URI")
     smtp_host = os.environ.get("SMTP_HOST")
-    
+
     if smtp_uri or smtp_host:
         # Use SMTP
         logger.info("Using SMTP for email delivery")
-        
+
         smtp_sender = SMTPEmailSender(
             smtp_uri=smtp_uri,
             smtp_host=smtp_host,
@@ -355,7 +369,7 @@ def send_email(
             from_email=from_email,
             from_name=from_name,
         )
-        
+
         # Convert attachment format for SMTP
         smtp_attachments = []
         if attachments:
@@ -364,18 +378,17 @@ def send_email(
                     smtp_attachments.append(attachment)
                 else:
                     # Convert string path to dict format
-                    smtp_attachments.append({
-                        'path': attachment,
-                        'filename': os.path.basename(attachment)
-                    })
-        
+                    smtp_attachments.append(
+                        {"path": attachment, "filename": os.path.basename(attachment)}
+                    )
+
         # Run async function in sync context
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        
+
         return loop.run_until_complete(
             smtp_sender.send_email(
                 to_email=to_email,
@@ -386,11 +399,11 @@ def send_email(
                 attachments=smtp_attachments,
             )
         )
-    
+
     else:
         # Use SendGrid
         logger.info("Using SendGrid for email delivery")
-        
+
         api_key = os.environ.get("SENDGRID_API_KEY")
         if not api_key:
             logger.error("Neither SMTP nor SendGrid is properly configured")
@@ -404,7 +417,7 @@ def send_email(
         if attachments:
             for attachment in attachments:
                 if isinstance(attachment, dict):
-                    sendgrid_attachments.append(attachment.get('path'))
+                    sendgrid_attachments.append(attachment.get("path"))
                 else:
                     sendgrid_attachments.append(attachment)
 

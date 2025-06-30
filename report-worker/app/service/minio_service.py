@@ -43,12 +43,7 @@ class MinIOService:
 
     def is_configured(self) -> bool:
         """Check if MinIO is properly configured."""
-        return bool(
-            self.endpoint_url
-            and self.access_key
-            and self.secret_key
-            and self.bucket_name
-        )
+        return bool(self.endpoint_url and self.access_key and self.secret_key and self.bucket_name)
 
     def upload_report(self, local_file_path: str, object_key: str) -> str | None:
         """
@@ -94,9 +89,7 @@ class MinIOService:
 
         return None
 
-    def generate_presigned_url(
-        self, object_key: str, expiration_days: int = 30
-    ) -> str | None:
+    def generate_presigned_url(self, object_key: str, expiration_days: int = 30) -> str | None:
         """
         Generate a pre-signed URL for downloading a report.
 
@@ -144,9 +137,7 @@ class MinIOService:
             Tuple of (object_key, presigned_url) or (None, None) if failed
         """
         # Generate object key with folder structure
-        object_key = (
-            f"reports/{report_period}/{follower_id}/report_{report_period}.{file_type}"
-        )
+        object_key = f"reports/{report_period}/{follower_id}/report_{report_period}.{file_type}"
 
         # Upload file
         uploaded_key = self.upload_report(local_file_path, object_key)

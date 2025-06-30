@@ -52,9 +52,7 @@ class TestPnLService:
         assert pnl_service.quote_cache == {}
 
     @pytest.mark.asyncio
-    async def test_mtm_calculation_market_closed(
-        self, pnl_service, mock_trading_service
-    ):
+    async def test_mtm_calculation_market_closed(self, pnl_service, mock_trading_service):
         """Test MTM calculation when market is closed."""
         mock_trading_service.is_market_open.return_value = False
 
@@ -63,9 +61,7 @@ class TestPnLService:
             shutdown_event = asyncio.Event()
 
             # Start the loop and stop it immediately
-            task = asyncio.create_task(
-                pnl_service._mtm_calculation_loop(shutdown_event)
-            )
+            task = asyncio.create_task(pnl_service._mtm_calculation_loop(shutdown_event))
             await asyncio.sleep(0.1)  # Let it start
             shutdown_event.set()
 
@@ -78,9 +74,7 @@ class TestPnLService:
             mock_calc.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_calculate_follower_mtm_no_client(
-        self, pnl_service, mock_trading_service
-    ):
+    async def test_calculate_follower_mtm_no_client(self, pnl_service, mock_trading_service):
         """Test MTM calculation when IBKR client is not available."""
         mock_trading_service.ibkr_manager.get_client.return_value = None
 
@@ -88,9 +82,7 @@ class TestPnLService:
             # Should exit early when no client is available
             await pnl_service._calculate_follower_mtm("follower1")
 
-            mock_trading_service.ibkr_manager.get_client.assert_called_once_with(
-                "follower1"
-            )
+            mock_trading_service.ibkr_manager.get_client.assert_called_once_with("follower1")
             mock_mongo.assert_not_called()
 
     @pytest.mark.asyncio

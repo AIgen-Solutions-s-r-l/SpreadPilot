@@ -243,15 +243,11 @@ class CommissionMonthly(Base):
 
     # P&L and commission calculation
     monthly_pnl = Column(Numeric(12, 4), nullable=False)
-    commission_pct = Column(
-        Numeric(5, 4), nullable=False
-    )  # Percentage as decimal (0.20 = 20%)
+    commission_pct = Column(Numeric(5, 4), nullable=False)  # Percentage as decimal (0.20 = 20%)
     commission_amount = Column(Numeric(12, 4), nullable=False, default=0)
 
     # Currency for commission calculation
-    commission_currency = Column(
-        String(3), nullable=False, default="EUR"
-    )  # ISO currency code
+    commission_currency = Column(String(3), nullable=False, default="EUR")  # ISO currency code
 
     # Follower banking details
     follower_iban = Column(String(34), nullable=False)  # Standard IBAN length
@@ -270,9 +266,7 @@ class CommissionMonthly(Base):
     # Timestamps
     calculated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Indexes
     __table_args__ = (

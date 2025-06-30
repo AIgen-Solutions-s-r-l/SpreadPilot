@@ -41,9 +41,7 @@ class TestSendWeeklyCommissionReports:
 
         # Verify
         assert result is True
-        mock_create_engine.assert_called_once_with(
-            "postgresql://test:test@localhost/test"
-        )
+        mock_create_engine.assert_called_once_with("postgresql://test:test@localhost/test")
         mock_mailer.send_pending_reports.assert_called_once_with(mock_session)
         mock_session.close.assert_called_once()
 

@@ -57,18 +57,10 @@ class Alert(BaseModel):
     severity: AlertSeverity = Field(..., description="Alert severity")
     type: AlertType = Field(..., description="Alert type")
     message: str = Field(..., description="Alert message")
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
-    )
-    acknowledged: bool = Field(
-        default=False, description="Whether the alert has been acknowledged"
-    )
-    acknowledged_at: datetime | None = Field(
-        None, description="Acknowledgement timestamp"
-    )
-    acknowledged_by: str | None = Field(
-        None, description="User who acknowledged the alert"
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    acknowledged: bool = Field(default=False, description="Whether the alert has been acknowledged")
+    acknowledged_at: datetime | None = Field(None, description="Acknowledgement timestamp")
+    acknowledged_by: str | None = Field(None, description="User who acknowledged the alert")
 
     # Removed custom to_dict and from_dict methods.
     # Rely on Pydantic's model_dump(by_alias=True) for MongoDB serialization

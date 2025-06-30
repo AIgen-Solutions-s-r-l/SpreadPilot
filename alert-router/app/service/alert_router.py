@@ -213,25 +213,17 @@ class AlertRouter:
                 logger.info(f"Telegram alert sent successfully to {chat_id}")
                 return True
             else:
-                logger.error(
-                    f"Telegram API error: {result.get('description', 'Unknown error')}"
-                )
+                logger.error(f"Telegram API error: {result.get('description', 'Unknown error')}")
                 return False
 
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Telegram HTTP error {e.response.status_code}: {e.response.text}"
-            )
+            logger.error(f"Telegram HTTP error {e.response.status_code}: {e.response.text}")
             return False
         except Exception as e:
-            logger.error(
-                f"Failed to send Telegram alert to {chat_id}: {e}", exc_info=True
-            )
+            logger.error(f"Failed to send Telegram alert to {chat_id}: {e}", exc_info=True)
             return False
 
-    async def send_email_alert(
-        self, recipient: str, subject: str, html_content: str
-    ) -> bool:
+    async def send_email_alert(self, recipient: str, subject: str, html_content: str) -> bool:
         """Send alert via email using async SMTP.
 
         Args:
@@ -286,9 +278,7 @@ class AlertRouter:
             logger.info(f"Email alert sent successfully to {recipient}")
             return True
         except Exception as e:
-            logger.error(
-                f"Failed to send email alert to {recipient}: {e}", exc_info=True
-            )
+            logger.error(f"Failed to send email alert to {recipient}: {e}", exc_info=True)
             return False
 
     async def route_alert(self, event: AlertEvent) -> dict:
@@ -338,15 +328,11 @@ class AlertRouter:
 
         # If Telegram failed (or not configured), fall back to email
         if not telegram_success:
-            logger.info(
-                "Telegram delivery failed or not configured, falling back to email"
-            )
+            logger.info("Telegram delivery failed or not configured, falling back to email")
             results["fallback_used"] = True
 
             if self.email_sender and self.email_recipients:
-                logger.info(
-                    f"Attempting email delivery to {len(self.email_recipients)} recipients"
-                )
+                logger.info(f"Attempting email delivery to {len(self.email_recipients)} recipients")
 
                 tasks = []
                 for recipient in self.email_recipients:

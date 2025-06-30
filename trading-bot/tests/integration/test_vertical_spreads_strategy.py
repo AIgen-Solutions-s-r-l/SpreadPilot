@@ -31,9 +31,7 @@ async def test_vertical_spreads_strategy_initialization():
 
     # Create a trading service with mocked dependencies
     with (
-        patch(
-            "trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client
-        ),
+        patch("trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client),
         patch("trading_bot.app.service.base.get_mongo_db", return_value=mongo_db),
     ):
         service = TradingService(settings, sheets_client)
@@ -41,9 +39,7 @@ async def test_vertical_spreads_strategy_initialization():
 
         # Mock the IBKR client in the vertical spreads strategy handler
         service.vertical_spreads_strategy_handler.ibkr_client = AsyncMock()
-        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(
-            return_value=True
-        )
+        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(return_value=True)
         service.vertical_spreads_strategy_handler.ibkr_client.is_connected = AsyncMock(
             return_value=True
         )
@@ -88,9 +84,7 @@ async def test_vertical_spreads_strategy_signal_processing():
 
     # Create a trading service with mocked dependencies
     with (
-        patch(
-            "trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client
-        ),
+        patch("trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client),
         patch("trading_bot.app.service.base.get_mongo_db", return_value=mongo_db),
         patch(
             "trading_bot.app.service.vertical_spreads_strategy_handler.get_ny_time"
@@ -106,27 +100,23 @@ async def test_vertical_spreads_strategy_signal_processing():
 
         # Mock the IBKR client in the vertical spreads strategy handler
         service.vertical_spreads_strategy_handler.ibkr_client = AsyncMock()
-        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(
-            return_value=True
-        )
+        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(return_value=True)
         service.vertical_spreads_strategy_handler.ibkr_client.is_connected = AsyncMock(
             return_value=True
         )
         service.vertical_spreads_strategy_handler.ibkr_client.get_positions = AsyncMock(
             return_value={}
         )
-        service.vertical_spreads_strategy_handler.ibkr_client.check_margin_for_trade = (
-            AsyncMock(return_value=(True, None))
+        service.vertical_spreads_strategy_handler.ibkr_client.check_margin_for_trade = AsyncMock(
+            return_value=(True, None)
         )
-        service.vertical_spreads_strategy_handler.ibkr_client.place_vertical_spread = (
-            AsyncMock(
-                return_value={
-                    "status": "FILLED",
-                    "trade_id": "123456",
-                    "fill_price": 0.75,
-                    "fill_time": datetime.datetime.now().isoformat(),
-                }
-            )
+        service.vertical_spreads_strategy_handler.ibkr_client.place_vertical_spread = AsyncMock(
+            return_value={
+                "status": "FILLED",
+                "trade_id": "123456",
+                "fill_price": 0.75,
+                "fill_time": datetime.datetime.now().isoformat(),
+            }
         )
 
         # Mock the alert manager
@@ -140,9 +130,7 @@ async def test_vertical_spreads_strategy_signal_processing():
         shutdown_event = asyncio.Event()
 
         # Run the strategy handler for a short time
-        task = asyncio.create_task(
-            service.vertical_spreads_strategy_handler.run(shutdown_event)
-        )
+        task = asyncio.create_task(service.vertical_spreads_strategy_handler.run(shutdown_event))
 
         # Wait a short time for the handler to process the signal
         await asyncio.sleep(0.1)
@@ -192,9 +180,7 @@ async def test_vertical_spreads_strategy_time_value_monitoring():
 
     # Create a trading service with mocked dependencies
     with (
-        patch(
-            "trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client
-        ),
+        patch("trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client),
         patch("trading_bot.app.service.base.get_mongo_db", return_value=mongo_db),
         patch(
             "trading_bot.app.service.vertical_spreads_strategy_handler.get_ny_time"
@@ -210,9 +196,7 @@ async def test_vertical_spreads_strategy_time_value_monitoring():
 
         # Mock the IBKR client in the vertical spreads strategy handler
         service.vertical_spreads_strategy_handler.ibkr_client = AsyncMock()
-        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(
-            return_value=True
-        )
+        service.vertical_spreads_strategy_handler.ibkr_client.connect = AsyncMock(return_value=True)
         service.vertical_spreads_strategy_handler.ibkr_client.is_connected = AsyncMock(
             return_value=True
         )
@@ -237,9 +221,7 @@ async def test_vertical_spreads_strategy_time_value_monitoring():
         shutdown_event = asyncio.Event()
 
         # Run the strategy handler for a short time
-        task = asyncio.create_task(
-            service.vertical_spreads_strategy_handler.run(shutdown_event)
-        )
+        task = asyncio.create_task(service.vertical_spreads_strategy_handler.run(shutdown_event))
 
         # Wait a short time for the handler to monitor time value
         await asyncio.sleep(0.1)

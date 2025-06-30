@@ -35,10 +35,8 @@ SECRETS_TO_FETCH = [
 
 async def load_secrets_into_env():
     """Fetches secrets from Vault and sets them as environment variables."""
-    preload_logger.info(
-        "Attempting to load secrets from Vault into environment variables..."
-    )
-    
+    preload_logger.info("Attempting to load secrets from Vault into environment variables...")
+
     vault_enabled = os.environ.get("VAULT_ENABLED", "true").lower() == "true"
     if not vault_enabled:
         preload_logger.info("Vault disabled, skipping secret loading")
@@ -50,9 +48,7 @@ async def load_secrets_into_env():
             secret_value = await get_secret(secret_name)
             if secret_value is not None:
                 os.environ[secret_name] = secret_value
-                preload_logger.info(
-                    f"Successfully loaded secret '{secret_name}' into environment."
-                )
+                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
             else:
                 preload_logger.info(
                     f"Secret '{secret_name}' not found in Vault. Environment variable not set."
@@ -74,9 +70,7 @@ if __name__ != "__main__" and not os.getenv("TESTING"):
     except RuntimeError as e:
         preload_logger.error(f"Could not run async secret loading: {e}")
 elif os.getenv("TESTING"):
-    preload_logger.info(
-        "TESTING environment detected, skipping MongoDB secret pre-loading."
-    )
+    preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading.")
 
 # --- Regular Application Setup ---
 
@@ -86,9 +80,7 @@ from .service.report_service_enhanced import EnhancedReportService
 # --- Initialization ---
 # Setup logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-setup_logging(
-    service_name="report-worker", log_level=getattr(logging, log_level, logging.INFO)
-)
+setup_logging(service_name="report-worker", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
 
 # Setup Cloud Logging integration if running in GCP
@@ -117,9 +109,7 @@ def get_current_date_in_timezone(tz_name: str) -> datetime.date:
         logger.warning(f"Unknown timezone '{tz_name}'. Falling back to UTC date.")
         return datetime.datetime.now(pytz.utc).date()
     except Exception as e:
-        logger.exception(
-            f"Error getting current date in timezone {tz_name}", exc_info=e
-        )
+        logger.exception(f"Error getting current date in timezone {tz_name}", exc_info=e)
         # Fallback to UTC date on other errors
         return datetime.datetime.now(pytz.utc).date()
 
@@ -163,9 +153,7 @@ def handle_pubsub():
                 )
 
         except json.JSONDecodeError:
-            logger.warning(
-                "Pub/Sub message data is not valid JSON. Assuming default job type."
-            )
+            logger.warning("Pub/Sub message data is not valid JSON. Assuming default job type.")
         except Exception as e:
             logger.exception("Error decoding/parsing Pub/Sub message data.", exc_info=e)
             # Proceed with default job type, but log the error
@@ -187,23 +175,17 @@ def handle_pubsub():
             report_service.process_daily_pnl_calculation(calculation_date=trigger_date)
         elif job_type == "monthly":
             # Trigger monthly report generation (for the month *before* trigger_date)
-            asyncio.run(
-                report_service.process_monthly_reports(trigger_date=trigger_date)
-            )
+            asyncio.run(report_service.process_monthly_reports(trigger_date=trigger_date))
         else:
             logger.warning(f"Unknown job_type '{job_type}' received. No action taken.")
             # Return success to Pub/Sub so it doesn't retry
             return Response(f"Unknown job_type: {job_type}", status=200)
 
         # Acknowledge successful processing to Pub/Sub
-        return Response(
-            status=204
-        )  # 204 No Content is typical for successful processing
+        return Response(status=204)  # 204 No Content is typical for successful processing
 
     except Exception as e:
-        logger.exception(
-            f"Error processing Pub/Sub message for job type '{job_type}'", exc_info=e
-        )
+        logger.exception(f"Error processing Pub/Sub message for job type '{job_type}'", exc_info=e)
         # Return an error status code to signal failure to Pub/Sub
         return Response("Internal Server Error", status=500)
 
@@ -224,6 +206,4 @@ if __name__ == "__main__":
     # Run the Flask app
     # Use host='0.0.0.0' to make it accessible externally (required for Cloud Run)
     logger.info(f"Starting Flask development server on port {port}...")
-    app.run(
-        debug=False, host="0.0.0.0", port=port
-    )  # Turn debug off for production-like env
+    app.run(debug=False, host="0.0.0.0", port=port)  # Turn debug off for production-like env

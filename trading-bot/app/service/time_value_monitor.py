@@ -46,15 +46,13 @@ class TimeValueMonitor:
         self.tv_threshold = 0.10  # $0.10 threshold
         self.is_running = False
         self.scheduler = AsyncIOScheduler()
-        
+
         logger.info("Initialized time value monitor")
 
     async def connect_redis(self):
         """Connect to Redis if not already connected."""
         if self.redis_client is None:
-            self.redis_client = await redis.from_url(
-                self.redis_url, decode_responses=True
-            )
+            self.redis_client = await redis.from_url(self.redis_url, decode_responses=True)
             logger.info("Connected to Redis for alert publishing")
 
     async def disconnect_redis(self):
@@ -78,18 +76,18 @@ class TimeValueMonitor:
         if self.is_running:
             logger.warning("Time value monitor is already running")
             return
-            
+
         await self.connect_redis()
-        
+
         # Schedule the monitoring job every 60 seconds
         self.scheduler.add_job(
             self._check_all_positions,
             IntervalTrigger(seconds=self.monitoring_interval),
             id="time_value_monitor",
             replace_existing=True,
-            max_instances=1
+            max_instances=1,
         )
-        
+
         self.scheduler.start()
         self.is_running = True
         logger.info("Started time value monitoring with 60s interval")
@@ -104,7 +102,6 @@ class TimeValueMonitor:
         self.scheduler.shutdown(wait=False)
         await self.disconnect_redis()
         logger.info("Stopped time value monitoring")
-
 
     async def _check_all_positions(self):
         """Check time value for all open positions."""
@@ -209,10 +206,8 @@ class TimeValueMonitor:
             )
 
             # Publish status to Redis key
-            await self._publish_time_value_status(
-                follower_id, time_value, status
-            )
-            
+            await self._publish_time_value_status(follower_id, time_value, status)
+
             # Publish alert if RISK or CRITICAL
             if status in [TimeValueStatus.RISK, TimeValueStatus.CRITICAL]:
                 await self._publish_time_value_alert(
@@ -276,7 +271,7 @@ class TimeValueMonitor:
         status: TimeValueStatus,
     ):
         """Publish time value status to Redis key.
-        
+
         Args:
             follower_id: Follower ID
             time_value: Current time value
@@ -285,16 +280,14 @@ class TimeValueMonitor:
         try:
             if self.redis_client:
                 key = f"tv:{follower_id}"
-                value = json.dumps({
-                    "status": status.value,
-                    "time_value": time_value,
-                    "timestamp": time.time()
-                })
+                value = json.dumps(
+                    {"status": status.value, "time_value": time_value, "timestamp": time.time()}
+                )
                 await self.redis_client.set(key, value, ex=300)  # Expire after 5 minutes
                 logger.debug(f"Published TV status {status} for follower {follower_id}")
         except Exception as e:
             logger.error(f"Failed to publish TV status: {e}")
-            
+
     async def _publish_time_value_alert(
         self,
         follower_id: str,
@@ -318,7 +311,7 @@ class TimeValueMonitor:
             TimeValueStatus.RISK: AlertSeverity.WARNING,
             TimeValueStatus.CRITICAL: AlertSeverity.CRITICAL,
         }
-        
+
         # Create reason based on status
         if status == TimeValueStatus.CRITICAL:
             reason = f"TIME_VALUE_THRESHOLD: Position {contract.symbol} {contract.strike}{contract.right} has critical time value ${time_value:.2f} <= $0.10. Closing position."
@@ -331,18 +324,13 @@ class TimeValueMonitor:
             reason=reason,
             severity=severity_map[status],
             service="time_value_monitor",
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         try:
             if self.redis_client:
-                await self.redis_client.xadd(
-                    "alerts",
-                    {"data": alert.model_dump_json()}
-                )
-                logger.info(
-                    f"Published time value alert: {status} for follower {follower_id}"
-                )
+                await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
+                logger.info(f"Published time value alert: {status} for follower {follower_id}")
         except Exception as e:
             logger.error(f"Failed to publish time value alert: {e}", exc_info=True)
 
@@ -378,9 +366,7 @@ class TimeValueMonitor:
             # If long position (qty > 0), sell to close
             # If short position (qty < 0), buy to close
             action = "SELL" if position_qty > 0 else "BUY"
-            order = MarketOrder(
-                action=action, totalQuantity=abs(position_qty), transmit=True
-            )
+            order = MarketOrder(action=action, totalQuantity=abs(position_qty), transmit=True)
 
             # Place the order
             trade = ibkr_client.ib.placeOrder(contract, order)
@@ -403,14 +389,11 @@ class TimeValueMonitor:
                     reason=f"TIME_VALUE_LIQUIDATION: Successfully closed position {contract.symbol} {contract.strike}{contract.right} at ${trade.orderStatus.avgFillPrice:.2f} due to TV ${time_value:.2f} <= $0.10",
                     severity=AlertSeverity.INFO,
                     service="time_value_monitor",
-                    timestamp=time.time()
+                    timestamp=time.time(),
                 )
 
                 if self.redis_client:
-                    await self.redis_client.xadd(
-                        "alerts",
-                        {"data": alert.model_dump_json()}
-                    )
+                    await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
             else:
                 logger.error(
                     "Failed to close position",

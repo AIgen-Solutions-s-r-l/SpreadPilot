@@ -104,20 +104,16 @@ class SignalProcessor:
         """
         try:
             # Check margin
-            has_margin, margin_error = (
-                await self.service.ibkr_manager.check_margin_for_trade(
-                    follower_id=follower_id,
-                    strategy=strategy,
-                    qty_per_leg=qty_per_leg,
-                    strike_long=strike_long,
-                    strike_short=strike_short,
-                )
+            has_margin, margin_error = await self.service.ibkr_manager.check_margin_for_trade(
+                follower_id=follower_id,
+                strategy=strategy,
+                qty_per_leg=qty_per_leg,
+                strike_long=strike_long,
+                strike_short=strike_short,
             )
 
             if not has_margin:
-                logger.error(
-                    f"Insufficient margin for follower {follower_id}: {margin_error}"
-                )
+                logger.error(f"Insufficient margin for follower {follower_id}: {margin_error}")
 
                 # Create alert
                 await self.service.alert_manager.create_alert(
@@ -143,15 +139,12 @@ class SignalProcessor:
 
             # Check result
             if result["status"] == "REJECTED":
-                logger.error(
-                    f"Order rejected for follower {follower_id}: {result.get('error')}"
-                )
+                logger.error(f"Order rejected for follower {follower_id}: {result.get('error')}")
 
                 # Check if mid price is too low
                 if (
                     result.get("mid_price")
-                    and abs(result.get("mid_price", 0))
-                    < self.service.settings.min_price
+                    and abs(result.get("mid_price", 0)) < self.service.settings.min_price
                 ):
                     # Create alert
                     await self.service.alert_manager.create_alert(
@@ -186,11 +179,7 @@ class SignalProcessor:
                 status=TradeStatus(result["status"]),
                 timestamps={
                     "submitted": datetime.datetime.now(),
-                    "filled": (
-                        datetime.datetime.now()
-                        if result["status"] == "FILLED"
-                        else None
-                    ),
+                    "filled": (datetime.datetime.now() if result["status"] == "FILLED" else None),
                 },
             )
 

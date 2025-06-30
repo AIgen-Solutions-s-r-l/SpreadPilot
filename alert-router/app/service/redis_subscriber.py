@@ -56,9 +56,7 @@ class RedisAlertSubscriber:
                 )
             except redis.ResponseError as e:
                 if "BUSYGROUP" in str(e):
-                    logger.info(
-                        f"Consumer group '{self.consumer_group}' already exists"
-                    )
+                    logger.info(f"Consumer group '{self.consumer_group}' already exists")
                 else:
                     raise
 
@@ -84,18 +82,14 @@ class RedisAlertSubscriber:
             alert_data = json.loads(data.get("alert", "{}"))
             alert_event = AlertEvent(**alert_data)
 
-            logger.info(
-                f"Processing alert {message_id}: {alert_event.event_type.value}"
-            )
+            logger.info(f"Processing alert {message_id}: {alert_event.event_type.value}")
 
             # Route the alert with exponential backoff
             async with BackoffAlertRouter() as router:
                 await router.route_alert_with_backoff(alert_event)
 
             # Acknowledge the message
-            await self.redis_client.xack(
-                self.stream_key, self.consumer_group, message_id
-            )
+            await self.redis_client.xack(self.stream_key, self.consumer_group, message_id)
 
             logger.info(f"Successfully processed alert {message_id}")
             return True
@@ -103,9 +97,7 @@ class RedisAlertSubscriber:
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode alert JSON for message {message_id}: {e}")
             # Still acknowledge to prevent reprocessing of bad messages
-            await self.redis_client.xack(
-                self.stream_key, self.consumer_group, message_id
-            )
+            await self.redis_client.xack(self.stream_key, self.consumer_group, message_id)
             return False
 
         except Exception as e:

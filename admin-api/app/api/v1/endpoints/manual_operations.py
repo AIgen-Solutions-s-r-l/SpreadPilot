@@ -1,6 +1,6 @@
+import os
 from datetime import datetime
 
-import os
 import pytz
 from app.api.v1.endpoints.auth import get_current_user
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -18,13 +18,9 @@ MANUAL_OPERATION_PIN = os.getenv("MANUAL_OPERATION_PIN", "0312")
 
 
 class ManualCloseRequest(BaseModel):
-    follower_id: str = Field(
-        ..., description="ID of the follower to close positions for"
-    )
+    follower_id: str = Field(..., description="ID of the follower to close positions for")
     pin: str = Field(..., description="Security PIN for manual operations")
-    close_all: bool = Field(
-        default=True, description="Close all positions or specific ones"
-    )
+    close_all: bool = Field(default=True, description="Close all positions or specific ones")
     position_ids: list[str] | None = Field(
         default=None,
         description="Specific position IDs to close (if close_all is False)",
@@ -56,9 +52,7 @@ async def manual_close_positions(request: ManualCloseRequest = Body(...)):
     """
     # Verify PIN
     if request.pin != MANUAL_OPERATION_PIN:
-        logger.warning(
-            f"Invalid PIN attempt for manual close: follower_id={request.follower_id}"
-        )
+        logger.warning(f"Invalid PIN attempt for manual close: follower_id={request.follower_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid PIN")
 
     try:

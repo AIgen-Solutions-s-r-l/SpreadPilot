@@ -45,17 +45,13 @@ class ReportGenerator:
             try:
                 self.gcs_client = storage.Client()
                 self.bucket = self.gcs_client.bucket(settings.gcs_bucket_name)
-                logger.info(
-                    f"Initialized GCS client for bucket: {settings.gcs_bucket_name}"
-                )
+                logger.info(f"Initialized GCS client for bucket: {settings.gcs_bucket_name}")
             except Exception as e:
                 logger.error(f"Failed to initialize GCS client: {e}")
                 self.gcs_client = None
                 self.bucket = None
 
-    async def get_daily_pnl_data(
-        self, follower_id: str, year: int, month: int
-    ) -> dict[str, float]:
+    async def get_daily_pnl_data(self, follower_id: str, year: int, month: int) -> dict[str, float]:
         """Retrieve daily P&L data for a follower and month.
 
         Args:
@@ -171,14 +167,10 @@ class ReportGenerator:
         try:
             # Get P&L and commission data
             daily_pnl = await self.get_daily_pnl_data(follower.id, year, month)
-            total_pnl, commission_amount = await self.get_commission_data(
-                follower.id, year, month
-            )
+            total_pnl, commission_amount = await self.get_commission_data(follower.id, year, month)
 
             # Create temporary directory for report generation
-            temp_dir = tempfile.mkdtemp(
-                prefix=f"report_pdf_{follower.id}_{year}_{month:02d}_"
-            )
+            temp_dir = tempfile.mkdtemp(prefix=f"report_pdf_{follower.id}_{year}_{month:02d}_")
 
             # Generate PDF using core utility
             pdf_path = generate_pdf_report(
@@ -206,9 +198,7 @@ class ReportGenerator:
             )
             raise
 
-    async def generate_excel_report(
-        self, follower: Follower, year: int, month: int
-    ) -> str:
+    async def generate_excel_report(self, follower: Follower, year: int, month: int) -> str:
         """Generate Excel report for a follower.
 
         Args:
@@ -222,14 +212,10 @@ class ReportGenerator:
         try:
             # Get P&L and commission data
             daily_pnl = await self.get_daily_pnl_data(follower.id, year, month)
-            total_pnl, commission_amount = await self.get_commission_data(
-                follower.id, year, month
-            )
+            total_pnl, commission_amount = await self.get_commission_data(follower.id, year, month)
 
             # Create temporary directory for report generation
-            temp_dir = tempfile.mkdtemp(
-                prefix=f"report_excel_{follower.id}_{year}_{month:02d}_"
-            )
+            temp_dir = tempfile.mkdtemp(prefix=f"report_excel_{follower.id}_{year}_{month:02d}_")
 
             # Generate Excel using core utility
             excel_path = generate_excel_report(
@@ -284,9 +270,7 @@ class ReportGenerator:
             logger.error(f"Unexpected error uploading file to GCS: {e}")
             return False
 
-    def generate_signed_url(
-        self, gcs_path: str, expiration_hours: int = 24
-    ) -> str | None:
+    def generate_signed_url(self, gcs_path: str, expiration_hours: int = 24) -> str | None:
         """Generate signed URL for GCS object.
 
         Args:
@@ -304,14 +288,10 @@ class ReportGenerator:
             blob = self.bucket.blob(gcs_path)
 
             # Generate signed URL with expiration
-            expiration = datetime.datetime.utcnow() + datetime.timedelta(
-                hours=expiration_hours
-            )
+            expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=expiration_hours)
             url = blob.generate_signed_url(expiration=expiration, method="GET")
 
-            logger.info(
-                f"Generated signed URL for {gcs_path}, expires in {expiration_hours}h"
-            )
+            logger.info(f"Generated signed URL for {gcs_path}, expires in {expiration_hours}h")
             return url
 
         except GoogleCloudError as e:
@@ -352,9 +332,7 @@ class ReportGenerator:
             try:
                 if format_type == "pdf":
                     # Generate PDF report
-                    local_path = await self.generate_pdf_report(
-                        follower, year, month, logo_path
-                    )
+                    local_path = await self.generate_pdf_report(follower, year, month, logo_path)
                     file_extension = "pdf"
 
                 elif format_type == "excel":

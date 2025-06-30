@@ -53,7 +53,7 @@ class PnLService:
         self.get_follower_positions_callback = None
         self.get_market_price_callback = None
         self.subscribe_to_tick_feed_callback = None
-        
+
         # Redis client for stream subscriptions
         self.redis_client: redis.Redis | None = None
 
@@ -82,7 +82,7 @@ class PnLService:
         try:
             logger.info("Starting P&L monitoring service")
             self.monitoring_active = True
-            
+
             # Initialize Redis client
             self.redis_client = await get_redis_client()
             if not self.redis_client:
@@ -178,17 +178,11 @@ class PnLService:
             quote = Quote(
                 symbol=quote_data["symbol"],
                 contract_type=quote_data["contract_type"],
-                strike=(
-                    Decimal(str(quote_data["strike"]))
-                    if quote_data.get("strike")
-                    else None
-                ),
+                strike=(Decimal(str(quote_data["strike"])) if quote_data.get("strike") else None),
                 expiration=quote_data.get("expiration"),
                 bid=Decimal(str(quote_data["bid"])) if quote_data.get("bid") else None,
                 ask=Decimal(str(quote_data["ask"])) if quote_data.get("ask") else None,
-                last=(
-                    Decimal(str(quote_data["last"])) if quote_data.get("last") else None
-                ),
+                last=(Decimal(str(quote_data["last"])) if quote_data.get("last") else None),
                 volume=quote_data.get("volume"),
                 quote_time=quote_data["quote_time"],
             )
@@ -268,9 +262,7 @@ class PnLService:
                 try:
                     await self._calculate_follower_mtm(follower_id)
                 except Exception as e:
-                    logger.error(
-                        f"Error calculating MTM for follower {follower_id}: {e}"
-                    )
+                    logger.error(f"Error calculating MTM for follower {follower_id}: {e}")
 
         except Exception as e:
             logger.error(f"Error in MTM calculation: {e}")
@@ -435,20 +427,24 @@ class PnLService:
         try:
             self.subscriptions_active = True
             logger.info("Starting Redis stream subscriptions")
-            
+
             if not self.redis_client:
                 logger.error("No Redis client available")
                 return
 
             # Create consumer group if it doesn't exist
             try:
-                await self.redis_client.xgroup_create("trade_fills", "pnl_service", id="0", mkstream=True)
+                await self.redis_client.xgroup_create(
+                    "trade_fills", "pnl_service", id="0", mkstream=True
+                )
             except redis.exceptions.ResponseError as e:
                 if "BUSYGROUP" not in str(e):
                     logger.error(f"Error creating consumer group for trade_fills: {e}")
-            
+
             try:
-                await self.redis_client.xgroup_create("quotes", "pnl_service", id="0", mkstream=True)
+                await self.redis_client.xgroup_create(
+                    "quotes", "pnl_service", id="0", mkstream=True
+                )
             except redis.exceptions.ResponseError as e:
                 if "BUSYGROUP" not in str(e):
                     logger.error(f"Error creating consumer group for quotes: {e}")
@@ -457,12 +453,13 @@ class PnLService:
                 try:
                     # Read from trade_fills stream
                     trade_messages = await self.redis_client.xreadgroup(
-                        "pnl_service", "pnl_worker",
+                        "pnl_service",
+                        "pnl_worker",
                         {"trade_fills": ">"},
                         count=10,
-                        block=1000  # 1 second timeout
+                        block=1000,  # 1 second timeout
                     )
-                    
+
                     for stream_name, messages in trade_messages:
                         for message_id, fields in messages:
                             try:
@@ -471,31 +468,34 @@ class PnLService:
                                 follower_id = fill_data.get("follower_id")
                                 if follower_id:
                                     await self.record_trade_fill(follower_id, fill_data)
-                                
+
                                 # Acknowledge message
-                                await self.redis_client.xack("trade_fills", "pnl_service", message_id)
-                                
+                                await self.redis_client.xack(
+                                    "trade_fills", "pnl_service", message_id
+                                )
+
                             except Exception as e:
                                 logger.error(f"Error processing trade fill: {e}")
 
                     # Read from quotes stream
                     quote_messages = await self.redis_client.xreadgroup(
-                        "pnl_service", "pnl_worker",
+                        "pnl_service",
+                        "pnl_worker",
                         {"quotes": ">"},
                         count=10,
-                        block=1000  # 1 second timeout
+                        block=1000,  # 1 second timeout
                     )
-                    
+
                     for stream_name, messages in quote_messages:
                         for message_id, fields in messages:
                             try:
                                 # Process quote update
                                 quote_data = json.loads(fields.get("data", "{}"))
                                 await self.update_quote(quote_data)
-                                
+
                                 # Acknowledge message
                                 await self.redis_client.xack("quotes", "pnl_service", message_id)
-                                
+
                             except Exception as e:
                                 logger.error(f"Error processing quote: {e}")
 
@@ -602,9 +602,7 @@ class PnLService:
                 try:
                     await self._rollup_daily_pnl(follower_id, today)
                 except Exception as e:
-                    logger.error(
-                        f"Error in daily rollup for follower {follower_id}: {e}"
-                    )
+                    logger.error(f"Error in daily rollup for follower {follower_id}: {e}")
 
             logger.info(f"Completed daily P&L rollup for {today}")
 
@@ -629,9 +627,7 @@ class PnLService:
                 snapshots = intraday_result.scalars().all()
 
                 if not snapshots:
-                    logger.debug(
-                        f"No intraday data for follower {follower_id} on {trading_date}"
-                    )
+                    logger.debug(f"No intraday data for follower {follower_id} on {trading_date}")
                     return
 
                 # Get first and last snapshots
@@ -640,9 +636,7 @@ class PnLService:
 
                 # Calculate daily metrics
                 max_profit = max((s.total_pnl for s in snapshots), default=Decimal("0"))
-                max_drawdown = min(
-                    (s.total_pnl for s in snapshots), default=Decimal("0")
-                )
+                max_drawdown = min((s.total_pnl for s in snapshots), default=Decimal("0"))
 
                 # Get trading activity
                 trades_result = await session.execute(
@@ -707,18 +701,14 @@ class PnLService:
 
                         # Check if we already ran this month
                         if not await self._monthly_rollup_completed():
-                            logger.info(
-                                "Starting monthly P&L rollup at 00:10 ET on the 1st"
-                            )
+                            logger.info("Starting monthly P&L rollup at 00:10 ET on the 1st")
                             await self._perform_monthly_rollup()
 
                     # Check every 5 minutes
                     await asyncio.sleep(300)
 
                 except Exception as e:
-                    logger.error(
-                        f"Error in monthly rollup scheduler: {e}", exc_info=True
-                    )
+                    logger.error(f"Error in monthly rollup scheduler: {e}", exc_info=True)
                     await asyncio.sleep(600)  # Wait 10 minutes before retrying
 
         except asyncio.CancelledError:
@@ -767,9 +757,7 @@ class PnLService:
                 try:
                     await self._rollup_monthly_pnl(follower_id, year, month)
                 except Exception as e:
-                    logger.error(
-                        f"Error in monthly rollup for follower {follower_id}: {e}"
-                    )
+                    logger.error(f"Error in monthly rollup for follower {follower_id}: {e}")
 
             logger.info(f"Completed monthly P&L rollup for {year}-{month:02d}")
 
@@ -795,9 +783,7 @@ class PnLService:
                 daily_summaries = daily_result.scalars().all()
 
                 if not daily_summaries:
-                    logger.debug(
-                        f"No daily data for follower {follower_id} in {year}-{month:02d}"
-                    )
+                    logger.debug(f"No daily data for follower {follower_id} in {year}-{month:02d}")
                     return
 
                 # Calculate monthly metrics
@@ -808,12 +794,8 @@ class PnLService:
                 total_commission = sum(d.total_commission for d in daily_summaries)
 
                 # Performance metrics
-                best_day = max(
-                    (d.total_pnl for d in daily_summaries), default=Decimal("0")
-                )
-                worst_day = min(
-                    (d.total_pnl for d in daily_summaries), default=Decimal("0")
-                )
+                best_day = max((d.total_pnl for d in daily_summaries), default=Decimal("0"))
+                worst_day = min((d.total_pnl for d in daily_summaries), default=Decimal("0"))
                 max_profit = max(
                     (d.max_profit for d in daily_summaries if d.max_profit),
                     default=Decimal("0"),
@@ -829,9 +811,7 @@ class PnLService:
                 breakeven_days = sum(1 for d in daily_summaries if d.total_pnl == 0)
 
                 avg_daily_pnl = (
-                    total_pnl / len(daily_summaries)
-                    if daily_summaries
-                    else Decimal("0")
+                    total_pnl / len(daily_summaries) if daily_summaries else Decimal("0")
                 )
 
                 # Get start/end unrealized P&L
@@ -910,9 +890,7 @@ class PnLService:
             commission_pct = (
                 Decimal(str(follower_data.get("commission_pct", 20))) / 100
             )  # Convert percentage to decimal
-            commission_amount = (
-                commission_pct * monthly_pnl if is_payable else Decimal("0")
-            )
+            commission_amount = commission_pct * monthly_pnl if is_payable else Decimal("0")
 
             # Check if commission entry already exists
             existing_result = await session.execute(
@@ -989,9 +967,7 @@ class PnLService:
                     "id": follower_id,
                     "email": follower_doc.get("email", ""),
                     "iban": follower_doc.get("iban", ""),
-                    "commission_pct": follower_doc.get(
-                        "commission_pct", 20
-                    ),  # Default 20%
+                    "commission_pct": follower_doc.get("commission_pct", 20),  # Default 20%
                 }
 
             return None
@@ -1091,9 +1067,7 @@ class PnLService:
                         "is_payable": commission.is_payable,
                         "is_paid": commission.is_paid,
                         "payment_date": (
-                            commission.payment_date.isoformat()
-                            if commission.payment_date
-                            else None
+                            commission.payment_date.isoformat() if commission.payment_date else None
                         ),
                         "payment_reference": commission.payment_reference,
                     }

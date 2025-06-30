@@ -61,9 +61,7 @@ class TestRedisAlertSubscriber:
         import redis
 
         mock_redis.xgroup_create = AsyncMock(
-            side_effect=redis.ResponseError(
-                "BUSYGROUP Consumer Group name already exists"
-            )
+            side_effect=redis.ResponseError("BUSYGROUP Consumer Group name already exists")
         )
 
         with patch("redis.asyncio.from_url", return_value=mock_redis):
@@ -106,9 +104,7 @@ class TestRedisAlertSubscriber:
         mock_router.__aenter__ = AsyncMock(return_value=mock_router)
         mock_router.__aexit__ = AsyncMock()
 
-        with patch(
-            "app.service.redis_subscriber.BackoffAlertRouter", return_value=mock_router
-        ):
+        with patch("app.service.redis_subscriber.BackoffAlertRouter", return_value=mock_router):
             result = await redis_subscriber.process_message("1234-0", message_data)
 
         assert result is True
@@ -132,9 +128,7 @@ class TestRedisAlertSubscriber:
         mock_redis.xack.assert_called_once_with("test-alerts", "test-group", "1234-0")
 
     @pytest.mark.asyncio
-    async def test_process_message_routing_failure(
-        self, redis_subscriber, sample_alert_event
-    ):
+    async def test_process_message_routing_failure(self, redis_subscriber, sample_alert_event):
         """Test message processing when routing fails."""
         # Prepare message data
         alert_data = {
@@ -152,15 +146,11 @@ class TestRedisAlertSubscriber:
 
         # Mock BackoffAlertRouter to fail with context manager support
         mock_router = AsyncMock()
-        mock_router.route_alert_with_backoff = AsyncMock(
-            side_effect=Exception("Routing failed")
-        )
+        mock_router.route_alert_with_backoff = AsyncMock(side_effect=Exception("Routing failed"))
         mock_router.__aenter__ = AsyncMock(return_value=mock_router)
         mock_router.__aexit__ = AsyncMock(return_value=None)
 
-        with patch(
-            "app.service.redis_subscriber.BackoffAlertRouter", return_value=mock_router
-        ):
+        with patch("app.service.redis_subscriber.BackoffAlertRouter", return_value=mock_router):
             result = await redis_subscriber.process_message("1234-0", message_data)
 
         assert result is False

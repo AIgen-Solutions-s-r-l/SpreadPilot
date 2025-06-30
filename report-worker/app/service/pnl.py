@@ -37,9 +37,7 @@ async def _get_positions_for_month(year: int, month: int) -> list[Position]:
 
         # Query positions collection
         positions_collection = db["positions"]
-        cursor = positions_collection.find(
-            {"date": {"$gte": start_datetime, "$lt": end_datetime}}
-        )
+        cursor = positions_collection.find({"date": {"$gte": start_datetime, "$lt": end_datetime}})
 
         # Convert to Position objects
         positions = []
@@ -48,9 +46,7 @@ async def _get_positions_for_month(year: int, month: int) -> list[Position]:
                 positions.append(Position.model_validate(doc))
             except Exception as e:
                 doc_id = doc.get("_id", "UNKNOWN_ID")
-                logger.warning(
-                    f"Failed to parse position data for {doc_id}: {e}", exc_info=True
-                )
+                logger.warning(f"Failed to parse position data for {doc_id}: {e}", exc_info=True)
 
         logger.info(f"Fetched {len(positions)} positions for {year}-{month:02d}")
         return positions
@@ -75,17 +71,17 @@ async def calculate_monthly_pnl(year: int, month: int) -> float:
     try:
         # Get all positions for the specified month
         positions = await _get_positions_for_month(year, month)
-        
+
         total_pnl = 0.0
-        
+
         for position in positions:
             # Calculate P&L for each position
             position_pnl = 0.0
-            
+
             # For options, calculate based on entry price vs current/exit price
             if position.contract_type in ["CALL", "PUT"]:
                 entry_value = float(position.avg_cost) * position.quantity
-                
+
                 # Use realized P&L if position is closed, otherwise current market value
                 if position.quantity == 0:
                     # Closed position - use realized P&L
@@ -94,15 +90,17 @@ async def calculate_monthly_pnl(year: int, month: int) -> float:
                     # Open position - calculate unrealized P&L
                     current_value = float(position.market_value or 0)
                     position_pnl = current_value - entry_value
-            
+
             total_pnl += position_pnl
-            
-            logger.debug(f"Position {position.symbol} {position.strike}{position.contract_type}: "
-                        f"P&L = ${position_pnl:.2f}")
-        
+
+            logger.debug(
+                f"Position {position.symbol} {position.strike}{position.contract_type}: "
+                f"P&L = ${position_pnl:.2f}"
+            )
+
         logger.info(f"Total monthly P&L for {year}-{month:02d}: ${total_pnl:.2f}")
         return total_pnl
-        
+
     except Exception as e:
         logger.error(f"Error calculating monthly P&L: {e}", exc_info=True)
         return 0.0
@@ -157,46 +155,46 @@ async def calculate_and_store_daily_pnl(calculation_date: datetime.date) -> floa
         if not db:
             logger.error("Failed to connect to MongoDB")
             return 0.0
-            
+
         # Calculate start and end datetime for the day
         start_datetime = datetime.datetime.combine(calculation_date, datetime.time.min)
         end_datetime = datetime.datetime.combine(calculation_date, datetime.time.max)
-        
+
         # Fetch positions from MongoDB for the specified date
         positions_collection = db["positions"]
-        cursor = positions_collection.find({
-            "date": {"$gte": start_datetime, "$lte": end_datetime}
-        })
-        
+        cursor = positions_collection.find({"date": {"$gte": start_datetime, "$lte": end_datetime}})
+
         total_daily_pnl = 0.0
         position_count = 0
-        
+
         async for position_doc in cursor:
             try:
                 # Convert to Position object
                 position = Position.model_validate(position_doc)
-                
+
                 # Calculate daily P&L for this position
                 position_pnl = 0.0
-                
+
                 if position.contract_type in ["CALL", "PUT"]:
                     # Use daily realized P&L plus change in unrealized P&L
                     position_pnl = float(position.pnl_realized or 0)
-                    
+
                     # Add unrealized P&L change if position is still open
                     if position.quantity != 0:
                         position_pnl += float(position.pnl_unrealized or 0)
-                
+
                 total_daily_pnl += position_pnl
                 position_count += 1
-                
-                logger.debug(f"Position {position.symbol} {position.strike}{position.contract_type}: "
-                           f"Daily P&L = ${position_pnl:.2f}")
-                           
+
+                logger.debug(
+                    f"Position {position.symbol} {position.strike}{position.contract_type}: "
+                    f"Daily P&L = ${position_pnl:.2f}"
+                )
+
             except Exception as e:
                 logger.error(f"Error processing position: {e}")
                 continue
-        
+
         # Store the daily P&L in MongoDB (optional - could store in a daily_pnl collection)
         daily_pnl_collection = db["daily_pnl"]
         await daily_pnl_collection.update_one(
@@ -206,16 +204,18 @@ async def calculate_and_store_daily_pnl(calculation_date: datetime.date) -> floa
                     "date": calculation_date.isoformat(),
                     "total_pnl": total_daily_pnl,
                     "position_count": position_count,
-                    "calculated_at": datetime.datetime.utcnow()
+                    "calculated_at": datetime.datetime.utcnow(),
                 }
             },
-            upsert=True
+            upsert=True,
         )
-        
-        logger.info(f"Daily P&L for {calculation_date.isoformat()}: ${total_daily_pnl:.2f} "
-                   f"({position_count} positions)")
+
+        logger.info(
+            f"Daily P&L for {calculation_date.isoformat()}: ${total_daily_pnl:.2f} "
+            f"({position_count} positions)"
+        )
         return total_daily_pnl
-        
+
     except Exception as e:
         logger.error(f"Error calculating daily P&L: {e}", exc_info=True)
         return 0.0

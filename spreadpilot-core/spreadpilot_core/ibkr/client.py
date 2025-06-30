@@ -270,9 +270,7 @@ class IBKRClient:
             #     raise ValueError(f"Could not qualify contract for {symbol}")
             # contract = qualified_contracts[0]
             # Log a representation instead of the object itself
-            logger.info(
-                f"Stock contract created successfully: {repr(contract)}"
-            )
+            logger.info(f"Stock contract created successfully: {repr(contract)}")
             return contract
         except Exception:
             logger.error(
@@ -602,10 +600,7 @@ class IBKRClient:
                     }
 
                 # Check if order was partially filled
-                if (
-                    trade.orderStatus.status == "Submitted"
-                    and trade.orderStatus.filled > 0
-                ):
+                if trade.orderStatus.status == "Submitted" and trade.orderStatus.filled > 0:
                     logger.info(
                         "Order partially filled",
                         order_id=trade.order.orderId,
@@ -759,9 +754,7 @@ class IBKRClient:
             contract = self._get_qqq_option_contract(strike, right)
 
             # Exercise option
-            self.ib.exerciseOptions(
-                contract, quantity, 1, self.ib.wrapper.accounts[0], 0
-            )
+            self.ib.exerciseOptions(contract, quantity, 1, self.ib.wrapper.accounts[0], 0)
 
             logger.info(
                 "Options exercised",

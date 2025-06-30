@@ -10,9 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import fakeredis.aioredis as fakeredis
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core"))
 
 from app.service.time_value_monitor import TimeValueMonitor, TimeValueStatus
 
@@ -252,9 +250,7 @@ class TestTimeValueMonitor(unittest.TestCase):
             message_id, data = messages[1]
             alert_json = data[b"alert"]
             alert_data = json.loads(alert_json)
-            self.assertEqual(
-                alert_data["event_type"], AlertType.ASSIGNMENT_COMPENSATED.value
-            )
+            self.assertEqual(alert_data["event_type"], AlertType.ASSIGNMENT_COMPENSATED.value)
             self.assertIn("Closed position", alert_data["message"])
 
     async def test_check_position_short_critical(self):

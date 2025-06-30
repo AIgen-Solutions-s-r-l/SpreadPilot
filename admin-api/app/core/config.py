@@ -41,16 +41,20 @@ def get_settings() -> Settings:
     Uses the secret manager for sensitive values with fallback to env vars.
     """
     secret_manager = get_secret_manager()
-    
+
     # Get secrets with fallback to environment variables
     mongo_uri = secret_manager.get_secret(SecretType.MONGO_URI) or os.getenv("MONGO_URI", "")
-    admin_username = secret_manager.get_secret(SecretType.ADMIN_USERNAME) or os.getenv("ADMIN_USERNAME", "")
-    admin_password_hash = secret_manager.get_secret(SecretType.ADMIN_PASSWORD_HASH) or os.getenv("ADMIN_PASSWORD_HASH", "")
+    admin_username = secret_manager.get_secret(SecretType.ADMIN_USERNAME) or os.getenv(
+        "ADMIN_USERNAME", ""
+    )
+    admin_password_hash = secret_manager.get_secret(SecretType.ADMIN_PASSWORD_HASH) or os.getenv(
+        "ADMIN_PASSWORD_HASH", ""
+    )
     jwt_secret = secret_manager.get_secret(SecretType.JWT_SECRET) or os.getenv("JWT_SECRET", "")
-    
+
     return Settings(
         mongo_uri=mongo_uri,
         admin_username=admin_username,
         admin_password_hash=admin_password_hash,
-        jwt_secret=jwt_secret
+        jwt_secret=jwt_secret,
     )

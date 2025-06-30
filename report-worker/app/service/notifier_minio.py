@@ -33,9 +33,7 @@ def send_report_email_with_minio(
         - excel_url: MinIO URL for Excel (if uploaded)
         - email_sent: Whether email was sent
     """
-    logger.info(
-        f"Sending report email to follower {follower.id} for period {report_period}"
-    )
+    logger.info(f"Sending report email to follower {follower.id} for period {report_period}")
 
     report_info = {"pdf_url": None, "excel_url": None, "email_sent": False}
 
@@ -163,7 +161,5 @@ def send_report_email_with_minio(
             return False, report_info
 
     except Exception as e:
-        logger.exception(
-            f"Error sending report email to follower {follower.id}", exc_info=e
-        )
+        logger.exception(f"Error sending report email to follower {follower.id}", exc_info=e)
         return False, report_info

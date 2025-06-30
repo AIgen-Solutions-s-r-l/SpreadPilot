@@ -83,9 +83,7 @@ class TradingService:
         self.signal_processor = SignalProcessor(self)
         self.pnl_service = PnLService(self)
         self.time_value_monitor = TimeValueMonitor(self)
-        self.original_strategy_handler = OriginalStrategyHandler(
-            self, ORIGINAL_EMA_STRATEGY
-        )
+        self.original_strategy_handler = OriginalStrategyHandler(self, ORIGINAL_EMA_STRATEGY)
         self.vertical_spreads_strategy_handler = VerticalSpreadsStrategyHandler(
             self, VERTICAL_SPREADS_STRATEGY
         )
@@ -100,9 +98,7 @@ class TradingService:
             try:
                 await connect_to_mongo()  # Ensure client is connected
                 self.mongo_db = await get_mongo_db()  # Get the database handle
-                logger.info(
-                    "MongoDB connection established and database handle acquired."
-                )
+                logger.info("MongoDB connection established and database handle acquired.")
             except Exception as e:
                 logger.error(f"Error initializing MongoDB: {e}", exc_info=True)
                 self.status = ServiceStatus.ERROR
@@ -114,6 +110,7 @@ class TradingService:
         try:
             if self.settings.vault_enabled:
                 from spreadpilot_core.utils.vault import get_vault_client
+
                 self.vault_client = get_vault_client()
                 # Override client settings with config values
                 self.vault_client.vault_url = self.settings.vault_url
@@ -249,9 +246,7 @@ class TradingService:
                     await asyncio.sleep(60 * 60)  # Check every hour
 
                 except Exception as e:
-                    logger.error(
-                        f"Error in trading service main loop: {e}", exc_info=True
-                    )
+                    logger.error(f"Error in trading service main loop: {e}", exc_info=True)
                     self.status = ServiceStatus.ERROR
 
                     # Wait before retrying
@@ -339,9 +334,7 @@ class TradingService:
                 count=len(self.active_followers),
             )
         except Exception as e:
-            logger.error(
-                f"Error loading active followers from MongoDB: {e}", exc_info=True
-            )
+            logger.error(f"Error loading active followers from MongoDB: {e}", exc_info=True)
             self.status = ServiceStatus.ERROR
 
     async def get_secret(self, secret_ref: str) -> str | None:
@@ -356,7 +349,7 @@ class TradingService:
         if not self.settings.vault_enabled or not self.vault_client:
             logger.warning("Vault is not enabled or client not initialized")
             return None
-            
+
         try:
             # Get secret from Vault
             secret = self.vault_client.get_secret(secret_ref)
@@ -367,7 +360,9 @@ class TradingService:
                 elif len(secret) == 1:
                     return list(secret.values())[0]
                 else:
-                    logger.warning(f"Secret {secret_ref} is a dict with multiple values, returning None")
+                    logger.warning(
+                        f"Secret {secret_ref} is a dict with multiple values, returning None"
+                    )
                     return None
             return secret
         except Exception as e:
@@ -386,7 +381,7 @@ class TradingService:
         if not self.settings.vault_enabled or not self.vault_client:
             logger.warning("Vault is not enabled or client not initialized")
             return None
-            
+
         try:
             credentials = self.vault_client.get_ibkr_credentials(secret_ref)
             if credentials:

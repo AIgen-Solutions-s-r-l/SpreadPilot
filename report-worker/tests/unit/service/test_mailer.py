@@ -86,17 +86,13 @@ class TestCommissionMailer:
 
         # Mock file reading
         with patch("builtins.open", create=True) as mock_open:
-            mock_open.return_value.__enter__.return_value.read.return_value = (
-                b"PDF content"
-            )
+            mock_open.return_value.__enter__.return_value.read.return_value = b"PDF content"
 
             # Execute
             mailer._send_commission_email(mock_commission_record, mock_db)
 
         # Verify
-        mock_generate_pdf.assert_called_once_with(
-            mock_commission_record, "/tmp/test_report.pdf"
-        )
+        mock_generate_pdf.assert_called_once_with(mock_commission_record, "/tmp/test_report.pdf")
         mock_get_signed_url.assert_called_once()
 
         # Check that email was sent
@@ -106,9 +102,7 @@ class TestCommissionMailer:
         # Verify email properties
         assert sent_message.subject == "Commission Report - May 2025"
         assert len(sent_message.personalizations[0].tos) == 1
-        assert (
-            sent_message.personalizations[0].tos[0]["email"] == "follower@example.com"
-        )
+        assert sent_message.personalizations[0].tos[0]["email"] == "follower@example.com"
         assert len(sent_message.personalizations[0].ccs) == 1
         assert sent_message.personalizations[0].ccs[0]["email"] == "admin@example.com"
 
@@ -154,9 +148,7 @@ class TestCommissionMailer:
 
         # Mock file operations
         with patch("builtins.open", create=True) as mock_open:
-            mock_open.return_value.__enter__.return_value.read.return_value = (
-                b"PDF content"
-            )
+            mock_open.return_value.__enter__.return_value.read.return_value = b"PDF content"
             with patch("os.remove"):
                 # Execute
                 mailer._send_commission_email(mock_commission_record, mock_db)
@@ -200,9 +192,7 @@ class TestCommissionMailer:
 
         # Mock file operations
         with patch("builtins.open", create=True) as mock_open:
-            mock_open.return_value.__enter__.return_value.read.return_value = (
-                b"PDF content"
-            )
+            mock_open.return_value.__enter__.return_value.read.return_value = b"PDF content"
 
             # Execute and expect exception
             with pytest.raises(Exception, match="SendGrid error"):
@@ -290,9 +280,7 @@ class TestCommissionMailer:
         assert "Download Detailed Excel Report" in html
         assert "Pending" in html  # Payment status
 
-    def test_generate_email_html_with_payment_info(
-        self, mailer, mock_commission_record
-    ):
+    def test_generate_email_html_with_payment_info(self, mailer, mock_commission_record):
         """Test HTML email generation with payment information."""
         mock_commission_record.is_paid = True
         mock_commission_record.payment_date = date(2025, 6, 15)
@@ -324,9 +312,7 @@ class TestCreateMailerFromEnv:
         """Test creating mailer with all environment variables set."""
         create_mailer_from_env()
 
-        mock_mailer_class.assert_called_once_with(
-            "test-key", "admin@test.com", "sender@test.com"
-        )
+        mock_mailer_class.assert_called_once_with("test-key", "admin@test.com", "sender@test.com")
 
     @patch.dict(os.environ, {"SENDGRID_API_KEY": "test-key"})
     @patch("app.service.mailer.CommissionMailer")
@@ -341,7 +327,5 @@ class TestCreateMailerFromEnv:
     @patch.dict(os.environ, {}, clear=True)
     def test_create_mailer_from_env_missing_api_key(self):
         """Test error when SendGrid API key is missing."""
-        with pytest.raises(
-            ValueError, match="SENDGRID_API_KEY environment variable is required"
-        ):
+        with pytest.raises(ValueError, match="SENDGRID_API_KEY environment variable is required"):
             create_mailer_from_env()

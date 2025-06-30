@@ -110,9 +110,7 @@ class TestHealthEndpoints:
         assert response.status_code == 200
 
         data = response.json()
-        assert (
-            data["overall_status"] == "YELLOW"
-        )  # report-worker is unhealthy but not critical
+        assert data["overall_status"] == "YELLOW"  # report-worker is unhealthy but not critical
 
         # Check specific service statuses
         services_by_name = {s["name"]: s for s in data["services"]}
@@ -136,9 +134,7 @@ class TestHealthEndpoints:
             response_mock.elapsed.total_seconds.return_value = 0.100
             return response_mock
 
-        mock_httpx.return_value.__aenter__.return_value.get = (
-            mock_get_critical_unhealthy
-        )
+        mock_httpx.return_value.__aenter__.return_value.get = mock_get_critical_unhealthy
 
         response = client.get("/health")
         data = response.json()
@@ -165,9 +161,7 @@ class TestHealthEndpoints:
         """Test health endpoint when database is unhealthy"""
         with patch("app.api.v1.endpoints.health.get_database") as mock_db:
             db_mock = AsyncMock()
-            db_mock.admin.command = AsyncMock(
-                side_effect=Exception("Connection failed")
-            )
+            db_mock.admin.command = AsyncMock(side_effect=Exception("Connection failed"))
             mock_db.return_value = db_mock
 
             response = client.get("/health")

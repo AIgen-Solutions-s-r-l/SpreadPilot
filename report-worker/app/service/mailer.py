@@ -84,9 +84,7 @@ class CommissionMailer:
             except Exception as e:
                 logger.error(f"Failed to send report for {record.follower_id}: {e!s}")
                 results["failed"] += 1
-                results["errors"].append(
-                    {"follower_id": record.follower_id, "error": str(e)}
-                )
+                results["errors"].append({"follower_id": record.follower_id, "error": str(e)})
 
         return results
 
@@ -104,9 +102,7 @@ class CommissionMailer:
         pdf_path = self._generate_pdf_report(record)
 
         # Get signed URL for Excel report (assuming it's stored in GCS)
-        excel_filename = (
-            f"commission_{record.follower_id}_{record.year}_{record.month:02d}.xlsx"
-        )
+        excel_filename = f"commission_{record.follower_id}_{record.year}_{record.month:02d}.xlsx"
         excel_url = get_signed_url(
             bucket_name=os.getenv("GCS_BUCKET_NAME", "spreadpilot-reports"),
             blob_name=f"commission-reports/{excel_filename}",
@@ -135,9 +131,7 @@ class CommissionMailer:
         attachment = Attachment()
         attachment.file_content = FileContent(pdf_encoded)
         attachment.file_type = FileType("application/pdf")
-        attachment.file_name = FileName(
-            f'commission_report_{month_name.replace(" ", "_")}.pdf'
-        )
+        attachment.file_name = FileName(f'commission_report_{month_name.replace(" ", "_")}.pdf')
         attachment.disposition = Disposition("attachment")
 
         message.add_attachment(attachment)
@@ -153,17 +147,13 @@ class CommissionMailer:
                     record.sent_at = datetime.utcnow()
                     db.commit()
 
-                    logger.info(
-                        f"Successfully sent commission report to {record.follower_email}"
-                    )
+                    logger.info(f"Successfully sent commission report to {record.follower_email}")
 
                     # Clean up PDF file
                     os.remove(pdf_path)
                     return
                 else:
-                    raise Exception(
-                        f"SendGrid returned status code: {response.status_code}"
-                    )
+                    raise Exception(f"SendGrid returned status code: {response.status_code}")
 
             except Exception as e:
                 if attempt < self.max_retries - 1:

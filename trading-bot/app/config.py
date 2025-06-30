@@ -183,9 +183,7 @@ class Settings(BaseSettings):
             credentials = vault_client.get_ibkr_credentials(secret_ref)
 
             if credentials:
-                logger.info(
-                    f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}"
-                )
+                logger.info(f"Successfully retrieved IBKR credentials from Vault for: {secret_ref}")
                 return credentials
             else:
                 logger.warning(f"No IBKR credentials found in Vault for: {secret_ref}")

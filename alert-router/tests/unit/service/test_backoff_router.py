@@ -42,9 +42,7 @@ class TestBackoffAlertRouter:
     @pytest.mark.asyncio
     async def test_connect_disconnect(self, backoff_router):
         """Test MongoDB connection and disconnection."""
-        with patch(
-            "app.service.backoff_router.AsyncIOMotorClient"
-        ) as mock_client_class:
+        with patch("app.service.backoff_router.AsyncIOMotorClient") as mock_client_class:
             mock_client = Mock()
             mock_client.close = Mock()
             mock_client_class.return_value = mock_client
@@ -59,9 +57,7 @@ class TestBackoffAlertRouter:
     @pytest.mark.asyncio
     async def test_context_manager(self, backoff_router):
         """Test async context manager functionality."""
-        with patch(
-            "app.service.backoff_router.AsyncIOMotorClient"
-        ) as mock_client_class:
+        with patch("app.service.backoff_router.AsyncIOMotorClient") as mock_client_class:
             mock_client = Mock()
             mock_client.close = Mock()
             mock_client_class.return_value = mock_client
@@ -105,9 +101,7 @@ class TestBackoffAlertRouter:
         assert document["results"] == {"telegram": {"success": 1}}
 
     @pytest.mark.asyncio
-    async def test_save_alert_attempt_failed_final(
-        self, backoff_router, sample_alert_event
-    ):
+    async def test_save_alert_attempt_failed_final(self, backoff_router, sample_alert_event):
         """Test saving final failed attempt."""
         # Mock MongoDB
         mock_collection = AsyncMock()
@@ -139,9 +133,7 @@ class TestBackoffAlertRouter:
         mock_client.__getitem__ = Mock(return_value=mock_db)
         backoff_router.mongo_client = mock_client
 
-        await backoff_router.mark_alert_failed(
-            sample_alert_event, "All retries exhausted"
-        )
+        await backoff_router.mark_alert_failed(sample_alert_event, "All retries exhausted")
 
         mock_collection.insert_one.assert_called_once()
         document = mock_collection.insert_one.call_args[0][0]
@@ -218,9 +210,7 @@ class TestBackoffAlertRouter:
         """Test routing when all retries fail."""
         # Mock alert router to always fail
         mock_alert_router = AsyncMock()
-        mock_alert_router.route_alert = AsyncMock(
-            side_effect=Exception("Persistent error")
-        )
+        mock_alert_router.route_alert = AsyncMock(side_effect=Exception("Persistent error"))
         backoff_router.alert_router = mock_alert_router
 
         # Mock MongoDB
@@ -234,9 +224,7 @@ class TestBackoffAlertRouter:
         backoff_router.mongo_client = mock_client
 
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-            with pytest.raises(
-                Exception, match="Failed to route alert after 3 attempts"
-            ):
+            with pytest.raises(Exception, match="Failed to route alert after 3 attempts"):
                 await backoff_router.route_alert_with_backoff(sample_alert_event)
 
         assert mock_alert_router.route_alert.call_count == 3

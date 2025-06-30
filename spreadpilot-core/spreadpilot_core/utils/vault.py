@@ -96,9 +96,7 @@ class VaultClient:
             if credentials and isinstance(credentials, dict):
                 # Check for expected keys
                 if "IB_USER" in credentials and "IB_PASS" in credentials:
-                    logger.info(
-                        f"Retrieved IBKR credentials from Vault path: {secret_ref}"
-                    )
+                    logger.info(f"Retrieved IBKR credentials from Vault path: {secret_ref}")
                     return {
                         "IB_USER": credentials["IB_USER"],
                         "IB_PASS": credentials["IB_PASS"],
@@ -109,14 +107,10 @@ class VaultClient:
                 password = credentials.get("password") or credentials.get("pass")
 
                 if username and password:
-                    logger.info(
-                        f"Retrieved IBKR credentials from Vault path: {secret_ref}"
-                    )
+                    logger.info(f"Retrieved IBKR credentials from Vault path: {secret_ref}")
                     return {"IB_USER": username, "IB_PASS": password}
 
-            logger.warning(
-                f"No valid IBKR credentials found in Vault path: {secret_ref}"
-            )
+            logger.warning(f"No valid IBKR credentials found in Vault path: {secret_ref}")
             return None
 
         except Exception as e:
@@ -155,9 +149,7 @@ class VaultClient:
             health = self.client.sys.read_health_status()
 
             # Check if Vault is initialized and not sealed
-            is_healthy = health.get("initialized", False) and not health.get(
-                "sealed", True
-            )
+            is_healthy = health.get("initialized", False) and not health.get("sealed", True)
 
             if is_healthy:
                 logger.debug("Vault health check passed")

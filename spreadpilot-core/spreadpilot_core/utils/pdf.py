@@ -90,9 +90,7 @@ def generate_pdf_report(
 
         # Add title
         month_name = datetime.date(year, month, 1).strftime("%B")
-        title = Paragraph(
-            f"SpreadPilot Monthly Report - {month_name} {year}", title_style
-        )
+        title = Paragraph(f"SpreadPilot Monthly Report - {month_name} {year}", title_style)
         elements.append(title)
         elements.append(Spacer(1, 24))
 
@@ -248,9 +246,7 @@ def generate_commission_report_pdf(record: CommissionMonthly, output_path: str) 
 
         # Add title
         month_name = datetime.date(record.year, record.month, 1).strftime("%B")
-        title = Paragraph(
-            f"Commission Report - {month_name} {record.year}", title_style
-        )
+        title = Paragraph(f"Commission Report - {month_name} {record.year}", title_style)
         elements.append(title)
         elements.append(Spacer(1, 24))
 
@@ -338,9 +334,7 @@ def generate_commission_report_pdf(record: CommissionMonthly, output_path: str) 
         ]
 
         if record.payment_date:
-            payment_data.append(
-                ["Payment Date", record.payment_date.strftime("%Y-%m-%d")]
-            )
+            payment_data.append(["Payment Date", record.payment_date.strftime("%Y-%m-%d")])
         if record.payment_reference:
             payment_data.append(["Payment Reference", record.payment_reference])
 

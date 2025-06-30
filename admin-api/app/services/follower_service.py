@@ -38,10 +38,7 @@ class FollowerService:
 
         # Execute query
         cursor = (
-            collection.find(query)
-            .skip(skip)
-            .limit(limit)
-            .sort("created_at", pymongo.DESCENDING)
+            collection.find(query).skip(skip).limit(limit).sort("created_at", pymongo.DESCENDING)
         )
 
         # Convert to list of FollowerResponse
@@ -111,16 +108,12 @@ class FollowerService:
         collection = await self.get_collection()
 
         # Prepare update
-        update_dict = {
-            k: v for k, v in follower_update.model_dump().items() if v is not None
-        }
+        update_dict = {k: v for k, v in follower_update.model_dump().items() if v is not None}
         if update_dict:
             update_dict["updated_at"] = datetime.utcnow()
 
             # Update document
-            await collection.update_one(
-                {"_id": ObjectId(follower_id)}, {"$set": update_dict}
-            )
+            await collection.update_one({"_id": ObjectId(follower_id)}, {"$set": update_dict})
 
         # Return updated follower
         return await self.get_follower(follower_id)

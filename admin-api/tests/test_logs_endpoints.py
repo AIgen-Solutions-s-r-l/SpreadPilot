@@ -28,9 +28,7 @@ async def test_get_recent_logs_default(client: TestClient, auth_headers: dict):
         mock_cursor.to_list.return_value = mock_logs
 
         mock_collection = AsyncMock()
-        mock_collection.find.return_value.sort.return_value.limit.return_value = (
-            mock_cursor
-        )
+        mock_collection.find.return_value.sort.return_value.limit.return_value = mock_cursor
 
         mock_db.return_value = {"logs": mock_collection}
 
@@ -60,9 +58,7 @@ async def test_get_recent_logs_with_filters(client: TestClient, auth_headers: di
         mock_cursor.to_list.return_value = mock_logs
 
         mock_collection = AsyncMock()
-        mock_collection.find.return_value.sort.return_value.limit.return_value = (
-            mock_cursor
-        )
+        mock_collection.find.return_value.sort.return_value.limit.return_value = mock_cursor
 
         mock_db.return_value = {"logs": mock_collection}
 

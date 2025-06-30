@@ -62,9 +62,7 @@ def generate_excel_report(
         header_font = Font(name="Arial", size=12, bold=True)
         normal_font = Font(name="Arial", size=11)
 
-        header_fill = PatternFill(
-            start_color="DDDDDD", end_color="DDDDDD", fill_type="solid"
-        )
+        header_fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
 
         thin_border = Border(
             left=Side(style="thin"),
@@ -163,12 +161,8 @@ def generate_excel_report(
 
         # Add footer
         footer_row = 16 + len(sorted_dates) + 2
-        ws[f"A{footer_row}"] = (
-            f"This report was generated on {format_ny_time()} by SpreadPilot."
-        )
-        ws[f"A{footer_row + 1}"] = (
-            "For any questions, please contact capital@tradeautomation.it."
-        )
+        ws[f"A{footer_row}"] = f"This report was generated on {format_ny_time()} by SpreadPilot."
+        ws[f"A{footer_row + 1}"] = "For any questions, please contact capital@tradeautomation.it."
 
         ws.merge_cells(f"A{footer_row}:D{footer_row}")
         ws.merge_cells(f"A{footer_row + 1}:D{footer_row + 1}")

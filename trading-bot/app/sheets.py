@@ -191,9 +191,7 @@ class GoogleSheetsClient:
                     if len(row) <= ticker_index or row[ticker_index] != "QQQ":
                         logger.debug(
                             "Signal ticker is not QQQ",
-                            ticker=(
-                                row[ticker_index] if len(row) > ticker_index else None
-                            ),
+                            ticker=(row[ticker_index] if len(row) > ticker_index else None),
                         )
                         return None
 

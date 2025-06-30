@@ -41,17 +41,11 @@ class Follower(BaseModel):
     email: EmailStr = Field(..., description="Follower email address")
     iban: str = Field(..., description="Follower IBAN for commission payments")
     ibkr_username: str = Field(..., description="IBKR username")
-    ibkr_secret_ref: str = Field(
-        ..., description="Secret Manager reference for IBKR password"
-    )
+    ibkr_secret_ref: str = Field(..., description="Secret Manager reference for IBKR password")
     commission_pct: float = Field(..., description="Commission percentage (0-100)")
     enabled: bool = Field(default=False, description="Whether the follower is enabled")
-    state: FollowerState = Field(
-        default=FollowerState.DISABLED, description="Follower state"
-    )
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
-    )
+    state: FollowerState = Field(default=FollowerState.DISABLED, description="Follower state")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="Last update timestamp"
     )

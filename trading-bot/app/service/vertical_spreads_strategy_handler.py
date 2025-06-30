@@ -35,9 +35,7 @@ class VerticalSpreadsStrategyHandler:
         self.config = config
         self.ibkr_client: IBKRClient | None = None
         self.positions: dict[str, float] = {}  # Symbol -> Quantity
-        self.active_orders: dict[str, list[Order]] = (
-            {}
-        )  # Symbol -> List of active orders
+        self.active_orders: dict[str, list[Order]] = {}  # Symbol -> List of active orders
         self._initialized = False
         self._last_signal_check = None
         self._last_time_value_check = None
@@ -61,8 +59,7 @@ class VerticalSpreadsStrategyHandler:
             ib_settings = {
                 "host": self.service.settings.ib_gateway_host,
                 "port": self.service.settings.ib_gateway_port,
-                "client_id": self.service.settings.ib_client_id
-                + 20,  # Use a different client ID
+                "client_id": self.service.settings.ib_client_id + 20,  # Use a different client ID
                 "account": None,  # Let ib_insync determine account or fetch from secrets
                 "trading_mode": self.service.settings.ib_trading_mode,
             }
@@ -77,9 +74,7 @@ class VerticalSpreadsStrategyHandler:
             logger.info("VerticalSpreadsStrategyHandler initialization complete.")
 
         except Exception as e:
-            logger.error(
-                f"Error initializing VerticalSpreadsStrategyHandler: {e}", exc_info=True
-            )
+            logger.error(f"Error initializing VerticalSpreadsStrategyHandler: {e}", exc_info=True)
             self._initialized = False
 
     async def _fetch_initial_positions(self):
@@ -105,9 +100,7 @@ class VerticalSpreadsStrategyHandler:
         Also monitors Time Value of open positions.
         """
         if not self._initialized:
-            logger.warning(
-                "VerticalSpreadsStrategyHandler not initialized, cannot run."
-            )
+            logger.warning("VerticalSpreadsStrategyHandler not initialized, cannot run.")
             return
 
         logger.info("Starting VerticalSpreadsStrategyHandler run loop...")
@@ -148,9 +141,7 @@ class VerticalSpreadsStrategyHandler:
         except asyncio.CancelledError:
             logger.info("VerticalSpreadsStrategyHandler run loop cancelled.")
         except Exception as e:
-            logger.error(
-                f"Error in VerticalSpreadsStrategyHandler run loop: {e}", exc_info=True
-            )
+            logger.error(f"Error in VerticalSpreadsStrategyHandler run loop: {e}", exc_info=True)
         finally:
             logger.info("VerticalSpreadsStrategyHandler run loop finished.")
             await self.shutdown()
@@ -303,9 +294,7 @@ class VerticalSpreadsStrategyHandler:
         except Exception as e:
             logger.error(f"Error monitoring Time Value: {e}", exc_info=True)
 
-    async def _calculate_time_value(
-        self, position_key: str, qty: float
-    ) -> float | None:
+    async def _calculate_time_value(self, position_key: str, qty: float) -> float | None:
         """
         Calculate the Time Value of an option position.
 
@@ -344,9 +333,7 @@ class VerticalSpreadsStrategyHandler:
 
             # Get underlying price
             underlying_contract = await self.ibkr_client.get_stock_contract("QQQ")
-            underlying_price = await self.ibkr_client.get_market_price(
-                underlying_contract
-            )
+            underlying_price = await self.ibkr_client.get_market_price(underlying_contract)
             if underlying_price is None:
                 logger.warning("Failed to get underlying price for QQQ")
                 return None
@@ -363,9 +350,7 @@ class VerticalSpreadsStrategyHandler:
             return time_value
 
         except Exception as e:
-            logger.error(
-                f"Error calculating Time Value for {position_key}: {e}", exc_info=True
-            )
+            logger.error(f"Error calculating Time Value for {position_key}: {e}", exc_info=True)
             return None
 
     async def _close_position(self, position_key: str, qty: float):

@@ -24,9 +24,7 @@ async def get_followers(
     """
     try:
         follower_service = FollowerService(db=db)
-        followers = await follower_service.get_followers(
-            skip=skip, limit=limit, status=status
-        )
+        followers = await follower_service.get_followers(skip=skip, limit=limit, status=status)
         return followers
     except Exception as e:
         logger.error(f"Error getting followers: {e}")
@@ -119,9 +117,7 @@ async def update_follower(
             )
 
         # Update follower
-        updated_follower = await follower_service.update_follower(
-            follower_id, follower_update
-        )
+        updated_follower = await follower_service.update_follower(follower_id, follower_update)
         return updated_follower
     except HTTPException:
         raise

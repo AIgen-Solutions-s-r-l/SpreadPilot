@@ -106,9 +106,7 @@ class TestMinIOService:
             region_name="us-east-1",
         )
         s3_client.create_bucket(Bucket="test-bucket")
-        s3_client.put_object(
-            Bucket="test-bucket", Key="test-object", Body=b"test content"
-        )
+        s3_client.put_object(Bucket="test-bucket", Key="test-object", Body=b"test content")
 
         # Override the service's S3 client
         minio_service._s3_client = s3_client

@@ -12,9 +12,7 @@ MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "spreadpilot")  # Default DB name if 
 
 if not MONGO_URI:
     logger.error("MONGO_URI environment variable is not set.")
-    raise ValueError(
-        "MONGO_URI environment variable is required for MongoDB connection."
-    )
+    raise ValueError("MONGO_URI environment variable is required for MongoDB connection.")
 
 # Global variable to hold the client instance
 _mongo_client: AsyncIOMotorClient | None = None
@@ -31,13 +29,9 @@ async def connect_to_mongo():
             _mongo_client = AsyncIOMotorClient(MONGO_URI)
             # Optional: Verify connection by pinging the admin database
             await _mongo_client.admin.command("ping")
-            logger.info(
-                "MongoDB client initialized and connection verified successfully."
-            )
+            logger.info("MongoDB client initialized and connection verified successfully.")
         except Exception as e:
-            logger.error(
-                f"Failed to initialize or connect to MongoDB: {e}", exc_info=True
-            )
+            logger.error(f"Failed to initialize or connect to MongoDB: {e}", exc_info=True)
             _mongo_client = None  # Reset on failure
             raise
     elif is_testing:

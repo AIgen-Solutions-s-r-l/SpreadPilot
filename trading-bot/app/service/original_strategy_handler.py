@@ -36,9 +36,7 @@ class OriginalStrategyHandler:
         self.ibkr_client: IBKRClient | None = None
         self.positions: dict[str, float] = {}  # Symbol -> Quantity
         self.historical_data: dict[str, pd.DataFrame] = {}  # Symbol -> DataFrame
-        self.active_orders: dict[str, list[Order]] = (
-            {}
-        )  # Symbol -> List of active orders
+        self.active_orders: dict[str, list[Order]] = {}  # Symbol -> List of active orders
         self._initialized = False
         logger.info("OriginalStrategyHandler initialized.")
 
@@ -61,8 +59,7 @@ class OriginalStrategyHandler:
             ib_settings = {
                 "host": self.service.settings.ib_gateway_host,
                 "port": self.service.settings.ib_gateway_port,
-                "client_id": self.service.settings.ib_client_id
-                + 10,  # Use a different client ID
+                "client_id": self.service.settings.ib_client_id + 10,  # Use a different client ID
                 "account": None,  # Let ib_insync determine account or fetch from secrets
                 "trading_mode": self.service.settings.ib_trading_mode,
             }
@@ -80,9 +77,7 @@ class OriginalStrategyHandler:
             logger.info("OriginalStrategyHandler initialization complete.")
 
         except Exception as e:
-            logger.error(
-                f"Error initializing OriginalStrategyHandler: {e}", exc_info=True
-            )
+            logger.error(f"Error initializing OriginalStrategyHandler: {e}", exc_info=True)
             self._initialized = False
             # Optionally re-raise or handle specific connection errors
 
@@ -155,9 +150,7 @@ class OriginalStrategyHandler:
                     self.historical_data[symbol] = pd.DataFrame()  # Empty DataFrame
 
             except Exception as e:
-                logger.error(
-                    f"Error fetching historical data for {symbol}: {e}", exc_info=True
-                )
+                logger.error(f"Error fetching historical data for {symbol}: {e}", exc_info=True)
                 self.historical_data[symbol] = pd.DataFrame()  # Ensure key exists
 
     async def run(self, shutdown_event: asyncio.Event):
@@ -195,9 +188,7 @@ class OriginalStrategyHandler:
         except asyncio.CancelledError:
             logger.info("OriginalStrategyHandler run loop cancelled.")
         except Exception as e:
-            logger.error(
-                f"Error in OriginalStrategyHandler run loop: {e}", exc_info=True
-            )
+            logger.error(f"Error in OriginalStrategyHandler run loop: {e}", exc_info=True)
         finally:
             logger.info("OriginalStrategyHandler run loop finished.")
             await self.shutdown()
@@ -213,9 +204,7 @@ class OriginalStrategyHandler:
         """
         logger.debug(f"Processing bar for {symbol}: {bar}")
         if symbol not in self.historical_data:
-            logger.warning(
-                f"No historical data found for {symbol}, cannot process bar."
-            )
+            logger.warning(f"No historical data found for {symbol}, cannot process bar.")
             return
 
         # 1. Append new bar to historical data
@@ -232,9 +221,7 @@ class OriginalStrategyHandler:
             ]
         )
         new_row.set_index("time", inplace=True)
-        self.historical_data[symbol] = pd.concat(
-            [self.historical_data[symbol], new_row]
-        )
+        self.historical_data[symbol] = pd.concat([self.historical_data[symbol], new_row])
 
         # Ensure enough data for EMA calculation
         if len(self.historical_data[symbol]) < self.config["slow_ema"]:
@@ -269,23 +256,15 @@ class OriginalStrategyHandler:
                 symbol, sec_type="STK", exchange="SMART"
             )
             if not contract:
-                logger.warning(
-                    f"Could not find contract for {symbol} during processing."
-                )
+                logger.warning(f"Could not find contract for {symbol} during processing.")
                 return
             contract = contract[0].contract
 
-            if (
-                is_bullish_crossover and current_position <= 0
-            ):  # Enter long or close short
+            if is_bullish_crossover and current_position <= 0:  # Enter long or close short
                 # Close short position if exists
                 if current_position < 0:
-                    logger.info(
-                        f"Bullish Crossover: Closing short position for {symbol}"
-                    )
-                    close_order = self._create_market_order(
-                        "BUY", abs(current_position)
-                    )
+                    logger.info(f"Bullish Crossover: Closing short position for {symbol}")
+                    close_order = self._create_market_order("BUY", abs(current_position))
                     trade = await self.ibkr_client.place_order(contract, close_order)
                     logger.info(f"Placed order to close short {symbol}: {trade}")
                     await self._send_alert(
@@ -296,9 +275,7 @@ class OriginalStrategyHandler:
                         "MKT",
                         "Close Short (Bullish Crossover)",
                     )
-                    self.positions[symbol] = (
-                        0  # Assume filled for now, update on fill event later
-                    )
+                    self.positions[symbol] = 0  # Assume filled for now, update on fill event later
 
                 # Enter long position
                 logger.info(f"Bullish Crossover: Entering long position for {symbol}")
@@ -321,25 +298,15 @@ class OriginalStrategyHandler:
                     stop_order = self._create_trailing_stop_order(
                         "SELL", quantity, self.config["trailing_stop_pct"]
                     )
-                    stop_trade = await self.ibkr_client.place_order(
-                        contract, stop_order
-                    )
-                    logger.info(
-                        f"Placed trailing stop loss for long {symbol}: {stop_trade}"
-                    )
+                    stop_trade = await self.ibkr_client.place_order(contract, stop_order)
+                    logger.info(f"Placed trailing stop loss for long {symbol}: {stop_trade}")
                     # TODO: Track this stop order
 
-            elif (
-                is_bearish_crossover and current_position >= 0
-            ):  # Enter short or close long
+            elif is_bearish_crossover and current_position >= 0:  # Enter short or close long
                 # Close long position if exists
                 if current_position > 0:
-                    logger.info(
-                        f"Bearish Crossover: Closing long position for {symbol}"
-                    )
-                    close_order = self._create_market_order(
-                        "SELL", abs(current_position)
-                    )
+                    logger.info(f"Bearish Crossover: Closing long position for {symbol}")
+                    close_order = self._create_market_order("SELL", abs(current_position))
                     trade = await self.ibkr_client.place_order(contract, close_order)
                     logger.info(f"Placed order to close long {symbol}: {trade}")
                     await self._send_alert(
@@ -373,12 +340,8 @@ class OriginalStrategyHandler:
                     stop_order = self._create_trailing_stop_order(
                         "BUY", quantity, self.config["trailing_stop_pct"]
                     )
-                    stop_trade = await self.ibkr_client.place_order(
-                        contract, stop_order
-                    )
-                    logger.info(
-                        f"Placed trailing stop loss for short {symbol}: {stop_trade}"
-                    )
+                    stop_trade = await self.ibkr_client.place_order(contract, stop_order)
+                    logger.info(f"Placed trailing stop loss for short {symbol}: {stop_trade}")
                     # TODO: Track this stop order
 
         except Exception as e:
@@ -408,9 +371,7 @@ class OriginalStrategyHandler:
                         symbol, sec_type="STK", exchange="SMART"
                     )
                     if not contract:
-                        logger.warning(
-                            f"Could not find contract for {symbol} during EOD."
-                        )
+                        logger.warning(f"Could not find contract for {symbol} during EOD.")
                         continue
                     contract = contract[0].contract
 
@@ -448,9 +409,7 @@ class OriginalStrategyHandler:
         """Calculates the Exponential Moving Average."""
         return series.ewm(span=span, adjust=False).mean()
 
-    def _check_bullish_crossover(
-        self, fast_ema: pd.Series, slow_ema: pd.Series
-    ) -> bool:
+    def _check_bullish_crossover(self, fast_ema: pd.Series, slow_ema: pd.Series) -> bool:
         """Checks if the fast EMA crossed above the slow EMA."""
         if len(fast_ema) < 2 or len(slow_ema) < 2:
             return False
@@ -460,9 +419,7 @@ class OriginalStrategyHandler:
         prev_slow = slow_ema.iloc[-2]
         return prev_fast < prev_slow and current_fast >= current_slow
 
-    def _check_bearish_crossover(
-        self, fast_ema: pd.Series, slow_ema: pd.Series
-    ) -> bool:
+    def _check_bearish_crossover(self, fast_ema: pd.Series, slow_ema: pd.Series) -> bool:
         """Checks if the fast EMA crossed below the slow EMA."""
         if len(fast_ema) < 2 or len(slow_ema) < 2:
             return False
@@ -492,9 +449,7 @@ class OriginalStrategyHandler:
         """Calculates position size based on dollar amount and price."""
         if price <= 0:
             return 0
-        dollar_amount = self.config.get(
-            "dollar_amount", 1000
-        )  # Default to 1000 if not set
+        dollar_amount = self.config.get("dollar_amount", 1000)  # Default to 1000 if not set
         quantity = int(dollar_amount / price)
         return max(1, quantity)  # Ensure at least 1 share
 

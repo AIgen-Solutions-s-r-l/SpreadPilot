@@ -106,9 +106,7 @@ class TestVerticalSpreadsStrategyHandler(unittest.TestCase):
     async def test_process_signal_insufficient_margin(self, mock_get_ny_time):
         """Test processing a signal with insufficient margin."""
         # Mock the necessary methods
-        self.handler._check_margin_for_trade = AsyncMock(
-            return_value=(False, "Insufficient funds")
-        )
+        self.handler._check_margin_for_trade = AsyncMock(return_value=(False, "Insufficient funds"))
         self.handler._place_vertical_spread = AsyncMock()
         self.handler._send_alert = AsyncMock()
 
@@ -165,12 +163,8 @@ class TestVerticalSpreadsStrategyHandler(unittest.TestCase):
     async def test_monitor_time_value_closes_position(self, mock_get_ny_time):
         """Test that monitor_time_value closes positions when time value is below threshold."""
         # Mock the necessary methods
-        self.handler.ibkr_client.get_positions = AsyncMock(
-            return_value={"QQQ-380-C": 1}
-        )
-        self.handler._calculate_time_value = AsyncMock(
-            return_value=0.05
-        )  # Below threshold
+        self.handler.ibkr_client.get_positions = AsyncMock(return_value={"QQQ-380-C": 1})
+        self.handler._calculate_time_value = AsyncMock(return_value=0.05)  # Below threshold
         self.handler._close_position = AsyncMock()
 
         # Monitor time value
@@ -185,12 +179,8 @@ class TestVerticalSpreadsStrategyHandler(unittest.TestCase):
     async def test_monitor_time_value_keeps_position(self, mock_get_ny_time):
         """Test that monitor_time_value keeps positions when time value is above threshold."""
         # Mock the necessary methods
-        self.handler.ibkr_client.get_positions = AsyncMock(
-            return_value={"QQQ-380-C": 1}
-        )
-        self.handler._calculate_time_value = AsyncMock(
-            return_value=0.15
-        )  # Above threshold
+        self.handler.ibkr_client.get_positions = AsyncMock(return_value={"QQQ-380-C": 1})
+        self.handler._calculate_time_value = AsyncMock(return_value=0.15)  # Above threshold
         self.handler._close_position = AsyncMock()
 
         # Monitor time value

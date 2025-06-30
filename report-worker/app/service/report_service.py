@@ -54,9 +54,7 @@ class ReportService:
     def _get_previous_month(self, current_date: datetime.date) -> tuple[int, int]:
         """Calculates the year and month of the previous month."""
         first_day_of_current_month = current_date.replace(day=1)
-        last_day_of_previous_month = first_day_of_current_month - datetime.timedelta(
-            days=1
-        )
+        last_day_of_previous_month = first_day_of_current_month - datetime.timedelta(days=1)
         return last_day_of_previous_month.year, last_day_of_previous_month.month
 
     async def process_monthly_reports(self, trigger_date: datetime.date):
@@ -66,9 +64,7 @@ class ReportService:
         Args:
             trigger_date: The date the process was triggered (used to determine the reporting month).
         """
-        logger.info(
-            f"Starting monthly report process triggered on {trigger_date.isoformat()}..."
-        )
+        logger.info(f"Starting monthly report process triggered on {trigger_date.isoformat()}...")
 
         year, month = self._get_previous_month(trigger_date)
         report_period = f"{year:04d}-{month:02d}"
@@ -96,9 +92,7 @@ class ReportService:
                     if follower.commission_pct is not None
                     else config.DEFAULT_COMMISSION_PERCENTAGE
                 )
-                commission_amount = pnl.calculate_commission(
-                    total_monthly_pnl, follower
-                )
+                commission_amount = pnl.calculate_commission(total_monthly_pnl, follower)
 
                 # --- 3b: Generate Reports ---
                 pdf_path = await generator.generate_pdf_report(
@@ -117,23 +111,17 @@ class ReportService:
                 )
 
                 # --- 3c: Send Notification ---
-                if notifier.send_report_email(
-                    follower, report_period, pdf_path, excel_path
-                ):
+                if notifier.send_report_email(follower, report_period, pdf_path, excel_path):
                     logger.info(
                         f"Successfully processed and sent report for follower {follower.id}"
                     )
                     success_count += 1
                 else:
-                    logger.error(
-                        f"Failed to send report email for follower {follower.id}"
-                    )
+                    logger.error(f"Failed to send report email for follower {follower.id}")
                     failure_count += 1
 
             except Exception as e:
-                logger.exception(
-                    f"Unhandled error processing follower {follower.id}", exc_info=e
-                )
+                logger.exception(f"Unhandled error processing follower {follower.id}", exc_info=e)
                 failure_count += 1
 
         logger.info(
@@ -147,9 +135,7 @@ class ReportService:
         Args:
             calculation_date: The date for which to calculate P&L.
         """
-        logger.info(
-            f"Starting daily P&L calculation for {calculation_date.isoformat()}..."
-        )
+        logger.info(f"Starting daily P&L calculation for {calculation_date.isoformat()}...")
         daily_pnl = await pnl.calculate_and_store_daily_pnl(calculation_date)
         logger.info(
             f"Daily P&L calculation finished for {calculation_date.isoformat()}. Result: {daily_pnl}"

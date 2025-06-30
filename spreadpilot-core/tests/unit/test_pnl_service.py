@@ -73,8 +73,7 @@ def random_trades():
             "commission": Decimal(str(round(random.uniform(0.5, 2.0), 2))),
             "order_id": f"ORDER{i}",
             "execution_id": f"EXEC{i}",
-            "trade_time": datetime.datetime.utcnow()
-            - timedelta(minutes=random.randint(0, 300)),
+            "trade_time": datetime.datetime.utcnow() - timedelta(minutes=random.randint(0, 300)),
         }
         trades.append(trade)
 
@@ -105,9 +104,7 @@ class TestPnLService:
     @pytest.mark.asyncio
     async def test_record_trade_fill(self, pnl_service, mock_db_session, random_trades):
         """Test recording trade fills."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Record a random trade
@@ -126,9 +123,7 @@ class TestPnLService:
     @pytest.mark.asyncio
     async def test_update_quote(self, pnl_service, mock_db_session):
         """Test updating market quotes."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             quote_data = {
@@ -161,9 +156,7 @@ class TestPnLService:
         self, pnl_service, mock_db_session, random_positions
     ):
         """Test MTM calculation with random positions."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Set up callbacks
@@ -183,9 +176,7 @@ class TestPnLService:
             await pnl_service.add_follower("test-follower-1")
 
             # Mock database responses
-            mock_db_session.execute.return_value.scalar.return_value = Decimal(
-                "5.50"
-            )  # Commission
+            mock_db_session.execute.return_value.scalar.return_value = Decimal("5.50")  # Commission
             mock_db_session.execute.return_value.scalars.return_value.all.return_value = (
                 []
             )  # No trades
@@ -203,9 +194,7 @@ class TestPnLService:
     @pytest.mark.asyncio
     async def test_daily_rollup(self, pnl_service, mock_db_session):
         """Test daily P&L rollup."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Create mock intraday snapshots
@@ -253,9 +242,7 @@ class TestPnLService:
         self, pnl_service, mock_db_session, mock_follower_data
     ):
         """Test monthly P&L rollup with commission calculation."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Create mock daily summaries
@@ -265,9 +252,7 @@ class TestPnLService:
             for i in range(20):  # 20 trading days
                 daily = MagicMock()
                 daily.realized_pnl = Decimal(str(random.randint(-500, 1000)))
-                daily.total_pnl = daily.realized_pnl + Decimal(
-                    str(random.randint(-200, 200))
-                )
+                daily.total_pnl = daily.realized_pnl + Decimal(str(random.randint(-200, 200)))
                 daily.trades_count = random.randint(0, 10)
                 daily.total_volume = daily.trades_count * random.randint(1, 5)
                 daily.total_commission = Decimal(str(daily.trades_count * 1.5))
@@ -287,9 +272,7 @@ class TestPnLService:
             mock_db_session.execute.side_effect = [mock_result, MagicMock()]
 
             # Mock follower data retrieval
-            with patch.object(
-                pnl_service, "_get_follower_data", return_value=mock_follower_data
-            ):
+            with patch.object(pnl_service, "_get_follower_data", return_value=mock_follower_data):
                 # Add follower and perform rollup
                 await pnl_service.add_follower("test-follower-1")
                 await pnl_service._rollup_monthly_pnl("test-follower-1", 2025, 6)
@@ -329,9 +312,7 @@ class TestPnLService:
         mock_result.scalar.return_value = None
         mock_db_session.execute.return_value = mock_result
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=mock_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=mock_follower_data):
             await pnl_service._calculate_monthly_commission(
                 mock_db_session, "test-follower-1", 2025, 6, monthly_pnl
             )
@@ -358,9 +339,7 @@ class TestPnLService:
         mock_result.scalar.return_value = None
         mock_db_session.execute.return_value = mock_result
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=mock_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=mock_follower_data):
             await pnl_service._calculate_monthly_commission(
                 mock_db_session, "test-follower-1", 2025, 6, monthly_pnl
             )
@@ -385,9 +364,7 @@ class TestPnLService:
         mock_result.scalar.return_value = None
         mock_db_session.execute.return_value = mock_result
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=mock_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=mock_follower_data):
             await pnl_service._calculate_monthly_commission(
                 mock_db_session, "test-follower-1", 2025, 6, monthly_pnl
             )
@@ -413,9 +390,7 @@ class TestPnLService:
         mock_result.scalar.return_value = existing_commission
         mock_db_session.execute.return_value = mock_result
 
-        with patch.object(
-            pnl_service, "_get_follower_data", return_value=mock_follower_data
-        ):
+        with patch.object(pnl_service, "_get_follower_data", return_value=mock_follower_data):
             await pnl_service._calculate_monthly_commission(
                 mock_db_session, "test-follower-1", 2025, 6, monthly_pnl
             )
@@ -473,9 +448,7 @@ class TestPnLService:
     @pytest.mark.asyncio
     async def test_get_current_pnl(self, pnl_service, mock_db_session):
         """Test getting current P&L for display."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock latest snapshot
@@ -503,9 +476,7 @@ class TestPnLService:
     @pytest.mark.asyncio
     async def test_get_monthly_commission(self, pnl_service, mock_db_session):
         """Test retrieving monthly commission for display."""
-        with patch(
-            "spreadpilot_core.pnl.service.get_postgres_session"
-        ) as mock_get_session:
+        with patch("spreadpilot_core.pnl.service.get_postgres_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_db_session
 
             # Mock commission entry
@@ -523,9 +494,7 @@ class TestPnLService:
             mock_db_session.execute.return_value = mock_result
 
             # Get monthly commission
-            result = await pnl_service.get_monthly_commission(
-                "test-follower-1", 2025, 6
-            )
+            result = await pnl_service.get_monthly_commission("test-follower-1", 2025, 6)
 
             assert result["follower_id"] == "test-follower-1"
             assert result["monthly_pnl"] == 5000.00

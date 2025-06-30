@@ -147,9 +147,7 @@ class AlertManager:
                 not self.service.settings.telegram_bot_token
                 or not self.service.settings.telegram_chat_id
             ):
-                logger.warning(
-                    "Telegram settings not configured, skipping notification"
-                )
+                logger.warning("Telegram settings not configured, skipping notification")
                 return
 
             # Send alert message
@@ -227,9 +225,7 @@ class AlertManager:
                     f"Alert {alert_id} was potentially acknowledged by another process concurrently, or update failed."
                 )
                 # Check again to be sure
-                refreshed_doc = await alerts_collection.find_one(
-                    {"_id": alert_object_id}
-                )
+                refreshed_doc = await alerts_collection.find_one({"_id": alert_object_id})
                 if refreshed_doc and refreshed_doc.get("acknowledged"):
                     return True  # It is acknowledged now
                 else:

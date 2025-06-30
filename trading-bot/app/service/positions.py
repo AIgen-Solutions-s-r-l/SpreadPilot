@@ -87,9 +87,7 @@ class PositionManager:
             position_dict = position.model_dump(
                 by_alias=True, exclude={"id"} if not existing_doc else {}
             )  # Exclude 'id' on insert
-            await positions_collection.update_one(
-                query, {"$set": position_dict}, upsert=True
-            )
+            await positions_collection.update_one(query, {"$set": position_dict}, upsert=True)
             logger.debug(
                 f"Upserted position for follower {follower_id} on {trading_date} to MongoDB."
             )
@@ -127,9 +125,7 @@ class PositionManager:
                             await self.check_positions(follower_id)
 
                     # Wait for next check
-                    await asyncio.sleep(
-                        self.service.settings.position_check_interval_seconds
-                    )
+                    await asyncio.sleep(self.service.settings.position_check_interval_seconds)
 
                 except Exception as e:
                     logger.error(f"Error checking positions: {e}", exc_info=True)
@@ -226,9 +222,7 @@ class PositionManager:
                 position_dict = position.model_dump(
                     by_alias=True, exclude={"id"} if not existing_doc else {}
                 )
-                await positions_collection.update_one(
-                    query, {"$set": position_dict}, upsert=True
-                )
+                await positions_collection.update_one(query, {"$set": position_dict}, upsert=True)
                 logger.debug(
                     f"Upserted assigned position for follower {follower_id} on {trading_date} to MongoDB."
                 )
@@ -281,9 +275,7 @@ class PositionManager:
 
                             # Update position state
                             position.assignment_state = AssignmentState.COMPENSATED
-                            position.updated_at = datetime.datetime.now(
-                                datetime.UTC
-                            )  # Ensure UTC
+                            position.updated_at = datetime.datetime.now(datetime.UTC)  # Ensure UTC
 
                             # Save position to MongoDB (Update existing)
                             # We know it exists because we just updated it to ASSIGNED
@@ -332,9 +324,7 @@ class PositionManager:
                 position_dict = position.model_dump(
                     by_alias=True, exclude={"id"} if not existing_doc else {}
                 )
-                await positions_collection.update_one(
-                    query, {"$set": position_dict}, upsert=True
-                )
+                await positions_collection.update_one(query, {"$set": position_dict}, upsert=True)
                 logger.debug(
                     f"Upserted PNL position for follower {follower_id} on {trading_date} to MongoDB."
                 )

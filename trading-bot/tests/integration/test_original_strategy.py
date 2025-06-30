@@ -98,9 +98,7 @@ def mock_ibkr_client(mock_ibkr_server):
     client.is_connected = MagicMock(return_value=True)
 
     # Link to mock server
-    client.get_positions = AsyncMock(
-        side_effect=lambda: mock_ibkr_server.get_positions()
-    )
+    client.get_positions = AsyncMock(side_effect=lambda: mock_ibkr_server.get_positions())
     client.get_contract_details = AsyncMock(
         side_effect=lambda symbol, **kwargs: [
             MagicMock(contract=mock_ibkr_server.get_contract(symbol))
@@ -114,9 +112,7 @@ def mock_ibkr_client(mock_ibkr_server):
         )
     )
     client.place_order = AsyncMock(
-        side_effect=lambda contract, order: mock_ibkr_server.place_order(
-            contract, order
-        )
+        side_effect=lambda contract, order: mock_ibkr_server.place_order(contract, order)
     )
 
     return client
@@ -158,9 +154,11 @@ async def trading_service(mock_settings, mock_sheets_client):
                 # Create mock vault client
                 mock_vault_client = MagicMock()
                 mock_vault_client.get_secret = MagicMock(return_value="test_secret")
-                mock_vault_client.get_ibkr_credentials = MagicMock(return_value={"IB_USER": "test_user", "IB_PASS": "test_pass"})
+                mock_vault_client.get_ibkr_credentials = MagicMock(
+                    return_value={"IB_USER": "test_user", "IB_PASS": "test_pass"}
+                )
                 mock_get_vault_client.return_value = mock_vault_client
-                
+
                 service = TradingService(mock_settings, mock_sheets_client)
                 # Mock DB and vault client
                 service.mongo_db = MagicMock()
@@ -233,9 +231,7 @@ async def test_trading_service_run_with_strategy(trading_service, mock_ibkr_clie
 
 
 @pytest.mark.asyncio
-async def test_trading_service_shutdown_with_strategy(
-    trading_service, mock_ibkr_client
-):
+async def test_trading_service_shutdown_with_strategy(trading_service, mock_ibkr_client):
     """Test that TradingService correctly shuts down the OriginalStrategyHandler."""
     # Patch the IBKRClient creation
     with patch(
@@ -254,9 +250,7 @@ async def test_trading_service_shutdown_with_strategy(
 
 
 @pytest.mark.asyncio
-async def test_strategy_interaction_with_ibkr(
-    trading_service, mock_ibkr_client, mock_ibkr_server
-):
+async def test_strategy_interaction_with_ibkr(trading_service, mock_ibkr_client, mock_ibkr_server):
     """Test that the OriginalStrategyHandler correctly interacts with IBKRClient."""
     # Patch the IBKRClient creation
     with patch(
@@ -291,9 +285,7 @@ async def test_strategy_interaction_with_ibkr(
                 return_value=False,
             ):
                 # Process the bar
-                await trading_service.original_strategy_handler._process_bar(
-                    symbol, bar
-                )
+                await trading_service.original_strategy_handler._process_bar(symbol, bar)
 
                 # Check that orders were placed
                 assert mock_ibkr_client.place_order.call_count >= 1
@@ -306,9 +298,7 @@ async def test_strategy_interaction_with_ibkr(
 
 
 @pytest.mark.asyncio
-async def test_strategy_eod_processing(
-    trading_service, mock_ibkr_client, mock_ibkr_server
-):
+async def test_strategy_eod_processing(trading_service, mock_ibkr_client, mock_ibkr_server):
     """Test that the OriginalStrategyHandler correctly processes EOD."""
     # Patch the IBKRClient creation
     with patch(
@@ -341,9 +331,7 @@ async def test_strategy_eod_processing(
 
 
 @pytest.mark.asyncio
-async def test_strategy_market_data_response(
-    trading_service, mock_ibkr_client, mock_ibkr_server
-):
+async def test_strategy_market_data_response(trading_service, mock_ibkr_client, mock_ibkr_server):
     """Test that the OriginalStrategyHandler correctly responds to market data changes."""
     # Patch the IBKRClient creation
     with patch(
@@ -406,9 +394,7 @@ async def test_strategy_market_data_response(
                 "_check_bearish_crossover",
                 return_value=False,
             ):
-                await trading_service.original_strategy_handler._process_bar(
-                    "SOXS", bars[0]
-                )
+                await trading_service.original_strategy_handler._process_bar("SOXS", bars[0])
 
         # Second bar: Bearish crossover for SOXL
         with patch.object(
@@ -421,9 +407,7 @@ async def test_strategy_market_data_response(
                 "_check_bearish_crossover",
                 return_value=True,
             ):
-                await trading_service.original_strategy_handler._process_bar(
-                    "SOXL", bars[1]
-                )
+                await trading_service.original_strategy_handler._process_bar("SOXL", bars[1])
 
         # Third bar: No crossover
         with patch.object(
@@ -436,9 +420,7 @@ async def test_strategy_market_data_response(
                 "_check_bearish_crossover",
                 return_value=False,
             ):
-                await trading_service.original_strategy_handler._process_bar(
-                    "SOXS", bars[2]
-                )
+                await trading_service.original_strategy_handler._process_bar("SOXS", bars[2])
 
         # Check that the correct orders were placed
         assert (
@@ -446,14 +428,8 @@ async def test_strategy_market_data_response(
         )  # At least 4 orders (2 for SOXS, 2 for SOXL)
 
         # Check that the correct alerts were sent
-        assert (
-            trading_service.alert_manager.create_alert.call_count >= 2
-        )  # At least 2 alerts
+        assert trading_service.alert_manager.create_alert.call_count >= 2  # At least 2 alerts
 
         # Check that positions were updated correctly
-        assert (
-            trading_service.original_strategy_handler.positions["SOXS"] > 0
-        )  # Long SOXS
-        assert (
-            trading_service.original_strategy_handler.positions["SOXL"] < 0
-        )  # Short SOXL
+        assert trading_service.original_strategy_handler.positions["SOXS"] > 0  # Long SOXS
+        assert trading_service.original_strategy_handler.positions["SOXL"] < 0  # Short SOXL

@@ -58,9 +58,7 @@ class Trade(BaseModel):
     )
     error_code: str | None = Field(None, description="Error code (if any)")
     error_msg: str | None = Field(None, description="Error message (if any)")
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="Last update timestamp"
     )

@@ -54,12 +54,8 @@ def create_mock_soxs_uptrend_data() -> pd.DataFrame:
             continue
 
         # Generate data for market hours (9:30 AM to 4:00 PM)
-        market_open = datetime.datetime.combine(
-            current_date.date(), datetime.time(9, 30, 0)
-        )
-        market_close = datetime.datetime.combine(
-            current_date.date(), datetime.time(16, 0, 0)
-        )
+        market_open = datetime.datetime.combine(current_date.date(), datetime.time(9, 30, 0))
+        market_close = datetime.datetime.combine(current_date.date(), datetime.time(16, 0, 0))
 
         # Start with a base price and create an uptrend
         base_price = 20.0 + (current_date - start_date).days * 0.5  # Gradual uptrend
@@ -68,9 +64,7 @@ def create_mock_soxs_uptrend_data() -> pd.DataFrame:
         current_time = market_open
         while current_time <= market_close:
             # Add some random variation to the price
-            open_price = (
-                base_price + (current_time.hour + current_time.minute / 60) * 0.1
-            )
+            open_price = base_price + (current_time.hour + current_time.minute / 60) * 0.1
             close_price = open_price + 0.2  # Slight uptrend within the day
             high_price = max(open_price, close_price) + 0.1
             low_price = min(open_price, close_price) - 0.1
@@ -124,12 +118,8 @@ def create_mock_soxl_downtrend_data() -> pd.DataFrame:
             continue
 
         # Generate data for market hours (9:30 AM to 4:00 PM)
-        market_open = datetime.datetime.combine(
-            current_date.date(), datetime.time(9, 30, 0)
-        )
-        market_close = datetime.datetime.combine(
-            current_date.date(), datetime.time(16, 0, 0)
-        )
+        market_open = datetime.datetime.combine(current_date.date(), datetime.time(9, 30, 0))
+        market_close = datetime.datetime.combine(current_date.date(), datetime.time(16, 0, 0))
 
         # Start with a base price and create a downtrend
         base_price = 50.0 - (current_date - start_date).days * 0.3  # Gradual downtrend
@@ -138,9 +128,7 @@ def create_mock_soxl_downtrend_data() -> pd.DataFrame:
         current_time = market_open
         while current_time <= market_close:
             # Add some random variation to the price
-            open_price = (
-                base_price - (current_time.hour + current_time.minute / 60) * 0.05
-            )
+            open_price = base_price - (current_time.hour + current_time.minute / 60) * 0.05
             close_price = open_price - 0.1  # Slight downtrend within the day
             high_price = max(open_price, close_price) + 0.1
             low_price = min(open_price, close_price) - 0.1
@@ -195,12 +183,8 @@ def create_mock_crossover_data() -> dict[str, pd.DataFrame]:
             continue
 
         # Generate data for market hours (9:30 AM to 4:00 PM)
-        market_open = datetime.datetime.combine(
-            current_date.date(), datetime.time(9, 30, 0)
-        )
-        market_close = datetime.datetime.combine(
-            current_date.date(), datetime.time(16, 0, 0)
-        )
+        market_open = datetime.datetime.combine(current_date.date(), datetime.time(9, 30, 0))
+        market_close = datetime.datetime.combine(current_date.date(), datetime.time(16, 0, 0))
 
         # Generate 5-minute bars
         current_time = market_open
@@ -311,12 +295,8 @@ def create_mock_trailing_stop_data() -> dict[str, pd.DataFrame]:
             continue
 
         # Generate data for market hours (9:30 AM to 4:00 PM)
-        market_open = datetime.datetime.combine(
-            current_date.date(), datetime.time(9, 30, 0)
-        )
-        market_close = datetime.datetime.combine(
-            current_date.date(), datetime.time(16, 0, 0)
-        )
+        market_open = datetime.datetime.combine(current_date.date(), datetime.time(9, 30, 0))
+        market_close = datetime.datetime.combine(current_date.date(), datetime.time(16, 0, 0))
 
         # Generate 5-minute bars
         current_time = market_open

@@ -14,9 +14,7 @@ from ib_insync import BarData, Position, Stock
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 from app.service.original_strategy_handler import OriginalStrategyHandler
 
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
-)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
 from spreadpilot_core.ibkr.client import IBKRClient
 
 # Mock data (same as in the original test file)
@@ -233,9 +231,7 @@ def mock_ibkr_client():
     client.connect = AsyncMock(return_value=True)
     client.disconnect = AsyncMock()
     client.is_connected = MagicMock(return_value=True)
-    client.get_contract_details = AsyncMock(
-        return_value=[MagicMock(contract=MOCK_STOCK_CONTRACT)]
-    )
+    client.get_contract_details = AsyncMock(return_value=[MagicMock(contract=MOCK_STOCK_CONTRACT)])
     client.get_historical_data = AsyncMock(return_value=MOCK_BAR_DATA)
     client.get_positions = AsyncMock(return_value=[])
     client.place_order = AsyncMock(return_value=MagicMock())
@@ -293,15 +289,11 @@ async def test_fetch_initial_positions_success(strategy_handler, mock_ibkr_clien
     # Verify
     mock_ibkr_client.get_positions.assert_called_once()
     assert strategy_handler.positions == {"SOXS": 100, "SOXL": -50}
-    assert (
-        "AAPL" not in strategy_handler.positions
-    )  # Should filter out symbols not in config
+    assert "AAPL" not in strategy_handler.positions  # Should filter out symbols not in config
 
 
 @pytest.mark.asyncio
-async def test_fetch_initial_positions_not_connected(
-    strategy_handler, mock_ibkr_client
-):
+async def test_fetch_initial_positions_not_connected(strategy_handler, mock_ibkr_client):
     """Test fetching positions when IBKR client is not connected."""
     # Setup mock to return not connected
     mock_ibkr_client.is_connected.return_value = False
@@ -332,9 +324,7 @@ async def test_fetch_initial_positions_error(strategy_handler, mock_ibkr_client)
 
 
 @pytest.mark.asyncio
-async def test_fetch_initial_historical_data_success(
-    strategy_handler, mock_ibkr_client
-):
+async def test_fetch_initial_historical_data_success(strategy_handler, mock_ibkr_client):
     """Test successful fetching of initial historical data."""
     # Setup - create a mock DataFrame to return from get_historical_data
     mock_df = pd.DataFrame(
@@ -356,18 +346,12 @@ async def test_fetch_initial_historical_data_success(
     await strategy_handler._fetch_initial_historical_data()
 
     # Verify
-    assert mock_ibkr_client.get_contract_details.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
-    assert mock_ibkr_client.get_historical_data.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
+    assert mock_ibkr_client.get_contract_details.call_count == len(MOCK_CONFIG["symbols"])
+    assert mock_ibkr_client.get_historical_data.call_count == len(MOCK_CONFIG["symbols"])
 
 
 @pytest.mark.asyncio
-async def test_fetch_initial_historical_data_not_connected(
-    strategy_handler, mock_ibkr_client
-):
+async def test_fetch_initial_historical_data_not_connected(strategy_handler, mock_ibkr_client):
     """Test fetching historical data when IBKR client is not connected."""
     # Setup mock to return not connected
     mock_ibkr_client.is_connected.return_value = False
@@ -385,9 +369,7 @@ async def test_fetch_initial_historical_data_not_connected(
 
 
 @pytest.mark.asyncio
-async def test_fetch_initial_historical_data_contract_not_found(
-    strategy_handler, mock_ibkr_client
-):
+async def test_fetch_initial_historical_data_contract_not_found(strategy_handler, mock_ibkr_client):
     """Test handling when contract details are not found."""
     # Setup mock to return empty list for contract details
     mock_ibkr_client.get_contract_details.return_value = []
@@ -403,9 +385,7 @@ async def test_fetch_initial_historical_data_contract_not_found(
     await strategy_handler._fetch_initial_historical_data()
 
     # Verify
-    assert mock_ibkr_client.get_contract_details.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
+    assert mock_ibkr_client.get_contract_details.call_count == len(MOCK_CONFIG["symbols"])
     assert mock_ibkr_client.get_historical_data.call_count == 0
 
     # Check that empty DataFrames were created for each symbol
@@ -415,9 +395,7 @@ async def test_fetch_initial_historical_data_contract_not_found(
 
 
 @pytest.mark.asyncio
-async def test_fetch_initial_historical_data_no_bars(
-    strategy_handler, mock_ibkr_client
-):
+async def test_fetch_initial_historical_data_no_bars(strategy_handler, mock_ibkr_client):
     """Test handling when no historical bars are returned."""
     # Setup mock to return empty list for historical data
     mock_ibkr_client.get_historical_data.return_value = []
@@ -429,12 +407,8 @@ async def test_fetch_initial_historical_data_no_bars(
     await strategy_handler._fetch_initial_historical_data()
 
     # Verify
-    assert mock_ibkr_client.get_contract_details.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
-    assert mock_ibkr_client.get_historical_data.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
+    assert mock_ibkr_client.get_contract_details.call_count == len(MOCK_CONFIG["symbols"])
+    assert mock_ibkr_client.get_historical_data.call_count == len(MOCK_CONFIG["symbols"])
 
     # Check that empty DataFrames were created for each symbol
     for symbol in MOCK_CONFIG["symbols"]:
@@ -455,12 +429,8 @@ async def test_fetch_initial_historical_data_error(strategy_handler, mock_ibkr_c
     await strategy_handler._fetch_initial_historical_data()
 
     # Verify
-    assert mock_ibkr_client.get_contract_details.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
-    assert mock_ibkr_client.get_historical_data.call_count == len(
-        MOCK_CONFIG["symbols"]
-    )
+    assert mock_ibkr_client.get_contract_details.call_count == len(MOCK_CONFIG["symbols"])
+    assert mock_ibkr_client.get_historical_data.call_count == len(MOCK_CONFIG["symbols"])
 
     # Check that empty DataFrames were created for each symbol
     for symbol in MOCK_CONFIG["symbols"]:
@@ -678,15 +648,11 @@ async def test_send_alert_success(strategy_handler):
         MockAlert.return_value = mock_alert
 
         # Call the method
-        await strategy_handler._send_alert(
-            symbol, action, quantity, price, order_type, signal_type
-        )
+        await strategy_handler._send_alert(symbol, action, quantity, price, order_type, signal_type)
 
         # Verify alert was created with correct parameters
         MockAlert.assert_called_once()
-        strategy_handler.service.alert_manager.create_alert.assert_called_once_with(
-            mock_alert
-        )
+        strategy_handler.service.alert_manager.create_alert.assert_called_once_with(mock_alert)
 
 
 @pytest.mark.asyncio
@@ -712,14 +678,10 @@ async def test_send_alert_error(strategy_handler):
         )
 
         # Call the method
-        await strategy_handler._send_alert(
-            symbol, action, quantity, price, order_type, signal_type
-        )
+        await strategy_handler._send_alert(symbol, action, quantity, price, order_type, signal_type)
 
         # Verify alert creation was attempted
-        strategy_handler.service.alert_manager.create_alert.assert_called_once_with(
-            mock_alert
-        )
+        strategy_handler.service.alert_manager.create_alert.assert_called_once_with(mock_alert)
 
 
 # --- Test _process_eod Error Handling ---
@@ -963,9 +925,7 @@ async def test_create_trailing_stop_order(strategy_handler):
     trailing_percent = 1.0
 
     # Call the method
-    order = strategy_handler._create_trailing_stop_order(
-        action, quantity, trailing_percent
-    )
+    order = strategy_handler._create_trailing_stop_order(action, quantity, trailing_percent)
 
     # Verify
     assert order.orderType == "TRAIL"
@@ -1002,9 +962,7 @@ async def test_calculate_position_size(strategy_handler):
 
 
 @pytest.mark.asyncio
-async def test_initialize_success(
-    strategy_handler, mock_ibkr_client, mock_trading_service
-):
+async def test_initialize_success(strategy_handler, mock_ibkr_client, mock_trading_service):
     """Test successful initialization."""
     # Setup
     strategy_handler._initialized = False
@@ -1110,9 +1068,7 @@ async def test_initialize_error(mock_trading_service):
         mock_client = AsyncMock()
         mock_client.connect.side_effect = Exception("Init error")
         MockClient.return_value = mock_client
-        handler = OriginalStrategyHandler(
-            mock_trading_service, {**MOCK_CONFIG, "enabled": True}
-        )
+        handler = OriginalStrategyHandler(mock_trading_service, {**MOCK_CONFIG, "enabled": True})
         await handler.initialize()
         assert handler._initialized is False
 
@@ -1177,14 +1133,10 @@ async def test_process_eod_success(strategy_handler, mock_ibkr_client):
 
     handler.positions = {"SOXS": 50}
     # Mock contract details and order placement
-    mock_ibkr_client.get_contract_details.return_value = [
-        MagicMock(contract=MOCK_STOCK_CONTRACT)
-    ]
+    mock_ibkr_client.get_contract_details.return_value = [MagicMock(contract=MOCK_STOCK_CONTRACT)]
     mock_ibkr_client.place_order.return_value = MagicMock()
     # Patch _send_alert to avoid pydantic validation and capture calls
-    with patch.object(
-        handler, "_send_alert", new_callable=AsyncMock
-    ) as mock_send_alert:
+    with patch.object(handler, "_send_alert", new_callable=AsyncMock) as mock_send_alert:
         await handler._process_eod()
     # Verify contract lookup and order placement
     mock_ibkr_client.get_contract_details.assert_called_once_with(
@@ -1192,8 +1144,6 @@ async def test_process_eod_success(strategy_handler, mock_ibkr_client):
     )
     mock_ibkr_client.place_order.assert_called_once()
     # Verify alert sent with expected parameters (price None for market EOD)
-    mock_send_alert.assert_called_once_with(
-        "SOXS", "SELL", 50, None, "MKT", "EOD Close"
-    )
+    mock_send_alert.assert_called_once_with("SOXS", "SELL", 50, None, "MKT", "EOD Close")
     # Position should be reset to zero
     assert handler.positions["SOXS"] == 0

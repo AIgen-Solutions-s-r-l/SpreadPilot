@@ -24,9 +24,7 @@ def send_report_email(
     Returns:
         True if the email was sent successfully, False otherwise
     """
-    logger.info(
-        f"Sending report email to follower {follower.id} for period {report_period}"
-    )
+    logger.info(f"Sending report email to follower {follower.id} for period {report_period}")
 
     # Check if files exist
     if not pdf_path or not os.path.exists(pdf_path):
@@ -94,7 +92,5 @@ def send_report_email(
             return False
 
     except Exception as e:
-        logger.exception(
-            f"Error sending report email to follower {follower.id}", exc_info=e
-        )
+        logger.exception(f"Error sending report email to follower {follower.id}", exc_info=e)
         return False

@@ -89,9 +89,7 @@ class BacktestEngine:
         self.trades: list[Trade] = []
         self.signals: list[dict] = []
         self.equity_curve: dict[datetime.datetime, float] = {}
-        self.initial_capital = config.get("dollar_amount", 10000) * len(
-            config["symbols"]
-        )
+        self.initial_capital = config.get("dollar_amount", 10000) * len(config["symbols"])
         self.current_capital = self.initial_capital
 
         # Initialize positions
@@ -129,18 +127,14 @@ class BacktestEngine:
         quantity = int(dollar_amount / price)
         return max(1, quantity)  # Ensure at least 1 share
 
-    def execute_trade(
-        self, timestamp, symbol, action, quantity, price, order_type, signal_type
-    ):
+    def execute_trade(self, timestamp, symbol, action, quantity, price, order_type, signal_type):
         """Execute a trade in the backtest."""
         position = self.positions[symbol]
         pnl = 0.0
 
         if action == "BUY":
             if position.quantity < 0:  # Closing short position
-                pnl = (position.avg_price - price) * min(
-                    abs(position.quantity), quantity
-                )
+                pnl = (position.avg_price - price) * min(abs(position.quantity), quantity)
                 position.realized_pnl += pnl
 
                 if abs(position.quantity) <= quantity:  # Fully closed
@@ -154,9 +148,7 @@ class BacktestEngine:
                     position.quantity = quantity
                 else:  # Adding to position
                     # Update average price
-                    total_cost = (
-                        position.avg_price * position.quantity + price * quantity
-                    )
+                    total_cost = position.avg_price * position.quantity + price * quantity
                     position.quantity += quantity
                     position.avg_price = total_cost / position.quantity
 
@@ -176,9 +168,7 @@ class BacktestEngine:
                     position.quantity = -quantity
                 else:  # Adding to position
                     # Update average price
-                    total_cost = (
-                        position.avg_price * abs(position.quantity) + price * quantity
-                    )
+                    total_cost = position.avg_price * abs(position.quantity) + price * quantity
                     position.quantity -= quantity
                     position.avg_price = total_cost / abs(position.quantity)
 
@@ -206,9 +196,7 @@ class BacktestEngine:
 
         return trade
 
-    def update_equity_curve(
-        self, timestamp: datetime.datetime, prices: dict[str, float]
-    ):
+    def update_equity_curve(self, timestamp: datetime.datetime, prices: dict[str, float]):
         """Update the equity curve with current positions and prices."""
         # Calculate unrealized P&L for each position
         unrealized_pnl = 0.0
@@ -216,13 +204,9 @@ class BacktestEngine:
             if position.quantity != 0 and symbol in prices:
                 price = prices[symbol]
                 if position.quantity > 0:  # Long position
-                    position.unrealized_pnl = (
-                        price - position.avg_price
-                    ) * position.quantity
+                    position.unrealized_pnl = (price - position.avg_price) * position.quantity
                 else:  # Short position
-                    position.unrealized_pnl = (position.avg_price - price) * abs(
-                        position.quantity
-                    )
+                    position.unrealized_pnl = (position.avg_price - price) * abs(position.quantity)
                 unrealized_pnl += position.unrealized_pnl
 
         # Calculate total equity
@@ -268,9 +252,7 @@ class BacktestEngine:
                     "price": close_price,
                 }
             )
-            logger.info(
-                f"Signal: {timestamp} BULLISH_CROSSOVER for {symbol} @ ${close_price:.2f}"
-            )
+            logger.info(f"Signal: {timestamp} BULLISH_CROSSOVER for {symbol} @ ${close_price:.2f}")
 
         elif is_bearish_crossover:
             self.signals.append(
@@ -283,9 +265,7 @@ class BacktestEngine:
                     "price": close_price,
                 }
             )
-            logger.info(
-                f"Signal: {timestamp} BEARISH_CROSSOVER for {symbol} @ ${close_price:.2f}"
-            )
+            logger.info(f"Signal: {timestamp} BEARISH_CROSSOVER for {symbol} @ ${close_price:.2f}")
 
         # Execute trades based on signals
         if is_bullish_crossover and current_position <= 0:
@@ -418,9 +398,7 @@ class BacktestEngine:
                         "price": price,
                     }
                 )
-                logger.info(
-                    f"Signal: {timestamp} EOD_CLOSE for {symbol} @ ${price:.2f}"
-                )
+                logger.info(f"Signal: {timestamp} EOD_CLOSE for {symbol} @ ${price:.2f}")
 
                 # Close position
                 if position.quantity > 0:
@@ -447,11 +425,7 @@ class BacktestEngine:
     def is_trading_hours(self, timestamp: datetime.datetime) -> bool:
         """Check if the timestamp is within trading hours."""
         time_str = timestamp.strftime("%H:%M:%S")
-        return (
-            self.config["trading_start_time"]
-            <= time_str
-            <= self.config["trading_end_time"]
-        )
+        return self.config["trading_start_time"] <= time_str <= self.config["trading_end_time"]
 
     def is_eod(self, timestamp: datetime.datetime) -> bool:
         """Check if the timestamp is at the end of the trading day."""
@@ -512,17 +486,13 @@ class BacktestEngine:
                     # Process EOD for previous day
                     eod_prices = {
                         symbol: self.historical_data[symbol]
-                        .loc[self.historical_data[symbol].index.date == current_date][
-                            "close"
-                        ]
+                        .loc[self.historical_data[symbol].index.date == current_date]["close"]
                         .iloc[-1]
                         for symbol in self.config["symbols"]
                         if current_date in self.historical_data[symbol].index.date
                     }
                     self.process_eod(
-                        timestamp=datetime.datetime.combine(
-                            current_date, datetime.time(16, 0, 0)
-                        ),
+                        timestamp=datetime.datetime.combine(current_date, datetime.time(16, 0, 0)),
                         prices=eod_prices,
                     )
 
@@ -537,9 +507,7 @@ class BacktestEngine:
             # Check if EOD
             if self.is_eod(timestamp) and not eod_processed:
                 # Process EOD
-                eod_prices = {
-                    row["symbol"]: row["close"] for _, row in group.iterrows()
-                }
+                eod_prices = {row["symbol"]: row["close"] for _, row in group.iterrows()}
                 self.process_eod(timestamp=timestamp, prices=eod_prices)
                 eod_processed = True
                 continue
@@ -566,9 +534,7 @@ class BacktestEngine:
                 if current_date in self.historical_data[symbol].index.date
             }
             self.process_eod(
-                timestamp=datetime.datetime.combine(
-                    current_date, datetime.time(16, 0, 0)
-                ),
+                timestamp=datetime.datetime.combine(current_date, datetime.time(16, 0, 0)),
                 prices=eod_prices,
             )
 

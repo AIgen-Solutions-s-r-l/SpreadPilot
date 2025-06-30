@@ -50,9 +50,7 @@ async def lifespan(app: FastAPI):
     follower_service = FollowerService()
 
     # Create and start the background task
-    background_task = asyncio.create_task(
-        periodic_follower_update_task(follower_service)
-    )
+    background_task = asyncio.create_task(periodic_follower_update_task(follower_service))
     logger.info("Periodic follower update task started")
 
     yield  # Application runs here
@@ -142,9 +140,7 @@ async def health_check():
             "service": "admin-api",
             "mongodb": "connected",
             "background_task": (
-                "running"
-                if background_task and not background_task.done()
-                else "stopped"
+                "running" if background_task and not background_task.done() else "stopped"
             ),
         }
     except Exception as e:

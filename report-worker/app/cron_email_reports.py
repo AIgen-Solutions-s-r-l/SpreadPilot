@@ -30,9 +30,7 @@ def send_weekly_commission_reports():
             db_user = os.getenv("DB_USER", "postgres")
             db_password = os.getenv("DB_PASSWORD", "")
 
-            db_url = (
-                f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-            )
+            db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
         # Create database session
         engine = create_engine(db_url)

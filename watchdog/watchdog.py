@@ -3,7 +3,6 @@ SpreadPilot Watchdog Service - Self-hosted health monitoring with auto-recovery
 """
 
 import asyncio
-import json
 import logging
 import os
 import subprocess
@@ -120,9 +119,7 @@ class ServiceWatchdog:
                     pass
                 return True
             else:
-                logger.warning(
-                    f"{service_name} returned unhealthy status: {response.status_code}"
-                )
+                logger.warning(f"{service_name} returned unhealthy status: {response.status_code}")
                 return False
 
         except httpx.ConnectError:
@@ -190,7 +187,10 @@ class ServiceWatchdog:
             reason = f"RECOVERED: {service_config['display_name']} is now healthy"
         elif action == "restart" and success:
             severity = AlertSeverity.WARNING
-            reason = f"RESTARTED: {service_config['display_name']} was successfully restarted after failures"
+            reason = (
+                f"RESTARTED: {service_config['display_name']} was "
+                "successfully restarted after failures"
+            )
         elif action == "restart" and not success:
             severity = AlertSeverity.CRITICAL
             reason = f"RESTART_FAILED: Failed to restart {service_config['display_name']}"
@@ -212,17 +212,14 @@ class ServiceWatchdog:
                 "success": success,
                 "consecutive_failures": self.failure_counts[service_name],
                 "health_url": service_config["health_url"],
-            }
+            },
         )
 
         # Publish to Redis Stream for alert router
         try:
             if self.redis_client:
                 alert_json = alert.model_dump_json()
-                await self.redis_client.xadd(
-                    REDIS_ALERT_STREAM,
-                    {"data": alert_json}
-                )
+                await self.redis_client.xadd(REDIS_ALERT_STREAM, {"data": alert_json})
                 logger.info(f"Alert published to Redis: {alert.reason}")
             else:
                 logger.warning("Redis not connected, alert not published")
@@ -233,12 +230,16 @@ class ServiceWatchdog:
         try:
             if self.mongo_db:
                 # Store as AlertEvent for MongoDB compatibility
-                event_type = AlertType.COMPONENT_RECOVERED if action == "recovery" else AlertType.COMPONENT_DOWN
+                event_type = (
+                    AlertType.COMPONENT_RECOVERED
+                    if action == "recovery"
+                    else AlertType.COMPONENT_DOWN
+                )
                 alert_event = AlertEvent(
                     event_type=event_type,
                     timestamp=alert.timestamp,
                     message=alert.reason,
-                    params=alert.details
+                    params=alert.details,
                 )
                 await self.mongo_db.alerts.insert_one(alert_event.dict())
                 logger.info(f"Alert stored in MongoDB for persistence")
@@ -273,8 +274,7 @@ class ServiceWatchdog:
             # Take action after max consecutive failures
             if self.failure_counts[service_name] >= MAX_CONSECUTIVE_FAILURES:
                 logger.error(
-                    f"{service_name} exceeded max consecutive failures. "
-                    "Attempting restart..."
+                    f"{service_name} exceeded max consecutive failures. " "Attempting restart..."
                 )
 
                 # Restart the service
@@ -294,16 +294,12 @@ class ServiceWatchdog:
         logger.info("Watchdog service starting...")
         logger.info(f"Monitoring services: {', '.join(SERVICES.keys())}")
         logger.info(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
-        logger.info(
-            f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}"
-        )
+        logger.info(f"Max consecutive failures before restart: {MAX_CONSECUTIVE_FAILURES}")
 
         while True:
             try:
                 # Check all services concurrently
-                tasks = [
-                    self.monitor_service(service_name) for service_name in SERVICES
-                ]
+                tasks = [self.monitor_service(service_name) for service_name in SERVICES]
                 await asyncio.gather(*tasks)
 
                 # Wait before next check cycle

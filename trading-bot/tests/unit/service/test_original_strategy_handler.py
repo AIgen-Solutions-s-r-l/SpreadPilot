@@ -256,9 +256,7 @@ def mock_ibkr_client():
     client.connect = AsyncMock(return_value=True)
     client.disconnect = AsyncMock()
     client.is_connected = MagicMock(return_value=True)
-    client.get_contract_details = AsyncMock(
-        return_value=[MagicMock(contract=MOCK_STOCK_CONTRACT)]
-    )
+    client.get_contract_details = AsyncMock(return_value=[MagicMock(contract=MOCK_STOCK_CONTRACT)])
     client.get_historical_data = AsyncMock(return_value=MOCK_BAR_DATA)
     client.get_positions = AsyncMock(return_value=[])
     client.place_order = AsyncMock(return_value=MagicMock())
@@ -300,9 +298,7 @@ async def test_initialization(mock_trading_service, mock_ibkr_client):
 
         # Check that initial positions and historical data were fetched
         mock_ibkr_client.get_positions.assert_called_once()
-        assert mock_ibkr_client.get_historical_data.call_count == len(
-            MOCK_CONFIG["symbols"]
-        )
+        assert mock_ibkr_client.get_historical_data.call_count == len(MOCK_CONFIG["symbols"])
 
         # Check that the handler is marked as initialized
         assert handler._initialized is True
@@ -395,9 +391,7 @@ def test_check_bullish_crossover(strategy_handler):
     assert strategy_handler._check_bullish_crossover(fast_ema_cross, slow_ema_cross)
 
     # Test with insufficient data
-    assert not strategy_handler._check_bullish_crossover(
-        pd.Series([10]), pd.Series([12])
-    )
+    assert not strategy_handler._check_bullish_crossover(pd.Series([10]), pd.Series([12]))
 
 
 def test_check_bearish_crossover(strategy_handler):
@@ -417,9 +411,7 @@ def test_check_bearish_crossover(strategy_handler):
     assert strategy_handler._check_bearish_crossover(fast_ema_cross, slow_ema_cross)
 
     # Test with insufficient data
-    assert not strategy_handler._check_bearish_crossover(
-        pd.Series([10]), pd.Series([12])
-    )
+    assert not strategy_handler._check_bearish_crossover(pd.Series([10]), pd.Series([12]))
 
 
 # --- Test Position Sizing ---
@@ -428,15 +420,9 @@ def test_check_bearish_crossover(strategy_handler):
 def test_calculate_position_size(strategy_handler):
     """Test the position sizing calculation."""
     # Test with different prices
-    assert (
-        strategy_handler._calculate_position_size(100.0) == 100
-    )  # $10,000 / $100 = 100 shares
-    assert (
-        strategy_handler._calculate_position_size(50.0) == 200
-    )  # $10,000 / $50 = 200 shares
-    assert (
-        strategy_handler._calculate_position_size(200.0) == 50
-    )  # $10,000 / $200 = 50 shares
+    assert strategy_handler._calculate_position_size(100.0) == 100  # $10,000 / $100 = 100 shares
+    assert strategy_handler._calculate_position_size(50.0) == 200  # $10,000 / $50 = 200 shares
+    assert strategy_handler._calculate_position_size(200.0) == 50  # $10,000 / $200 = 50 shares
 
     # Test with very high price (should return at least 1 share)
     assert strategy_handler._calculate_position_size(15000.0) == 1
@@ -520,9 +506,7 @@ async def test_process_bar_bullish_crossover(strategy_handler, mock_ibkr_client)
 
     # Patch the crossover detection to force a bullish crossover
     with patch.object(strategy_handler, "_check_bullish_crossover", return_value=True):
-        with patch.object(
-            strategy_handler, "_check_bearish_crossover", return_value=False
-        ):
+        with patch.object(strategy_handler, "_check_bearish_crossover", return_value=False):
             # Process the bar
             await strategy_handler._process_bar(symbol, bar)
 
@@ -566,9 +550,7 @@ async def test_process_bar_bearish_crossover(strategy_handler, mock_ibkr_client)
 
     # Patch the crossover detection to force a bearish crossover
     with patch.object(strategy_handler, "_check_bullish_crossover", return_value=False):
-        with patch.object(
-            strategy_handler, "_check_bearish_crossover", return_value=True
-        ):
+        with patch.object(strategy_handler, "_check_bearish_crossover", return_value=True):
             # Process the bar
             await strategy_handler._process_bar(symbol, bar)
 
@@ -604,9 +586,7 @@ async def test_process_bar_no_crossover(strategy_handler, mock_ibkr_client):
 
     # Patch the crossover detection to force no crossover
     with patch.object(strategy_handler, "_check_bullish_crossover", return_value=False):
-        with patch.object(
-            strategy_handler, "_check_bearish_crossover", return_value=False
-        ):
+        with patch.object(strategy_handler, "_check_bearish_crossover", return_value=False):
             # Process the bar
             await strategy_handler._process_bar(symbol, bar)
 

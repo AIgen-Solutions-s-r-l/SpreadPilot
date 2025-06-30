@@ -42,7 +42,8 @@ async def get_today_pnl():
                 .where(
                     and_(
                         PnLIntraday.trading_date == today,
-                        PnLIntraday.snapshot_time >= datetime.combine(today, datetime.min.time().replace(tzinfo=NY_TZ))
+                        PnLIntraday.snapshot_time
+                        >= datetime.combine(today, datetime.min.time().replace(tzinfo=NY_TZ)),
                     )
                 )
                 .order_by(desc(PnLIntraday.snapshot_time))
@@ -60,15 +61,17 @@ async def get_today_pnl():
             # Get follower breakdown
             follower_breakdown = []
             for daily in daily_summaries:
-                follower_breakdown.append({
-                    "follower_id": daily.follower_id,
-                    "realized_pnl": float(daily.realized_pnl),
-                    "unrealized_pnl": float(daily.unrealized_pnl_end),
-                    "total_pnl": float(daily.total_pnl),
-                    "trades_count": daily.trades_count,
-                    "commission": float(daily.total_commission),
-                    "positions": daily.closing_positions,
-                })
+                follower_breakdown.append(
+                    {
+                        "follower_id": daily.follower_id,
+                        "realized_pnl": float(daily.realized_pnl),
+                        "unrealized_pnl": float(daily.unrealized_pnl_end),
+                        "total_pnl": float(daily.total_pnl),
+                        "trades_count": daily.trades_count,
+                        "commission": float(daily.total_commission),
+                        "positions": daily.closing_positions,
+                    }
+                )
 
             return {
                 "date": today.isoformat(),
@@ -79,7 +82,9 @@ async def get_today_pnl():
                 "total_commission": float(total_commission),
                 "follower_breakdown": follower_breakdown,
                 "intraday_snapshots_count": len(intraday_snapshots),
-                "last_update": intraday_snapshots[0].snapshot_time.isoformat() if intraday_snapshots else None,
+                "last_update": (
+                    intraday_snapshots[0].snapshot_time.isoformat() if intraday_snapshots else None
+                ),
             }
 
     except Exception as e:
@@ -114,12 +119,7 @@ async def get_month_pnl(year: int | None = None, month: int | None = None):
             # Get monthly P&L summaries
             monthly_result = await session.execute(
                 select(PnLMonthly)
-                .where(
-                    and_(
-                        PnLMonthly.year == year,
-                        PnLMonthly.month == month
-                    )
-                )
+                .where(and_(PnLMonthly.year == year, PnLMonthly.month == month))
                 .order_by(PnLMonthly.follower_id)
             )
             monthly_summaries = monthly_result.scalars().all()
@@ -129,8 +129,8 @@ async def get_month_pnl(year: int | None = None, month: int | None = None):
                 select(PnLDaily)
                 .where(
                     and_(
-                        func.extract('year', PnLDaily.trading_date) == year,
-                        func.extract('month', PnLDaily.trading_date) == month
+                        func.extract("year", PnLDaily.trading_date) == year,
+                        func.extract("month", PnLDaily.trading_date) == month,
                     )
                 )
                 .order_by(PnLDaily.trading_date, PnLDaily.follower_id)
@@ -139,7 +139,7 @@ async def get_month_pnl(year: int | None = None, month: int | None = None):
 
             # Aggregate monthly totals
             total_realized = sum(m.realized_pnl for m in monthly_summaries)
-            total_unrealized = sum(m.unrealized_pnl_end for m in monthly_summaries) 
+            total_unrealized = sum(m.unrealized_pnl_end for m in monthly_summaries)
             total_pnl = sum(m.total_pnl for m in monthly_summaries)
             total_trades = sum(m.total_trades for m in monthly_summaries)
             total_commission = sum(m.total_commission for m in monthly_summaries)
@@ -147,40 +147,52 @@ async def get_month_pnl(year: int | None = None, month: int | None = None):
 
             # Calculate performance metrics
             best_day = max((m.best_day_pnl for m in monthly_summaries if m.best_day_pnl), default=0)
-            worst_day = min((m.worst_day_pnl for m in monthly_summaries if m.worst_day_pnl), default=0)
+            worst_day = min(
+                (m.worst_day_pnl for m in monthly_summaries if m.worst_day_pnl), default=0
+            )
             total_winning_days = sum(m.winning_days for m in monthly_summaries)
             total_losing_days = sum(m.losing_days for m in monthly_summaries)
 
             # Follower breakdown
             follower_breakdown = []
             for monthly in monthly_summaries:
-                follower_breakdown.append({
-                    "follower_id": monthly.follower_id,
-                    "realized_pnl": float(monthly.realized_pnl),
-                    "unrealized_pnl": float(monthly.unrealized_pnl_end),
-                    "total_pnl": float(monthly.total_pnl),
-                    "trading_days": monthly.trading_days,
-                    "total_trades": monthly.total_trades,
-                    "commission": float(monthly.total_commission),
-                    "avg_daily_pnl": float(monthly.avg_daily_pnl) if monthly.avg_daily_pnl else 0,
-                    "best_day": float(monthly.best_day_pnl) if monthly.best_day_pnl else 0,
-                    "worst_day": float(monthly.worst_day_pnl) if monthly.worst_day_pnl else 0,
-                    "winning_days": monthly.winning_days,
-                    "losing_days": monthly.losing_days,
-                    "win_rate": (monthly.winning_days / monthly.trading_days * 100) if monthly.trading_days > 0 else 0,
-                })
+                follower_breakdown.append(
+                    {
+                        "follower_id": monthly.follower_id,
+                        "realized_pnl": float(monthly.realized_pnl),
+                        "unrealized_pnl": float(monthly.unrealized_pnl_end),
+                        "total_pnl": float(monthly.total_pnl),
+                        "trading_days": monthly.trading_days,
+                        "total_trades": monthly.total_trades,
+                        "commission": float(monthly.total_commission),
+                        "avg_daily_pnl": (
+                            float(monthly.avg_daily_pnl) if monthly.avg_daily_pnl else 0
+                        ),
+                        "best_day": float(monthly.best_day_pnl) if monthly.best_day_pnl else 0,
+                        "worst_day": float(monthly.worst_day_pnl) if monthly.worst_day_pnl else 0,
+                        "winning_days": monthly.winning_days,
+                        "losing_days": monthly.losing_days,
+                        "win_rate": (
+                            (monthly.winning_days / monthly.trading_days * 100)
+                            if monthly.trading_days > 0
+                            else 0
+                        ),
+                    }
+                )
 
             # Daily breakdown
             daily_breakdown = []
             for daily in daily_summaries:
-                daily_breakdown.append({
-                    "date": daily.trading_date.isoformat(),
-                    "follower_id": daily.follower_id,
-                    "total_pnl": float(daily.total_pnl),
-                    "realized_pnl": float(daily.realized_pnl),
-                    "trades_count": daily.trades_count,
-                    "commission": float(daily.total_commission),
-                })
+                daily_breakdown.append(
+                    {
+                        "date": daily.trading_date.isoformat(),
+                        "follower_id": daily.follower_id,
+                        "total_pnl": float(daily.total_pnl),
+                        "realized_pnl": float(daily.realized_pnl),
+                        "trades_count": daily.trades_count,
+                        "commission": float(daily.total_commission),
+                    }
+                )
 
             return {
                 "year": year,
@@ -195,7 +207,9 @@ async def get_month_pnl(year: int | None = None, month: int | None = None):
                 "worst_day": float(worst_day),
                 "winning_days": total_winning_days,
                 "losing_days": total_losing_days,
-                "win_rate": (total_winning_days / total_trading_days * 100) if total_trading_days > 0 else 0,
+                "win_rate": (
+                    (total_winning_days / total_trading_days * 100) if total_trading_days > 0 else 0
+                ),
                 "follower_breakdown": follower_breakdown,
                 "daily_breakdown": daily_breakdown,
             }

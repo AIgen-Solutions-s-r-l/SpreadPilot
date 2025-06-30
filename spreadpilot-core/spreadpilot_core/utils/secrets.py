@@ -4,6 +4,7 @@ from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from spreadpilot_core.logging import get_logger
+
 from .secret_manager import SecretType, get_secret_manager
 
 logger = get_logger(__name__)
@@ -34,9 +35,7 @@ async def get_secret_from_mongo(
 
     if environment is None:
         environment = os.environ.get("APP_ENV", "development")
-        logger.debug(
-            f"No environment specified, defaulting to '{environment}' based on APP_ENV."
-        )
+        logger.debug(f"No environment specified, defaulting to '{environment}' based on APP_ENV.")
 
     collection = db[SECRETS_COLLECTION_NAME]
     query = {"name": secret_name, "environment": environment}
@@ -67,26 +66,24 @@ async def get_secret_from_mongo(
             )
             return None
     except Exception as e:
-        logger.error(
-            f"Error retrieving secret '{secret_name}' from MongoDB: {e}", exc_info=True
-        )
+        logger.error(f"Error retrieving secret '{secret_name}' from MongoDB: {e}", exc_info=True)
         return None
 
 
 def get_secret(secret_name: str, fallback_to_env: bool = True) -> Optional[str]:
     """
     Get a secret value using the unified secret manager.
-    
+
     This function provides a simple interface to retrieve secrets with automatic
     fallback handling. It will try in order:
     1. HashiCorp Vault (if configured)
     2. Environment variables (if fallback enabled)
     3. Default values (for non-required secrets)
-    
+
     Args:
         secret_name: Name of the secret (should match SecretType enum values)
         fallback_to_env: Whether to fall back to environment variables
-        
+
     Returns:
         Secret value or None if not found
     """
@@ -114,10 +111,10 @@ def get_secret(secret_name: str, fallback_to_env: bool = True) -> Optional[str]:
             "IB_USER": SecretType.IB_USER,
             "IB_PASS": SecretType.IB_PASS,
         }
-        
+
         # Get the secret type
         secret_type = secret_type_map.get(secret_name.upper())
-        
+
         if secret_type:
             # Use the secret manager
             secret_manager = get_secret_manager()
@@ -134,10 +131,10 @@ def get_secret(secret_name: str, fallback_to_env: bool = True) -> Optional[str]:
             else:
                 logger.warning(f"Unknown secret type: {secret_name}")
             return None
-            
+
     except Exception as e:
         logger.error(f"Error retrieving secret {secret_name}: {e}")
-        
+
         # Fall back to environment variable on error
         if fallback_to_env:
             return os.getenv(secret_name)

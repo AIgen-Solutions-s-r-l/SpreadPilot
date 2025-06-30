@@ -13,9 +13,7 @@ logger = get_logger(__name__)
 
 @router.get("/", dependencies=[Depends(get_current_user)])
 async def get_logs(
-    limit: int = Query(
-        default=200, ge=1, le=1000, description="Number of log entries to retrieve"
-    ),
+    limit: int = Query(default=200, ge=1, le=1000, description="Number of log entries to retrieve"),
     service: str | None = Query(default=None, description="Filter by service name"),
     level: str | None = Query(
         default=None, description="Filter by log level (INFO, WARNING, ERROR)"

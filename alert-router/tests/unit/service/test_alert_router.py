@@ -49,9 +49,7 @@ class TestAlertRouter:
     """Test cases for AlertRouter."""
 
     @pytest.mark.asyncio
-    async def test_generate_deep_link_component_down(
-        self, alert_router, sample_alert_event
-    ):
+    async def test_generate_deep_link_component_down(self, alert_router, sample_alert_event):
         """Test deep link generation for component down event."""
         link = alert_router._generate_deep_link(sample_alert_event)
         assert link == "https://dashboard.spreadpilot.com/status?component=trading-bot"
@@ -83,9 +81,7 @@ class TestAlertRouter:
     @pytest.mark.asyncio
     async def test_format_alert_message(self, alert_router, sample_alert_event):
         """Test alert message formatting."""
-        subject, telegram_msg, email_html = alert_router._format_alert_message(
-            sample_alert_event
-        )
+        subject, telegram_msg, email_html = alert_router._format_alert_message(sample_alert_event)
 
         # Check subject
         assert subject == "🔴 SpreadPilot Alert: COMPONENT_DOWN"
@@ -177,9 +173,7 @@ class TestAlertRouter:
     @pytest.mark.asyncio
     async def test_send_email_alert_success(self, alert_router):
         """Test successful email alert sending."""
-        with patch(
-            "app.service.alert_router.aiosmtplib.send", new_callable=AsyncMock
-        ) as mock_send:
+        with patch("app.service.alert_router.aiosmtplib.send", new_callable=AsyncMock) as mock_send:
             result = await alert_router.send_email_alert(
                 "test@example.com", "Test Subject", "<p>Test HTML</p>"
             )
@@ -263,9 +257,7 @@ class TestAlertRouter:
         assert results["fallback_used"] is True
 
     @pytest.mark.asyncio
-    async def test_route_alert_partial_telegram_success(
-        self, alert_router, sample_alert_event
-    ):
+    async def test_route_alert_partial_telegram_success(self, alert_router, sample_alert_event):
         """Test alert routing with partial Telegram success (no email fallback)."""
         # Mock mixed Telegram responses (one success, one failure)
         success_response = Mock(spec=Response)
@@ -315,9 +307,7 @@ class TestAlertRouter:
             new_callable=AsyncMock,
             side_effect=Exception("SMTP error"),
         ):
-            with pytest.raises(
-                Exception, match="Failed to deliver alert via any channel"
-            ):
+            with pytest.raises(Exception, match="Failed to deliver alert via any channel"):
                 await alert_router.route_alert(sample_alert_event)
 
     @pytest.mark.asyncio

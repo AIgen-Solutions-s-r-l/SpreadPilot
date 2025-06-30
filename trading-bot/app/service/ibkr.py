@@ -84,9 +84,7 @@ class IBKRManager:
                 await client.disconnect()
                 logger.info(f"Disconnected from IBKR for follower {follower_id}")
             except Exception as e:
-                logger.error(
-                    f"Error disconnecting from IBKR for follower {follower_id}: {e}"
-                )
+                logger.error(f"Error disconnecting from IBKR for follower {follower_id}: {e}")
 
         # Clear clients
         self.ibkr_clients = {}

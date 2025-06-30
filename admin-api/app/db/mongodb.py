@@ -66,9 +66,7 @@ def get_mongo_client() -> AsyncIOMotorClient:
         # This should ideally not happen if connect_to_mongo is called at startup
         # or if dependency injection provides one during testing.
         logger.error("MongoDB client accessed before initialization!")
-        raise RuntimeError(
-            "MongoDB client not initialized. Call connect_to_mongo first."
-        )
+        raise RuntimeError("MongoDB client not initialized. Call connect_to_mongo first.")
     return _mongo_client
 
 

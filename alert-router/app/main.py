@@ -40,9 +40,7 @@ SECRETS_TO_FETCH = [
 
 async def load_secrets_into_env():
     """Fetches secrets from MongoDB and sets them as environment variables."""
-    preload_logger.info(
-        "Attempting to load secrets from MongoDB into environment variables..."
-    )
+    preload_logger.info("Attempting to load secrets from MongoDB into environment variables...")
     mongo_uri = os.environ.get("MONGO_URI")
     mongo_db_name = os.environ.get(
         "MONGO_DB_NAME_SECRETS", os.environ.get("MONGO_DB_NAME", "spreadpilot_secrets")
@@ -56,9 +54,7 @@ async def load_secrets_into_env():
 
     client = None
     try:
-        preload_logger.info(
-            f"Connecting to MongoDB at {mongo_uri} for secret loading..."
-        )
+        preload_logger.info(f"Connecting to MongoDB at {mongo_uri} for secret loading...")
         client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
         # Ping server to check connection early
         await client.admin.command("ping")
@@ -69,14 +65,10 @@ async def load_secrets_into_env():
 
         for secret_name in SECRETS_TO_FETCH:
             preload_logger.debug(f"Fetching secret: {secret_name} for env: {app_env}")
-            secret_value = await get_secret_from_mongo(
-                db, secret_name, environment=app_env
-            )
+            secret_value = await get_secret_from_mongo(db, secret_name, environment=app_env)
             if secret_value is not None:
                 os.environ[secret_name] = secret_value
-                preload_logger.info(
-                    f"Successfully loaded secret '{secret_name}' into environment."
-                )
+                preload_logger.info(f"Successfully loaded secret '{secret_name}' into environment.")
             else:
                 preload_logger.info(
                     f"Secret '{secret_name}' not found in MongoDB for env '{app_env}'. Environment variable not set."
@@ -102,9 +94,7 @@ if __name__ != "__main__" and not os.getenv("TESTING"):
     except RuntimeError as e:
         preload_logger.error(f"Could not run async secret loading: {e}")
 elif os.getenv("TESTING"):
-    preload_logger.info(
-        "TESTING environment detected, skipping MongoDB secret pre-loading."
-    )
+    preload_logger.info("TESTING environment detected, skipping MongoDB secret pre-loading.")
 
 # Import settings and router after potential env var population
 from .config import settings
@@ -112,9 +102,7 @@ from .service.redis_subscriber import RedisAlertSubscriber
 
 # Setup Logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-setup_logging(
-    service_name="alert-router", log_level=getattr(logging, log_level, logging.INFO)
-)
+setup_logging(service_name="alert-router", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
 
 # Global subscriber instance
@@ -162,9 +150,7 @@ app = FastAPI(
 )
 
 logger.info(f"Dashboard URL: {settings.DASHBOARD_BASE_URL}")
-logger.info(
-    f"Telegram Admins: {'Configured' if settings.TELEGRAM_ADMIN_IDS else 'Not Configured'}"
-)
+logger.info(f"Telegram Admins: {'Configured' if settings.TELEGRAM_ADMIN_IDS else 'Not Configured'}")
 logger.info(
     f"Email Admins: {'Configured' if settings.EMAIL_ADMIN_RECIPIENTS else 'Not Configured'}"
 )

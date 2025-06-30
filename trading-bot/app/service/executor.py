@@ -20,9 +20,7 @@ logger = get_logger(__name__)
 class VerticalSpreadExecutor:
     """Executes vertical spread orders with limit-ladder strategy and margin checks."""
 
-    def __init__(
-        self, ibkr_client: IBKRClient, redis_url: str = "redis://localhost:6379"
-    ):
+    def __init__(self, ibkr_client: IBKRClient, redis_url: str = "redis://localhost:6379"):
         """Initialize the executor.
 
         Args:
@@ -48,10 +46,7 @@ class VerticalSpreadExecutor:
             logger.info("Disconnected from Redis")
 
     async def _publish_alert(
-        self,
-        follower_id: str,
-        reason: str,
-        severity: AlertSeverity = AlertSeverity.CRITICAL
+        self, follower_id: str, reason: str, severity: AlertSeverity = AlertSeverity.CRITICAL
     ):
         """Publish an alert to Redis alerts stream.
 
@@ -70,14 +65,11 @@ class VerticalSpreadExecutor:
                 reason=reason,
                 severity=severity,
                 service="executor",
-                timestamp=time.time()
+                timestamp=time.time(),
             )
 
             # Add to Redis stream
-            await self.redis_client.xadd(
-                "alerts",
-                {"data": alert.model_dump_json()}
-            )
+            await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
 
             logger.info(
                 f"Published {severity.value} alert to Redis for follower {follower_id}: {reason}"
@@ -143,7 +135,7 @@ class VerticalSpreadExecutor:
                 await self._publish_alert(
                     follower_id=follower_id,
                     reason=f"NO_MARGIN: {margin_check_result['error']}",
-                    severity=AlertSeverity.CRITICAL
+                    severity=AlertSeverity.CRITICAL,
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -153,9 +145,7 @@ class VerticalSpreadExecutor:
                 }
 
             # Phase 2: Get market data and calculate MID price
-            mid_price_result = await self._calculate_mid_price(
-                strategy, strike_long, strike_short
-            )
+            mid_price_result = await self._calculate_mid_price(strategy, strike_long, strike_short)
 
             if not mid_price_result["success"]:
                 return {
@@ -172,7 +162,7 @@ class VerticalSpreadExecutor:
                 await self._publish_alert(
                     follower_id=follower_id,
                     reason=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold}",
-                    severity=AlertSeverity.CRITICAL
+                    severity=AlertSeverity.CRITICAL,
                 )
                 return {
                     "status": OrderStatus.REJECTED,
@@ -200,14 +190,12 @@ class VerticalSpreadExecutor:
             return execution_result
 
         except Exception as e:
-            logger.error(
-                f"Error executing vertical spread for follower {follower_id}: {e}"
-            )
+            logger.error(f"Error executing vertical spread for follower {follower_id}: {e}")
             # Publish alert for gateway/execution error
             await self._publish_alert(
                 follower_id=follower_id,
                 reason=f"GATEWAY_UNREACHABLE: {str(e)}",
-                severity=AlertSeverity.CRITICAL
+                severity=AlertSeverity.CRITICAL,
             )
             return {
                 "status": OrderStatus.REJECTED,
@@ -250,12 +238,8 @@ class VerticalSpreadExecutor:
                 return {"success": False, "error": f"Invalid strategy: {strategy}"}
 
             # Create contracts for whatIf check
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
             combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
@@ -272,9 +256,7 @@ class VerticalSpreadExecutor:
 
             # Submit whatIf order to get margin requirements
             logger.info(f"Performing whatIf margin check for follower {follower_id}")
-            whatif_result = await self.ibkr_client.ib.whatIfOrderAsync(
-                combo_contract, test_order
-            )
+            whatif_result = await self.ibkr_client.ib.whatIfOrderAsync(combo_contract, test_order)
 
             if not whatif_result:
                 return {"success": False, "error": "No whatIf result returned from IB"}
@@ -313,9 +295,7 @@ class VerticalSpreadExecutor:
             }
 
         except Exception as e:
-            logger.error(
-                f"Error in whatIf margin check for follower {follower_id}: {e}"
-            )
+            logger.error(f"Error in whatIf margin check for follower {follower_id}: {e}")
             return {"success": False, "error": f"WhatIf check error: {e!s}"}
 
     async def _calculate_mid_price(
@@ -343,12 +323,8 @@ class VerticalSpreadExecutor:
                 return {"success": False, "error": f"Invalid strategy: {strategy}"}
 
             # Create contracts
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Get market prices
             long_price = await self.ibkr_client.get_market_price(long_contract)
@@ -424,12 +400,8 @@ class VerticalSpreadExecutor:
                 short_right = "C"
 
             # Create contracts
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
             combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
@@ -453,7 +425,7 @@ class VerticalSpreadExecutor:
                     await self._publish_alert(
                         follower_id=follower_id,
                         reason=f"MID_TOO_LOW: Limit price ${current_limit_price:.3f} fell below threshold ${min_price_threshold} on attempt {attempt}",
-                        severity=AlertSeverity.CRITICAL
+                        severity=AlertSeverity.CRITICAL,
                     )
                     return {
                         "status": OrderStatus.CANCELED,
@@ -510,20 +482,27 @@ class VerticalSpreadExecutor:
                         "strategy": strategy,
                         "strikes": {"long": strike_long, "short": strike_short},
                     }
-                    
+
                 # Check for IB rejection
                 elif trade.orderStatus.status in ["Cancelled", "Inactive"]:
                     # Check if this was an IB rejection rather than timeout cancellation
-                    rejection_reasons = ["reject", "insufficient", "margin", "credit", "buying power", "invalid"]
+                    rejection_reasons = [
+                        "reject",
+                        "insufficient",
+                        "margin",
+                        "credit",
+                        "buying power",
+                        "invalid",
+                    ]
                     why_held = (trade.orderStatus.whyHeld or "").lower()
-                    
+
                     is_ib_rejection = any(reason in why_held for reason in rejection_reasons)
-                    
+
                     if is_ib_rejection:
                         await self._publish_alert(
                             follower_id=follower_id,
                             reason=f"REJECTED: IB rejected order on attempt {attempt}. Reason: {trade.orderStatus.whyHeld or 'Unknown'}",
-                            severity=AlertSeverity.CRITICAL
+                            severity=AlertSeverity.CRITICAL,
                         )
                         return {
                             "status": OrderStatus.REJECTED,
@@ -535,10 +514,7 @@ class VerticalSpreadExecutor:
                         }
 
                 # Check for partial fills
-                if (
-                    trade.orderStatus.status == "Submitted"
-                    and trade.orderStatus.filled > 0
-                ):
+                if trade.orderStatus.status == "Submitted" and trade.orderStatus.filled > 0:
                     logger.info(
                         f"Partial fill on attempt {attempt} for follower {follower_id}",
                         order_id=trade.order.orderId,
@@ -574,7 +550,7 @@ class VerticalSpreadExecutor:
             await self._publish_alert(
                 follower_id=follower_id,
                 reason=f"LIMIT_REACHED: All {max_attempts} attempts exhausted. Initial limit: ${initial_mid_price:.3f}, Final limit: ${current_limit_price:.3f}",
-                severity=AlertSeverity.CRITICAL
+                severity=AlertSeverity.CRITICAL,
             )
 
             return {
@@ -587,15 +563,12 @@ class VerticalSpreadExecutor:
             }
 
         except Exception as e:
-            logger.error(
-                f"Error in limit-ladder execution for follower {follower_id}: {e}"
-            )
+            logger.error(f"Error in limit-ladder execution for follower {follower_id}: {e}")
             return {
                 "status": OrderStatus.REJECTED,
                 "error": f"Limit-ladder execution error: {e!s}",
                 "follower_id": follower_id,
             }
-
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -608,9 +581,7 @@ class VerticalSpreadExecutor:
 
 
 # Convenience function that matches the task requirements
-async def execute_vertical_spread(
-    signal: dict[str, Any], follower_id: str
-) -> dict[str, Any]:
+async def execute_vertical_spread(signal: dict[str, Any], follower_id: str) -> dict[str, Any]:
     """Execute a vertical spread order with limit-ladder strategy.
 
     This is a convenience function that creates an executor instance and executes

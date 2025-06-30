@@ -40,9 +40,7 @@ SERVICES = {
 }
 
 
-async def check_service_health(
-    service_name: str, service_config: dict[str, Any]
-) -> dict[str, Any]:
+async def check_service_health(service_name: str, service_config: dict[str, Any]) -> dict[str, Any]:
     """Check health of a single service"""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -120,19 +118,13 @@ async def get_comprehensive_health(
 
     # Determine overall health status
     critical_unhealthy = any(
-        service["status"] != "healthy" and service["critical"]
-        for service in service_checks
+        service["status"] != "healthy" and service["critical"] for service in service_checks
     )
     non_critical_unhealthy = any(
-        service["status"] != "healthy" and not service["critical"]
-        for service in service_checks
+        service["status"] != "healthy" and not service["critical"] for service in service_checks
     )
 
-    if (
-        db_status != "healthy"
-        or critical_unhealthy
-        or system_health["status"] != "healthy"
-    ):
+    if db_status != "healthy" or critical_unhealthy or system_health["status"] != "healthy":
         overall_status = "RED"
     elif non_critical_unhealthy:
         overall_status = "YELLOW"

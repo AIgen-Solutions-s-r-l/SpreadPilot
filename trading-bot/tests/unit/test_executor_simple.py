@@ -11,9 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 import ib_insync
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "../../../../spreadpilot-core")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../spreadpilot-core"))
 
 # Import the specific modules we need without triggering the service layer
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
@@ -84,9 +82,7 @@ class VerticalSpreadExecutor:
                 }
 
             # Phase 2: Get market data and calculate MID price
-            mid_price_result = await self._calculate_mid_price(
-                strategy, strike_long, strike_short
-            )
+            mid_price_result = await self._calculate_mid_price(strategy, strike_long, strike_short)
 
             if not mid_price_result["success"]:
                 return {
@@ -155,12 +151,8 @@ class VerticalSpreadExecutor:
                 return {"success": False, "error": f"Invalid strategy: {strategy}"}
 
             # Create contracts for whatIf check
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
             combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
@@ -178,9 +170,7 @@ class VerticalSpreadExecutor:
             )
 
             # Submit whatIf order to get margin requirements
-            whatif_result = await self.ibkr_client.ib.whatIfOrderAsync(
-                combo_contract, test_order
-            )
+            whatif_result = await self.ibkr_client.ib.whatIfOrderAsync(combo_contract, test_order)
 
             if not whatif_result:
                 return {"success": False, "error": "No whatIf result returned from IB"}
@@ -229,12 +219,8 @@ class VerticalSpreadExecutor:
                 return {"success": False, "error": f"Invalid strategy: {strategy}"}
 
             # Create contracts
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Get market prices
             long_price = await self.ibkr_client.get_market_price(long_contract)
@@ -285,12 +271,8 @@ class VerticalSpreadExecutor:
                 short_right = "C"
 
             # Create contracts
-            long_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_long, long_right
-            )
-            short_contract = self.ibkr_client._get_qqq_option_contract(
-                strike_short, short_right
-            )
+            long_contract = self.ibkr_client._get_qqq_option_contract(strike_long, long_right)
+            short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
             combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
@@ -352,10 +334,7 @@ class VerticalSpreadExecutor:
                     }
 
                 # Check for partial fills
-                if (
-                    trade.orderStatus.status == "Submitted"
-                    and trade.orderStatus.filled > 0
-                ):
+                if trade.orderStatus.status == "Submitted" and trade.orderStatus.filled > 0:
                     return {
                         "status": OrderStatus.PARTIAL,
                         "trade_id": str(trade.order.orderId),
@@ -437,9 +416,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
         mock_whatif_result.maintMarginChange = "400.0"
         mock_whatif_result.equityWithLoanAfter = "10000.0"
 
-        self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(
-            return_value=mock_whatif_result
-        )
+        self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(return_value=mock_whatif_result)
         self.mock_ibkr_client.get_account_summary = AsyncMock(
             return_value={"AvailableFunds": "1000.0"}
         )
@@ -459,9 +436,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
         self.mock_ibkr_client.ib.placeOrder = MagicMock(return_value=mock_trade)
 
         # Execute
-        result = await self.executor.execute_vertical_spread(
-            self.test_signal, self.follower_id
-        )
+        result = await self.executor.execute_vertical_spread(self.test_signal, self.follower_id)
 
         # Verify results
         self.assertEqual(result["status"], OrderStatus.FILLED)
@@ -477,9 +452,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
             # Missing required fields
         }
 
-        result = await self.executor.execute_vertical_spread(
-            invalid_signal, self.follower_id
-        )
+        result = await self.executor.execute_vertical_spread(invalid_signal, self.follower_id)
 
         self.assertEqual(result["status"], OrderStatus.REJECTED)
         self.assertIn("Invalid signal", result["error"])
@@ -493,9 +466,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
         mock_whatif_result.maintMarginChange = "400.0"
         mock_whatif_result.equityWithLoanAfter = "10000.0"
 
-        self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(
-            return_value=mock_whatif_result
-        )
+        self.mock_ibkr_client.ib.whatIfOrderAsync = AsyncMock(return_value=mock_whatif_result)
         self.mock_ibkr_client.get_account_summary = AsyncMock(
             return_value={"AvailableFunds": "1000.0"}
         )
@@ -505,9 +476,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
             side_effect=[2.50, 2.60]
         )  # MID = 0.10 (below 0.70)
 
-        result = await self.executor.execute_vertical_spread(
-            self.test_signal, self.follower_id
-        )
+        result = await self.executor.execute_vertical_spread(self.test_signal, self.follower_id)
 
         self.assertEqual(result["status"], OrderStatus.REJECTED)
         self.assertIn("below minimum threshold", result["error"])
