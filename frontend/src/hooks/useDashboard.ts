@@ -103,7 +103,7 @@ export const useDashboard = (): DashboardData => {
   useEffect(() => {
     if (lastMessage) {
       try {
-        const { type, data } = lastMessage;
+        const { type, data } = lastMessage as { type: string; data: any };
         
         switch (type) {
           case 'pnl_update':

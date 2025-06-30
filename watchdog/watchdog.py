@@ -3,6 +3,7 @@ SpreadPilot Watchdog Service - Self-hosted health monitoring with auto-recovery
 """
 
 import asyncio
+import json
 import logging
 import os
 import subprocess
@@ -10,9 +11,10 @@ import sys
 from datetime import datetime
 
 import httpx
+import redis.asyncio as redis
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from spreadpilot_core.models.alert import AlertEvent, AlertType
+from spreadpilot_core.models.alert import Alert, AlertEvent, AlertSeverity, AlertType
 
 # Configure logging
 logging.basicConfig(
@@ -55,6 +57,11 @@ MAX_CONSECUTIVE_FAILURES = int(os.getenv("MAX_CONSECUTIVE_FAILURES", "3"))
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodb:27017")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "spreadpilot_admin")
 
+# Redis configuration
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_ALERT_STREAM = os.getenv("REDIS_ALERT_STREAM", "alerts")
+
 
 class ServiceWatchdog:
     """Monitors service health and performs auto-recovery"""
@@ -64,12 +71,14 @@ class ServiceWatchdog:
         self.http_client: httpx.AsyncClient | None = None
         self.mongo_client: AsyncIOMotorClient | None = None
         self.mongo_db = None
+        self.redis_client: redis.Redis | None = None
 
     async def __aenter__(self):
         """Async context manager entry"""
         self.http_client = httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT)
         self.mongo_client = AsyncIOMotorClient(MONGO_URI)
         self.mongo_db = self.mongo_client[MONGO_DB_NAME]
+        self.redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -78,6 +87,8 @@ class ServiceWatchdog:
             await self.http_client.aclose()
         if self.mongo_client:
             self.mongo_client.close()
+        if self.redis_client:
+            await self.redis_client.close()
 
     async def check_service_health(self, service_name: str) -> bool:
         """
@@ -98,6 +109,15 @@ class ServiceWatchdog:
 
             if response.status_code == 200:
                 logger.debug(f"{service_name} is healthy")
+                # Also check response body if available
+                try:
+                    health_data = response.json()
+                    if isinstance(health_data, dict) and health_data.get("status") == "unhealthy":
+                        logger.warning(f"{service_name} reports unhealthy status in response body")
+                        return False
+                except Exception:
+                    # If can't parse JSON, just use status code
+                    pass
                 return True
             else:
                 logger.warning(
@@ -105,6 +125,12 @@ class ServiceWatchdog:
                 )
                 return False
 
+        except httpx.ConnectError:
+            logger.error(f"{service_name} connection refused at {health_url}")
+            return False
+        except httpx.TimeoutException:
+            logger.error(f"{service_name} health check timed out after {HEALTH_CHECK_TIMEOUT}s")
+            return False
         except httpx.RequestError as e:
             logger.error(f"Failed to reach {service_name}: {type(e).__name__}: {e}")
             return False
@@ -149,7 +175,7 @@ class ServiceWatchdog:
 
     async def publish_alert(self, service_name: str, action: str, success: bool):
         """
-        Publish an alert about service status.
+        Publish an alert about service status via Redis Streams.
 
         Args:
             service_name: Name of the service
@@ -158,40 +184,66 @@ class ServiceWatchdog:
         """
         service_config = SERVICES[service_name]
 
-        # Determine alert type based on action and success
+        # Determine severity based on action and success
         if action == "recovery":
-            event_type = AlertType.COMPONENT_RECOVERED
-        elif not success:
-            event_type = AlertType.COMPONENT_DOWN
+            severity = AlertSeverity.INFO
+            reason = f"RECOVERED: {service_config['display_name']} is now healthy"
+        elif action == "restart" and success:
+            severity = AlertSeverity.WARNING
+            reason = f"RESTARTED: {service_config['display_name']} was successfully restarted after failures"
+        elif action == "restart" and not success:
+            severity = AlertSeverity.CRITICAL
+            reason = f"RESTART_FAILED: Failed to restart {service_config['display_name']}"
         else:
-            event_type = AlertType.COMPONENT_RECOVERED
+            severity = AlertSeverity.ERROR
+            reason = f"DOWN: {service_config['display_name']} is not responding"
 
-        alert = AlertEvent(
-            event_type=event_type,
+        # Create alert compatible with alert router
+        alert = Alert(
+            service="watchdog",
+            follower_id="system",  # System-level alert
+            reason=reason,
+            severity=severity,
             timestamp=datetime.utcnow(),
-            message=f"{service_config['display_name']} {action} {'succeeded' if success else 'failed'}",
-            params={
+            details={
                 "component_name": service_name,
                 "container_name": service_config["container_name"],
                 "action": action,
                 "success": success,
                 "consecutive_failures": self.failure_counts[service_name],
-            },
+                "health_url": service_config["health_url"],
+            }
         )
 
-        # Store alert in MongoDB
+        # Publish to Redis Stream for alert router
+        try:
+            if self.redis_client:
+                alert_json = alert.model_dump_json()
+                await self.redis_client.xadd(
+                    REDIS_ALERT_STREAM,
+                    {"data": alert_json}
+                )
+                logger.info(f"Alert published to Redis: {alert.reason}")
+            else:
+                logger.warning("Redis not connected, alert not published")
+        except Exception as e:
+            logger.error(f"Failed to publish alert to Redis: {e}")
+
+        # Also store in MongoDB for persistence
         try:
             if self.mongo_db:
-                alert_dict = alert.dict()
-                await self.mongo_db.alerts.insert_one(alert_dict)
-                logger.info(f"Alert stored in MongoDB: {alert.message}")
-            else:
-                logger.warning("MongoDB not connected, alert not stored")
+                # Store as AlertEvent for MongoDB compatibility
+                event_type = AlertType.COMPONENT_RECOVERED if action == "recovery" else AlertType.COMPONENT_DOWN
+                alert_event = AlertEvent(
+                    event_type=event_type,
+                    timestamp=alert.timestamp,
+                    message=alert.reason,
+                    params=alert.details
+                )
+                await self.mongo_db.alerts.insert_one(alert_event.dict())
+                logger.info(f"Alert stored in MongoDB for persistence")
         except Exception as e:
             logger.error(f"Failed to store alert in MongoDB: {e}")
-
-        # Log the alert
-        logger.info(f"Alert published: {alert.message}")
 
     async def monitor_service(self, service_name: str):
         """
@@ -231,9 +283,11 @@ class ServiceWatchdog:
                 # Publish alert about the restart attempt
                 await self.publish_alert(service_name, "restart", restart_success)
 
-                # Reset failure count after restart attempt
+                # Reset failure count after successful restart
                 if restart_success:
                     self.failure_counts[service_name] = 0
+                    # Wait a bit for service to come up before next check
+                    await asyncio.sleep(10)
 
     async def run(self):
         """Main monitoring loop"""

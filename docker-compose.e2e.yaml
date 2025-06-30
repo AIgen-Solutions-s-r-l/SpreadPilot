@@ -1,0 +1,346 @@
+version: '3.8'
+
+services:
+  # --- Infrastructure Services ---
+  mongodb:
+    image: mongo:6.0
+    container_name: spreadpilot-mongodb-e2e
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: testpassword
+      MONGO_INITDB_DATABASE: spreadpilot_admin
+    volumes:
+      - mongo-data-e2e:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: spreadpilot-postgres-e2e
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: spreadpilot
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: spreadpilot_pnl
+    volumes:
+      - postgres-data-e2e:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spreadpilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  redis:
+    image: redis:7-alpine
+    container_name: spreadpilot-redis-e2e
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  minio:
+    image: minio/minio:latest
+    container_name: spreadpilot-minio-e2e
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data-e2e:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  vault:
+    image: vault:1.13-alpine
+    container_name: spreadpilot-vault-e2e
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: test-root-token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  # --- IB Gateway Mock ---
+  ib-gateway-mock:
+    image: python:3.11-slim
+    container_name: spreadpilot-ib-gateway-mock
+    ports:
+      - "4002:4002"
+      - "7497:7497"
+    volumes:
+      - ./tests/mocks/ib_gateway_mock.py:/app/ib_gateway_mock.py
+    command: python /app/ib_gateway_mock.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  # --- SpreadPilot Services ---
+  admin-api:
+    build:
+      context: .
+      dockerfile: admin-api/Dockerfile
+    container_name: spreadpilot-admin-api-e2e
+    ports:
+      - "8083:8080"
+    environment:
+      - MONGO_URI=mongodb://admin:testpassword@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=test-jwt-secret
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD_HASH=$$2b$$12$$test.hash.for.e2e.testing
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=test-root-token
+      - APP_ENV=test
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  trading-bot:
+    build:
+      context: .
+      dockerfile: trading-bot/Dockerfile
+    container_name: spreadpilot-trading-bot-e2e
+    ports:
+      - "8081:8080"
+    environment:
+      - MONGO_URI=mongodb://admin:testpassword@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_URI=postgresql://spreadpilot:testpassword@postgres:5432/spreadpilot_pnl
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=test-root-token
+      - IB_GATEWAY_HOST=ib-gateway-mock
+      - IB_GATEWAY_PORT=7497
+      - GOOGLE_SHEETS_API_KEY=test-api-key
+      - APP_ENV=test
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+      ib-gateway-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  report-worker:
+    build:
+      context: .
+      dockerfile: report-worker/Dockerfile
+    container_name: spreadpilot-report-worker-e2e
+    ports:
+      - "8082:8080"
+    environment:
+      - MONGO_URI=mongodb://admin:testpassword@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - POSTGRES_URI=postgresql://spreadpilot:testpassword@postgres:5432/spreadpilot_pnl
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - SENDGRID_API_KEY=test-sendgrid-key
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=test-root-token
+      - APP_ENV=test
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  alert-router:
+    build:
+      context: .
+      dockerfile: alert-router/Dockerfile
+    container_name: spreadpilot-alert-router-e2e
+    ports:
+      - "8084:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TELEGRAM_BOT_TOKEN=test-bot-token
+      - TELEGRAM_CHAT_ID=test-chat-id
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=test-root-token
+      - APP_ENV=test
+    depends_on:
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  watchdog:
+    build:
+      context: .
+      dockerfile: watchdog/Dockerfile
+    container_name: spreadpilot-watchdog-e2e
+    environment:
+      - MONGO_URI=mongodb://admin:testpassword@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_admin
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CHECK_INTERVAL_SECONDS=10
+      - MAX_CONSECUTIVE_FAILURES=2
+      - APP_ENV=test
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - spreadpilot-e2e
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://admin-api:8080/api/v1
+        - VITE_WS_URL=ws://admin-api:8080/ws
+    container_name: spreadpilot-frontend-e2e
+    ports:
+      - "8080:80"
+    depends_on:
+      admin-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spreadpilot-e2e
+
+  # --- Test Services ---
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: spreadpilot-mailhog-e2e
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - spreadpilot-e2e
+
+  # --- E2E Test Runner ---
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: tests/e2e/Dockerfile
+    container_name: spreadpilot-e2e-tests
+    environment:
+      - API_BASE_URL=http://admin-api:8080
+      - FRONTEND_URL=http://frontend:80
+      - MONGO_URI=mongodb://admin:testpassword@mongodb:27017
+      - POSTGRES_URI=postgresql://spreadpilot:testpassword@postgres:5432/spreadpilot_pnl
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=test-root-token
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      trading-bot:
+        condition: service_healthy
+      report-worker:
+        condition: service_healthy
+      alert-router:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    volumes:
+      - ./tests/e2e:/tests/e2e
+      - ./test-results:/test-results
+    command: pytest /tests/e2e -v --junit-xml=/test-results/e2e-results.xml
+    networks:
+      - spreadpilot-e2e
+
+volumes:
+  mongo-data-e2e:
+  postgres-data-e2e:
+  minio-data-e2e:
+
+networks:
+  spreadpilot-e2e:
+    driver: bridge

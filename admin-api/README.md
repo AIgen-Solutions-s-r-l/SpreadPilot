@@ -82,13 +82,11 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 | 🗑️ DELETE | `/api/v1/followers/{id}` | Delete follower |
 | 🔄 POST | `/api/v1/followers/{id}/toggle` | Enable/disable follower |
 
-### 📊 **Trading Operations**
+### 📊 **Dashboard**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 📈 GET | `/api/v1/positions` | Get all positions |
-| 📊 GET | `/api/v1/positions/{follower_id}` | Get follower positions |
-| ❌ POST | `/api/v1/close/{follower_id}` | Close follower positions |
+| 📊 GET | `/api/v1/dashboard` | Get dashboard summary data |
 
 ### 💰 **P&L Data**
 
@@ -101,7 +99,7 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 📋 GET | `/api/v1/logs/recent` | Get recent system logs (max 1000) |
+| 📋 GET | `/api/v1/logs/` | Get system logs with filtering (max 1000) |
 
 ### 🔧 **Manual Operations**
 
@@ -113,9 +111,7 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 🟢 GET | `/api/v1/health` | Comprehensive health status (GREEN/YELLOW/RED) |
-| 🔄 POST | `/api/v1/service/{name}/restart` | Restart a specific service |
-| 📋 GET | `/api/v1/services` | List all monitored services |
+| 🟢 GET | `/api/v1/health` | Health check endpoint |
 
 ### 🔌 **Real-time Data**
 

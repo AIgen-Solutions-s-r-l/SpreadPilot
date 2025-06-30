@@ -75,7 +75,7 @@ class ReportService:
         logger.info(f"Calculating reports for period: {report_period}")
 
         # --- Step 1: Calculate overall monthly P&L (needed for commission base) ---
-        total_monthly_pnl = pnl.calculate_monthly_pnl(year, month)
+        total_monthly_pnl = await pnl.calculate_monthly_pnl(year, month)
         logger.info(f"Total calculated P&L for {report_period}: {total_monthly_pnl}")
 
         # --- Step 2: Fetch active followers (async) ---
@@ -101,14 +101,14 @@ class ReportService:
                 )
 
                 # --- 3b: Generate Reports ---
-                pdf_path = generator.generate_pdf_report(
+                pdf_path = await generator.generate_pdf_report(
                     follower=follower,
                     report_period=report_period,
                     total_pnl=total_monthly_pnl,
                     commission_percentage=commission_pct,
                     commission_amount=commission_amount,
                 )
-                excel_path = generator.generate_excel_report(
+                excel_path = await generator.generate_excel_report(
                     follower=follower,
                     report_period=report_period,
                     total_pnl=total_monthly_pnl,
@@ -140,7 +140,7 @@ class ReportService:
             f"Monthly report process finished for period {report_period}. Success: {success_count}, Failures: {failure_count}"
         )
 
-    def process_daily_pnl_calculation(self, calculation_date: datetime.date):
+    async def process_daily_pnl_calculation(self, calculation_date: datetime.date):
         """
         Triggers the calculation and storage of daily P&L.
 
@@ -150,7 +150,7 @@ class ReportService:
         logger.info(
             f"Starting daily P&L calculation for {calculation_date.isoformat()}..."
         )
-        daily_pnl = pnl.calculate_and_store_daily_pnl(calculation_date)
+        daily_pnl = await pnl.calculate_and_store_daily_pnl(calculation_date)
         logger.info(
             f"Daily P&L calculation finished for {calculation_date.isoformat()}. Result: {daily_pnl}"
         )

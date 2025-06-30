@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -6,7 +6,8 @@ import {
   Box, 
   ToggleButtonGroup, 
   ToggleButton,
-  useTheme
+  useTheme,
+  Skeleton
 } from '@mui/material';
 import { 
   BarChart as BarChartIcon
@@ -21,6 +22,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import { getPnLHistory } from '../../services/pnlService';
 
 // Mock data for the chart
 const generateChartData = (timeRange: string) => {
@@ -129,12 +131,41 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
   pnlHistory = [] 
 }) => {
   const [timeRange, setTimeRange] = useState('1M');
+  const [data, setData] = useState<Array<{ time: string; value: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   
-  // Use real data if available, otherwise fallback to mock data
-  const data = pnlHistory.length > 0 
-    ? pnlHistory.map(item => ({ time: item.date, value: item.value }))
-    : generateChartData(timeRange);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use prop data if available, otherwise fetch from service
+        if (pnlHistory.length > 0) {
+          setData(pnlHistory.map(item => ({ time: item.date, value: item.value })));
+        } else {
+          const historyData = await getPnLHistory(timeRange);
+          if (historyData.length === 0) {
+            // Fallback to mock data if no real data available
+            setData(generateChartData(timeRange));
+          } else {
+            setData(historyData);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch P&L data:', err);
+        setError('Failed to load P&L data');
+        // Use mock data on error
+        setData(generateChartData(timeRange));
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [timeRange, pnlHistory]);
   
   const handleTimeRangeChange = (
     _event: React.MouseEvent<HTMLElement>,
@@ -205,6 +236,26 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
         </Box>
         
         <Box sx={{ height: 300, width: '100%' }}>
+          {loading ? (
+            <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 1 }} />
+          ) : error ? (
+            <Box 
+              display="flex" 
+              justifyContent="center" 
+              alignItems="center" 
+              height={300}
+              sx={{ 
+                bgcolor: 'action.hover', 
+                borderRadius: 1,
+                border: '1px solid',
+                borderColor: 'divider'
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {error}
+              </Typography>
+            </Box>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
@@ -248,6 +299,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
               />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </Box>
       </CardContent>
     </Card>

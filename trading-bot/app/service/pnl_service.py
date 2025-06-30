@@ -276,21 +276,92 @@ class PnLService:
     async def _subscribe_to_position_quotes(self):
         """Subscribe to quotes for all active positions."""
         try:
-            # This is a placeholder - in real implementation, you would:
-            # 1. Get all active option contracts from positions
-            # 2. Subscribe to IBKR market data for those contracts
-            # 3. Store quotes as they arrive
-
-            # For now, we'll simulate this by getting current quotes
+            logger.info("Subscribing to position quotes for active followers")
+            
+            # Get all active option contracts from positions
+            active_contracts = await self._get_active_option_contracts()
+            
             for follower_id in self.active_followers:
                 client = await self.trading_service.ibkr_manager.get_client(follower_id)
-                if client:
-                    # Get quotes for active positions
-                    # This would be implemented based on IBKR API capabilities
-                    pass
-
+                if not client or not await client.ensure_connected():
+                    logger.warning(f"No connected client for follower {follower_id}")
+                    continue
+                
+                # Get current market quotes for all active positions
+                try:
+                    positions = client.ib.positions()
+                    for position in positions:
+                        contract = position.contract
+                        
+                        # Only process QQQ options
+                        if contract.secType == "OPT" and contract.symbol == "QQQ":
+                            await self._update_contract_quote(client, contract, follower_id)
+                            
+                except Exception as e:
+                    logger.error(f"Error getting positions for quotes: {e}")
+                    
         except Exception as e:
-            logger.error(f"Error subscribing to position quotes: {e}")
+            logger.error(f"Error in quote subscription: {e}", exc_info=True)
+
+    async def _get_active_option_contracts(self) -> set:
+        """Get all active option contracts from MongoDB positions."""
+        try:
+            db = await get_mongo_db()
+            if not db:
+                return set()
+                
+            positions_collection = db["positions"]
+            
+            # Find all active positions
+            cursor = positions_collection.find({"quantity": {"$ne": 0}})
+            contracts = set()
+            
+            async for doc in cursor:
+                if doc.get("symbol") == "QQQ" and doc.get("contract_type") in ["CALL", "PUT"]:
+                    contract_key = f"{doc['symbol']}_{doc['strike']}_{doc['contract_type']}_{doc.get('expiration', '')}"
+                    contracts.add(contract_key)
+                    
+            logger.debug(f"Found {len(contracts)} active option contracts")
+            return contracts
+            
+        except Exception as e:
+            logger.error(f"Error getting active contracts: {e}")
+            return set()
+
+    async def _update_contract_quote(self, client, contract, follower_id: str):
+        """Update quote for a specific contract."""
+        try:
+            # Get current market price
+            market_price = await client.get_market_price(contract)
+            if market_price is None:
+                return
+                
+            # Create quote record
+            quote = Quote(
+                follower_id=follower_id,
+                symbol=contract.symbol,
+                contract_type=contract.right,
+                strike=Decimal(str(contract.strike)),
+                expiration=contract.lastTradeDateOrContractMonth,
+                bid=Decimal(str(market_price * 0.995)),  # Approximate bid
+                ask=Decimal(str(market_price * 1.005)),  # Approximate ask
+                last=Decimal(str(market_price)),
+                timestamp=datetime.datetime.utcnow()
+            )
+            
+            # Store in cache
+            cache_key = f"{contract.symbol}_{contract.strike}_{contract.right}_{contract.lastTradeDateOrContractMonth}"
+            self.quote_cache[cache_key] = quote
+            
+            # Store in database for historical tracking
+            async with get_postgres_session() as session:
+                session.add(quote)
+                await session.commit()
+                
+            logger.debug(f"Updated quote for {cache_key}: ${market_price}")
+            
+        except Exception as e:
+            logger.error(f"Error updating quote for contract: {e}")
 
     async def _daily_rollup_scheduler(self, shutdown_event: asyncio.Event):
         """Schedule daily rollups at 16:30 ET."""

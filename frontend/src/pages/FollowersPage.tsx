@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -51,7 +51,7 @@ import {
 } from '@mui/icons-material';
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 import { useFollowers } from '../hooks/useFollowers';
-import { usePnl } from '../hooks/usePnl';
+// import { usePnl } from '../hooks/usePnl';
 import { TimeValueBadge } from '../components/common/TimeValueBadge';
 import * as followerService from '../services/followerService';
 import apiClient from '../services/api';
@@ -133,7 +133,7 @@ const getStatusChipProps = (status: FollowerStatus | BotStatus | IBGWStatus, the
 const FollowersPage: React.FC = () => {
   const theme = useTheme();
   const { followers, loading, error, refresh } = useFollowers();
-  const { todayPnl, monthlyPnl } = usePnl();
+  // const { todayPnl, monthlyPnl } = usePnl();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);

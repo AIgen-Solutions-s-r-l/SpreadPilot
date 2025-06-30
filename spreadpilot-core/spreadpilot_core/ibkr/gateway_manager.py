@@ -4,6 +4,7 @@ import asyncio
 import random
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 import backoff
@@ -17,11 +18,11 @@ from ..utils.vault import get_vault_client
 
 
 # Import MongoDB function lazily to avoid import errors during testing
-def get_mongo_db():
+async def get_mongo_db():
     """Get MongoDB connection lazily."""
     from ..db.mongodb import get_mongo_db as _get_mongo_db
 
-    return _get_mongo_db()
+    return await _get_mongo_db()
 
 
 logger = get_logger(__name__)
@@ -220,7 +221,7 @@ class GatewayManager:
 
     async def _load_enabled_followers(self) -> None:
         """Load enabled followers from database and start their gateways."""
-        db = get_mongo_db()
+        db = await get_mongo_db()
         if not db:
             raise RuntimeError("MongoDB connection not available")
 
@@ -556,9 +557,14 @@ class GatewayManager:
                             )
                         except Exception:
                             # Still starting up
-                            startup_time = (
-                                current_time - gateway.container.attrs["Created"]
-                            )
+                            try:
+                                created_str = gateway.container.attrs["Created"]
+                                # Parse ISO timestamp from Docker
+                                created_time = datetime.fromisoformat(created_str.replace('Z', '+00:00')).timestamp()
+                                startup_time = current_time - created_time
+                            except (KeyError, ValueError, TypeError) as e:
+                                logger.warning(f"Failed to parse container creation time: {e}")
+                                startup_time = 0  # Assume just started
                             if startup_time > self.max_startup_time:
                                 gateway.status = GatewayStatus.FAILED
                                 logger.error(
@@ -668,7 +674,7 @@ class GatewayManager:
         logger.info("Reloading followers configuration")
 
         # Get current enabled followers
-        db = get_mongo_db()
+        db = await get_mongo_db()
         if not db:
             logger.error("MongoDB connection not available for reload")
             return

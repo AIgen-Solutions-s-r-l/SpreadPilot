@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -23,56 +23,42 @@ import {
   ArrowForward as ArrowForwardIcon,
   ArrowCircleUp as ArrowCircleUpIcon,
   ArrowCircleDown as ArrowCircleDownIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
+import tradingActivityService, { TradingActivity } from '../../services/tradingActivityService';
 
-// Mock data for trading activities
-const mockActivities = [
-  { 
-    time: '12:34 PM', 
-    followerId: 'Follower_001', 
-    action: 'Opened position', 
-    symbol: 'SOXL', 
-    details: '100 shares @ $45.67' 
-  },
-  { 
-    time: '12:15 PM', 
-    followerId: 'Follower_003', 
-    action: 'Closed position', 
-    symbol: 'SOXS', 
-    details: '50 shares @ $32.10' 
-  },
-  { 
-    time: '11:45 AM', 
-    followerId: 'Follower_002', 
-    action: 'Adjusted stop loss', 
-    symbol: 'SOXL', 
-    details: '@ $44.20' 
-  },
-  { 
-    time: '11:30 AM', 
-    followerId: 'Follower_005', 
-    action: 'Opened position', 
-    symbol: 'SOXS', 
-    details: '75 shares @ $31.45' 
-  },
-  { 
-    time: '10:15 AM', 
-    followerId: 'Follower_001', 
-    action: 'Closed position', 
-    symbol: 'SOXL', 
-    details: '50 shares @ $46.78' 
-  },
-];
+// Helper function to format activity details
+const formatActivityDetails = (activity: TradingActivity): string => {
+  const qty = activity.quantity || 0;
+  const price = activity.price || 0;
+  const contractType = activity.contract_type;
+  const strike = activity.strike;
+  
+  if (contractType && strike) {
+    return `${qty} ${strike}${contractType} @ $${price.toFixed(2)}`;
+  }
+  return `${qty} shares @ $${price.toFixed(2)}`;
+};
+
+// Helper function to format action text
+const formatAction = (action: string): string => {
+  switch (action) {
+    case 'OPENED':
+      return 'Opened position';
+    case 'CLOSED':
+      return 'Closed position';
+    case 'ADJUSTED':
+      return 'Adjusted position';
+    case 'EXECUTED':
+      return 'Executed trade';
+    default:
+      return action;
+  }
+};
 
 interface ActivityItemProps {
-  activity: {
-    time: string;
-    followerId: string;
-    action: string;
-    symbol: string;
-    details: string;
-  };
+  activity: TradingActivity;
   index: number;
 }
 
@@ -156,23 +142,37 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, index }) => {
         >
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
             <Typography variant="subtitle2" fontWeight="medium">
-              {activity.followerId}
+              {activity.follower_name || activity.follower_id}
             </Typography>
             <Typography variant="subtitle2" fontWeight="medium" color="primary.main">
               {activity.symbol}
             </Typography>
           </Box>
-          <Box display="flex" alignItems="center">
-            <Typography
-              variant="body2"
-              fontWeight="medium"
-              sx={{ color: getActionColor() }}
-            >
-              {activity.action}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-              {activity.details}
-            </Typography>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center">
+              <Typography
+                variant="body2"
+                fontWeight="medium"
+                sx={{ color: getActionColor() }}
+              >
+                {formatAction(activity.action)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                {formatActivityDetails(activity)}
+              </Typography>
+            </Box>
+            {activity.pnl !== undefined && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: activity.pnl >= 0 ? theme.palette.success.main : theme.palette.error.main,
+                  fontWeight: 600,
+                  ml: 1
+                }}
+              >
+                {activity.pnl >= 0 ? '+' : ''}${activity.pnl.toFixed(2)}
+              </Typography>
+            )}
           </Box>
         </Paper>
       </TimelineContent>
@@ -189,6 +189,33 @@ const TradingActivityTimeline: React.FC<TradingActivityTimelineProps> = ({
   title = 'TRADING ACTIVITY',
   onViewAll 
 }) => {
+  const [activities, setActivities] = useState<TradingActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActivities = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await tradingActivityService.getRecentActivities(10);
+      setActivities(data);
+    } catch (err) {
+      console.error('Failed to fetch trading activities:', err);
+      setError('Failed to load trading activities');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActivities();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchActivities, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Card 
       sx={{ 
@@ -211,34 +238,75 @@ const TradingActivityTimeline: React.FC<TradingActivityTimelineProps> = ({
             </Typography>
           </Box>
           
-          <Button
-            size="small"
-            endIcon={<ArrowForwardIcon />}
-            onClick={onViewAll}
-            sx={{ 
-              fontSize: '0.75rem',
-              fontWeight: 'medium',
-              color: 'primary.main',
-              '&:hover': {
-                bgcolor: 'primary.50',
-              }
+          <Box display="flex" gap={1}>
+            <Button
+              size="small"
+              onClick={fetchActivities}
+              disabled={loading}
+              sx={{ 
+                minWidth: 'auto',
+                p: 1,
+                color: 'text.secondary',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                }
+              }}
+            >
+              <RefreshIcon sx={{ fontSize: 18 }} />
+            </Button>
+            <Button
+              size="small"
+              endIcon={<ArrowForwardIcon />}
+              onClick={onViewAll}
+              sx={{ 
+                fontSize: '0.75rem',
+                fontWeight: 'medium',
+                color: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.50',
+                }
+              }}
+            >
+              VIEW ALL
+            </Button>
+          </Box>
+        </Box>
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
+            <Typography variant="body2" color="text.secondary">
+              Loading activities...
+            </Typography>
+          </Box>
+        ) : error ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+          </Box>
+        ) : activities.length === 0 ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
+            <Typography variant="body2" color="text.secondary">
+              No recent trading activity
+            </Typography>
+          </Box>
+        ) : (
+          <Timeline
+            sx={{
+              p:0, // Remove default padding from Timeline
+              [`& .${timelineOppositeContentClasses.root}`]: {
+                flex: 0.2, // Control width of opposite content (time)
+              },
             }}
           >
-            VIEW ALL
-          </Button>
-        </Box>
-        <Timeline
-          sx={{
-            p:0, // Remove default padding from Timeline
-            [`& .${timelineOppositeContentClasses.root}`]: {
-              flex: 0.2, // Control width of opposite content (time)
-            },
-          }}
-        >
-          {mockActivities.map((activity, index) => (
-            <ActivityItem key={`${activity.time}-${activity.followerId}-${index}`} activity={activity} index={index} />
-          ))}
-        </Timeline>
+            {activities.map((activity, index) => (
+              <ActivityItem 
+                key={activity.id || `${activity.timestamp}-${activity.follower_id}-${index}`} 
+                activity={activity} 
+                index={index} 
+              />
+            ))}
+          </Timeline>
+        )}
       </CardContent>
     </Card>
   );

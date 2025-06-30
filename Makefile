@@ -87,17 +87,42 @@ logs:
 # Run e2e tests
 e2e:
 	@echo "Starting E2E test environment..."
-	docker-compose -f docker-compose.e2e.yml up -d
-	@echo "Waiting for services to be ready..."
-	sleep 30
+	docker-compose -f docker-compose.e2e.yaml up -d
+	@echo "Waiting for services to be healthy..."
+	@timeout 300 bash -c 'until docker-compose -f docker-compose.e2e.yaml ps | grep -c "healthy" | grep -q "11"; do echo "Waiting for services..."; sleep 5; done'
 	@echo "Running e2e tests..."
-	pytest -m e2e tests/e2e/e2e_test.py -v
+	docker-compose -f docker-compose.e2e.yaml run --rm e2e-tests
 	@echo "E2E tests completed. View emails at http://localhost:8025"
 
 # Clean up e2e test environment
 e2e-clean:
 	@echo "Cleaning up E2E test environment..."
-	docker-compose -f docker-compose.e2e.yml down -v
+	docker-compose -f docker-compose.e2e.yaml down -v
+
+# Run security scans
+security-scan:
+	@echo "Running security scans..."
+	@echo "Checking for vulnerabilities in dependencies..."
+	pip install safety
+	safety check --json > security-report.json || true
+	@echo "Scanning for secrets..."
+	pip install truffleHog3
+	trufflehog3 --no-history . || true
+	@echo "Security scan complete. Check security-report.json for details."
+
+# Run Trivy container scan
+trivy-scan:
+	@echo "Running Trivy container security scan..."
+	@for image in trading-bot watchdog admin-api report-worker alert-router frontend; do \
+		echo "Scanning $$image..."; \
+		docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+			aquasec/trivy:latest image --severity HIGH,CRITICAL \
+			$(DOCKER_REGISTRY)/$$image:latest; \
+	done
+
+# Run all CI checks locally
+ci-local: lint test security-scan build-images trivy-scan
+	@echo "All CI checks completed locally"
 
 # Generate requirements.txt from setup.py
 requirements:
@@ -138,6 +163,9 @@ help:
 	@echo "  logs             View logs"
 	@echo "  e2e              Run e2e tests"
 	@echo "  e2e-clean        Clean up e2e test environment"
+	@echo "  security-scan    Run security vulnerability scans"
+	@echo "  trivy-scan       Run Trivy container security scan"
+	@echo "  ci-local         Run all CI checks locally"
 	@echo "  requirements     Generate requirements.txt"
 	@echo "  requirements-dev Generate requirements-dev.txt"
 	@echo "  deploy-dev       Deploy to dev environment"

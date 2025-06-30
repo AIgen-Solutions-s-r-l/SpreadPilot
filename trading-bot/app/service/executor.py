@@ -510,6 +510,29 @@ class VerticalSpreadExecutor:
                         "strategy": strategy,
                         "strikes": {"long": strike_long, "short": strike_short},
                     }
+                    
+                # Check for IB rejection
+                elif trade.orderStatus.status in ["Cancelled", "Inactive"]:
+                    # Check if this was an IB rejection rather than timeout cancellation
+                    rejection_reasons = ["reject", "insufficient", "margin", "credit", "buying power", "invalid"]
+                    why_held = (trade.orderStatus.whyHeld or "").lower()
+                    
+                    is_ib_rejection = any(reason in why_held for reason in rejection_reasons)
+                    
+                    if is_ib_rejection:
+                        await self._publish_alert(
+                            follower_id=follower_id,
+                            reason=f"REJECTED: IB rejected order on attempt {attempt}. Reason: {trade.orderStatus.whyHeld or 'Unknown'}",
+                            severity=AlertSeverity.CRITICAL
+                        )
+                        return {
+                            "status": OrderStatus.REJECTED,
+                            "error": f"IB rejected order: {trade.orderStatus.whyHeld or 'Unknown reason'}",
+                            "follower_id": follower_id,
+                            "attempts": attempt,
+                            "final_limit": current_limit_price,
+                            "trade_id": str(trade.order.orderId),
+                        }
 
                 # Check for partial fills
                 if (
