@@ -67,6 +67,71 @@ logs/
 # Docker
 .dockerignore
 
-.roo/
-.ruru/
-.roomodes
+# Linting/Type checking
+.mypy_cache/
+.ruff_cache/
+mypy_stubs/
+
+# Testing
+.tox/
+.nox/
+.hypothesis/
+coverage.xml
+*.cover
+.pytest_cache/
+
+# Documentation
+docs/_build/
+docs/.doctrees/
+
+# Temporary files
+*~
+*.bak
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Project specific obsolete directories
+admin-dashboard/
+src/theme/
+.claude/
+.decisions/
+.planning/
+.tasks/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+
+# OS generated files
+Desktop.ini
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+.python-version
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# Miscellaneous
+.cache/
+.temp/
+.tmp/
