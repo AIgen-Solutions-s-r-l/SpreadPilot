@@ -16,7 +16,7 @@ redis[hiredis]>=5.0.0,<6.0.0
 google-cloud-pubsub>=2.18.0,<3.0.0
 
 # Notification services
-python-telegram-bot>=20.0.0,<21.0.0
+python-telegram-bot>=20.0.0,<23.0.0
 sendgrid>=6.10.0,<7.0.0
 aiosmtplib>=3.0.0,<4.0.0
 
