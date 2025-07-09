@@ -35,8 +35,8 @@ cp .env.example .env
 ```
 
 Configure the following variables:
-- `VITE_API_BASE_URL`: Backend API URL (default: http://localhost:8083/api/v1)
-- `VITE_WS_URL`: WebSocket URL for real-time updates (default: ws://localhost:8084/ws)
+- `VITE_API_BASE_URL` or `VITE_API_BASE`: Backend API URL (default: http://localhost:8002/api/v1)
+- `VITE_WS_URL`: WebSocket URL for real-time updates (default: ws://localhost:8002/ws)
 
 ## Development
 
@@ -59,16 +59,17 @@ The frontend integrates with the admin-api backend service:
 ### Services
 - `api.ts`: Central Axios configuration with JWT interceptor
 - `followerService.ts`: Follower CRUD operations
-- `pnlService.ts`: P&L data fetching
+- `pnlService.ts`: P&L data fetching (supports PostgreSQL format)
 - `logService.ts`: Log retrieval and streaming
 - `authService.ts`: Authentication management
+- `healthService.ts`: Health monitoring and service restart functionality
 
 ### Hooks
 - `useFollowers`: Manages follower data with auto-refresh
 - `useLogs`: Handles log streaming and filtering
 - `useDashboard`: Aggregates dashboard metrics
 - `useAuth`: Authentication state management
-- `useServiceHealth`: Polls health endpoint with configurable intervals
+- `useServiceHealth`: Polls health endpoint every 15 seconds
 
 ### Schema Validation
 All API responses are validated using Zod schemas to ensure type safety:
@@ -80,7 +81,7 @@ All API responses are validated using Zod schemas to ensure type safety:
 
 ### Pages
 - `DashboardPageV2`: Main overview with metrics and charts
-- `FollowersPageV2`: Complete follower management interface
+- `FollowersPageV3`: Enhanced follower management with real-time data
 - `LogsPageV2`: Real-time log viewer with filtering
 - `LoginPage`: JWT authentication
 
@@ -105,6 +106,35 @@ Real-time updates are handled via WebSocket:
 - Auto-reconnection on disconnect
 - Live log streaming
 - Real-time follower status updates
+
+## Time Value Monitoring
+
+The dashboard displays Time Value badges for each follower's positions:
+- **SAFE** (Green): Time value > $1.00
+- **RISK** (Yellow): Time value between $0.10 and $1.00
+- **CRITICAL** (Red): Time value ≤ $0.10 (auto-liquidation may trigger)
+
+## Service Health Monitoring
+
+The UI polls the `/health` endpoint every 15 seconds and displays:
+- Overall system health with color-coded dots (GREEN/YELLOW/RED)
+- Individual service status
+- Service restart capability directly from the UI
+
+## Testing
+
+Run Cypress E2E tests:
+```bash
+npm run cypress:open  # Interactive mode
+npm run cypress:run   # Headless mode
+```
+
+The tests cover:
+- Real data fetching from all API endpoints
+- Time-value badge color verification
+- Service health polling
+- Service restart functionality
+- Follower actions including position closing with PIN
 
 ## Build & Deploy
 
@@ -145,15 +175,19 @@ frontend/
 - Replaced mock data with live API integration
 - Added Axios with JWT interceptor for authenticated requests
 - Implemented Zod validation for all API responses
-- Created enhanced V2 pages with real-time data
-- Added visual TV (Time Value) badge indicators
+- Created enhanced V3 pages with real-time data
+- Added visual TV (Time Value) badge indicators with SAFE/RISK/CRITICAL status
+- Implemented service health polling every 15 seconds
+- Added service restart functionality from the UI
+- Integrated with PostgreSQL-based P&L endpoints
 - Implemented comprehensive error handling and loading states
+- Added Cypress E2E tests for real data integration
 
 ## Troubleshooting
 
 ### API Connection Issues
-- Verify `VITE_API_BASE_URL` in `.env`
-- Check if admin-api is running on port 8083
+- Verify `VITE_API_BASE_URL` or `VITE_API_BASE` in `.env`
+- Check if admin-api is running on port 8002
 - Ensure JWT token is valid
 
 ### WebSocket Connection
