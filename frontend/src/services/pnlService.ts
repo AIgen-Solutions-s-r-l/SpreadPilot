@@ -2,11 +2,49 @@ import apiClient from './api';
 import { 
   DailyPnlSchema,
   MonthlyPnlSchema,
+  FollowerPnlArraySchema,
   type DailyPnl,
-  type MonthlyPnl
+  type MonthlyPnl,
+  type FollowerPnlArray
 } from '../schemas/pnl.schema';
 
-// Get today's P&L
+// Get today's P&L (new format - returns array of follower P&L)
+export const getPnlToday = async (): Promise<FollowerPnlArray> => {
+  try {
+    const response = await apiClient.get('/pnl/today');
+    // Validate response data with Zod
+    const validatedData = FollowerPnlArraySchema.parse(response.data);
+    return validatedData;
+  } catch (error) {
+    console.error('Failed to fetch today\'s P&L:', error);
+    if (error && typeof error === 'object' && 'issues' in error) {
+      console.error('Validation errors:', (error as any).issues);
+    }
+    throw error;
+  }
+};
+
+// Get monthly P&L (new format - returns array of follower P&L)
+export const getPnlMonth = async (year?: number, month?: number): Promise<FollowerPnlArray> => {
+  try {
+    const params: any = {};
+    if (year) params.year = year;
+    if (month) params.month = month;
+    
+    const response = await apiClient.get('/pnl/month', { params });
+    // Validate response data with Zod
+    const validatedData = FollowerPnlArraySchema.parse(response.data);
+    return validatedData;
+  } catch (error) {
+    console.error('Failed to fetch monthly P&L:', error);
+    if (error && typeof error === 'object' && 'issues' in error) {
+      console.error('Validation errors:', (error as any).issues);
+    }
+    throw error;
+  }
+};
+
+// Legacy functions for backward compatibility
 export const getTodayPnl = async (): Promise<DailyPnl> => {
   try {
     const response = await apiClient.get('/pnl/today');
@@ -22,7 +60,6 @@ export const getTodayPnl = async (): Promise<DailyPnl> => {
   }
 };
 
-// Get monthly P&L
 export const getMonthlyPnl = async (year?: number, month?: number): Promise<MonthlyPnl> => {
   try {
     const params: any = {};

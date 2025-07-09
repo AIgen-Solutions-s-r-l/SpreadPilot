@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
-// Daily P&L schema
+// Follower P&L item schema (new format from PostgreSQL)
+export const FollowerPnlSchema = z.object({
+  follower_id: z.string(),
+  pnl: z.number(),
+});
+
+// Array of follower P&L items
+export const FollowerPnlArraySchema = z.array(FollowerPnlSchema);
+
+// Legacy Daily P&L schema (for backward compatibility)
 export const DailyPnlSchema = z.object({
   date: z.string(),
   total_pnl: z.number(),
@@ -14,7 +23,7 @@ export const DailyPnlSchema = z.object({
   message: z.string().optional(),
 });
 
-// Monthly P&L schema
+// Legacy Monthly P&L schema (for backward compatibility)
 export const MonthlyPnlSchema = z.object({
   year: z.number(),
   month: z.number(),
@@ -26,5 +35,7 @@ export const MonthlyPnlSchema = z.object({
 });
 
 // Type exports
+export type FollowerPnl = z.infer<typeof FollowerPnlSchema>;
+export type FollowerPnlArray = z.infer<typeof FollowerPnlArraySchema>;
 export type DailyPnl = z.infer<typeof DailyPnlSchema>;
 export type MonthlyPnl = z.infer<typeof MonthlyPnlSchema>;

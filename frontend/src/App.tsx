@@ -5,7 +5,7 @@ import ThemeProvider from './theme/ThemeProvider';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import DashboardPageV2 from './pages/DashboardPageV2';
-import FollowersPageV2 from './pages/FollowersPageV2';
+import FollowersPageV3 from './pages/FollowersPageV3';
 import TradingActivityPage from './pages/TradingActivityPage'; // Import TradingActivityPage
 import LogsPageV2 from './pages/LogsPageV2';
 import CommandsPage from './pages/CommandsPage'; // Import CommandsPage
@@ -40,7 +40,7 @@ function App() {
                 {/* Define nested routes within the layout */}
                 <Routes>
                   <Route path="/dashboard" element={<DashboardPageV2 />} />
-                  <Route path="/followers" element={<FollowersPageV2 />} />
+                  <Route path="/followers" element={<FollowersPageV3 />} />
                   <Route path="/trading-activity" element={<TradingActivityPage />} />
                   {/* Add routes for Log Console and Manual Commands later */}
                   <Route path="/logs" element={<LogsPageV2 />} />
