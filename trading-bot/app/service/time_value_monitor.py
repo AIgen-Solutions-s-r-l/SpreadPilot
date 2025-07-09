@@ -13,10 +13,11 @@ import ib_insync
 import redis.asyncio as redis
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+import pytz
 from ib_insync import Contract, MarketOrder
 
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 logger = get_logger(__name__)
 
@@ -45,7 +46,7 @@ class TimeValueMonitor:
         self.monitoring_interval = 60  # seconds
         self.tv_threshold = 0.10  # $0.10 threshold
         self.is_running = False
-        self.scheduler = AsyncIOScheduler()
+        self.scheduler = AsyncIOScheduler(timezone=pytz.timezone('US/Eastern'))
 
         logger.info("Initialized time value monitor")
 
@@ -305,31 +306,32 @@ class TimeValueMonitor:
             time_value: Current time value
             status: Time value status
         """
-        # Map status to severity
-        severity_map = {
-            TimeValueStatus.SAFE: AlertSeverity.INFO,
-            TimeValueStatus.RISK: AlertSeverity.WARNING,
-            TimeValueStatus.CRITICAL: AlertSeverity.CRITICAL,
-        }
-
-        # Create reason based on status
+        # Create message based on status
         if status == TimeValueStatus.CRITICAL:
-            reason = f"TIME_VALUE_THRESHOLD: Position {contract.symbol} {contract.strike}{contract.right} has critical time value ${time_value:.2f} <= $0.10. Closing position."
+            message = f"Position {contract.symbol} {contract.strike}{contract.right} has critical time value ${time_value:.2f} <= $0.10. Closing position."
+            event_type = AlertType.LIMIT_REACHED
         else:
-            reason = f"TIME_VALUE_WARNING: Position {contract.symbol} {contract.strike}{contract.right} has low time value ${time_value:.2f}"
+            message = f"Position {contract.symbol} {contract.strike}{contract.right} has low time value ${time_value:.2f}"
+            event_type = AlertType.MID_TOO_LOW
 
-        # Create alert
-        alert = Alert(
-            follower_id=follower_id,
-            reason=reason,
-            severity=severity_map[status],
-            service="time_value_monitor",
-            timestamp=time.time(),
+        # Create alert event
+        alert_event = AlertEvent(
+            event_type=event_type,
+            message=message,
+            params={
+                "follower_id": follower_id,
+                "symbol": contract.symbol,
+                "strike": contract.strike,
+                "right": contract.right,
+                "position_qty": position_qty,
+                "time_value": time_value,
+                "status": status.value
+            }
         )
 
         try:
             if self.redis_client:
-                await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
+                await self.redis_client.xadd("alerts", {"data": alert_event.model_dump_json()})
                 logger.info(f"Published time value alert: {status} for follower {follower_id}")
         except Exception as e:
             logger.error(f"Failed to publish time value alert: {e}", exc_info=True)
@@ -384,16 +386,21 @@ class TimeValueMonitor:
                 )
 
                 # Publish success alert
-                alert = Alert(
-                    follower_id=follower_id,
-                    reason=f"TIME_VALUE_LIQUIDATION: Successfully closed position {contract.symbol} {contract.strike}{contract.right} at ${trade.orderStatus.avgFillPrice:.2f} due to TV ${time_value:.2f} <= $0.10",
-                    severity=AlertSeverity.INFO,
-                    service="time_value_monitor",
-                    timestamp=time.time(),
+                alert_event = AlertEvent(
+                    event_type=AlertType.ASSIGNMENT_COMPENSATED,
+                    message=f"Successfully closed position {contract.symbol} {contract.strike}{contract.right} at ${trade.orderStatus.avgFillPrice:.2f} due to TV ${time_value:.2f} <= $0.10",
+                    params={
+                        "follower_id": follower_id,
+                        "symbol": contract.symbol,
+                        "strike": contract.strike,
+                        "right": contract.right,
+                        "fill_price": trade.orderStatus.avgFillPrice,
+                        "time_value": time_value
+                    }
                 )
 
                 if self.redis_client:
-                    await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
+                    await self.redis_client.xadd("alerts", {"data": alert_event.model_dump_json()})
             else:
                 logger.error(
                     "Failed to close position",
