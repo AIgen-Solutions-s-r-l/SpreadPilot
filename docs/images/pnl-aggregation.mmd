@@ -1,0 +1,61 @@
+graph TB
+    %% Data Flow for P&L Aggregation
+    
+    subgraph "Real-time Data Sources"
+        IBKRTrades[IBKR Trade Fills]
+        IBKRQuotes[IBKR Market Quotes]
+        Positions[Open Positions]
+    end
+    
+    subgraph "Redis Streams"
+        TradeFillsStream[(trade_fills stream)]
+        QuotesStream[(quotes stream)]
+    end
+    
+    subgraph "P&L Service Components"
+        MTMCalc[MTM Calculator<br/>Every 30 seconds]
+        DailyRollup[Daily Rollup<br/>16:30 ET]
+        MonthlyRollup[Monthly Rollup<br/>00:10 UTC]
+        CommissionCalc[Commission Calculator]
+    end
+    
+    subgraph "PostgreSQL Tables"
+        PnLIntraday[(pnl_intraday)]
+        PnLDaily[(pnl_daily)]
+        PnLMonthly[(pnl_monthly)]
+        CommissionMonthly[(commission_monthly)]
+    end
+    
+    subgraph "MongoDB"
+        FollowerData[(Follower Data<br/>IBAN, Email, Commission %)]
+    end
+    
+    %% Data Flow
+    IBKRTrades -->|Publish| TradeFillsStream
+    IBKRQuotes -->|Publish| QuotesStream
+    
+    TradeFillsStream -->|Subscribe| MTMCalc
+    QuotesStream -->|Subscribe| MTMCalc
+    Positions -->|Query| MTMCalc
+    
+    MTMCalc -->|Insert/Update| PnLIntraday
+    
+    PnLIntraday -->|Aggregate at 16:30 ET| DailyRollup
+    DailyRollup -->|Insert| PnLDaily
+    
+    PnLDaily -->|Aggregate on 1st at 00:10 UTC| MonthlyRollup
+    MonthlyRollup -->|Insert| PnLMonthly
+    
+    PnLMonthly -->|If P&L > 0| CommissionCalc
+    FollowerData -->|Get IBAN & %| CommissionCalc
+    CommissionCalc -->|Insert| CommissionMonthly
+    
+    %% Styling
+    classDef stream fill:#FF6B6B,stroke:#C92A2A,color:white
+    classDef service fill:#4DABF7,stroke:#1C7ED6,color:white
+    classDef storage fill:#69DB7C,stroke:#37B24D,color:white
+    classDef calc fill:#FFD43B,stroke:#FAB005,color:black
+    
+    class TradeFillsStream,QuotesStream stream
+    class MTMCalc,DailyRollup,MonthlyRollup,CommissionCalc calc
+    class PnLIntraday,PnLDaily,PnLMonthly,CommissionMonthly,FollowerData storage

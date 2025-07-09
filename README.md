@@ -13,8 +13,9 @@ SpreadPilot is a modern microservices-based trading platform designed for scalab
 
 ### 💰 **Real-time P&L Management**
 - ⏱️ 30-second MTM calculations with PostgreSQL storage
-- 📊 Daily & monthly P&L rollups (16:30 ET daily, 00:10 ET monthly)
+- 📊 Daily & monthly P&L rollups (16:30 ET daily, 00:10 UTC monthly)
 - 💳 Automated commission calculation on positive P&L with IBAN tracking
+- 🔄 Redis stream integration for real-time trade fills and quotes
 
 ### 🛡️ **Risk Management**
 - ⚠️ Time value monitoring with automatic liquidation (TV < $0.10)
