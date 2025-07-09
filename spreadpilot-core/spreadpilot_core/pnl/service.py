@@ -6,11 +6,13 @@ This service subscribes to trade fills and tick feeds, updates P&L tables
 
 import asyncio
 import datetime
+import json
 from datetime import date, time
 from decimal import Decimal
 from typing import Any
 
 import pytz
+import redis.asyncio as redis
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,10 +37,16 @@ ET = pytz.timezone("US/Eastern")
 class PnLService:
     """Service for P&L tracking, calculation, and rollups with commission management."""
 
-    def __init__(self):
-        """Initialize P&L service."""
+    def __init__(self, redis_url: str = "redis://localhost:6379"):
+        """Initialize P&L service.
+        
+        Args:
+            redis_url: Redis connection URL for stream subscriptions
+        """
         self.monitoring_active = False
         self.subscriptions_active = False
+        self.redis_url = redis_url
+        self.redis_client: redis.Redis | None = None
 
         # Track active followers for P&L calculation
         self.active_followers: set[str] = set()
@@ -67,6 +75,21 @@ class PnLService:
         self.get_market_price_callback = get_market_price_fn
         self.subscribe_to_tick_feed_callback = subscribe_tick_fn
 
+    async def connect_redis(self):
+        """Connect to Redis if not already connected."""
+        if self.redis_client is None:
+            self.redis_client = await redis.from_url(
+                self.redis_url, decode_responses=True
+            )
+            logger.info("Connected to Redis for P&L stream subscriptions")
+
+    async def disconnect_redis(self):
+        """Disconnect from Redis."""
+        if self.redis_client:
+            await self.redis_client.close()
+            self.redis_client = None
+            logger.info("Disconnected from Redis")
+
     async def start_monitoring(self, shutdown_event: asyncio.Event):
         """Start P&L monitoring and rollup tasks.
 
@@ -76,6 +99,9 @@ class PnLService:
         try:
             logger.info("Starting P&L monitoring service")
             self.monitoring_active = True
+            
+            # Connect to Redis
+            await self.connect_redis()
 
             # Start concurrent tasks
             tasks = [
@@ -83,6 +109,8 @@ class PnLService:
                 asyncio.create_task(self._daily_rollup_scheduler(shutdown_event)),
                 asyncio.create_task(self._monthly_rollup_scheduler(shutdown_event)),
                 asyncio.create_task(self._quote_subscription_loop(shutdown_event)),
+                asyncio.create_task(self._redis_trade_fills_subscription(shutdown_event)),
+                asyncio.create_task(self._redis_quotes_subscription(shutdown_event)),
             ]
 
             # Wait for any task to complete or shutdown
@@ -96,6 +124,7 @@ class PnLService:
         finally:
             self.monitoring_active = False
             self.subscriptions_active = False
+            await self.disconnect_redis()
 
     async def record_trade_fill(self, follower_id: str, fill_data: dict[str, Any]):
         """Record a trade fill from IBKR.
@@ -620,23 +649,23 @@ class PnLService:
             logger.error(f"Error in daily rollup for {follower_id}: {e}")
 
     async def _monthly_rollup_scheduler(self, shutdown_event: asyncio.Event):
-        """Schedule monthly rollups at 00:10 ET on the 1st of each month."""
+        """Schedule monthly rollups at 00:10 UTC on the 1st of each month."""
         try:
             while not shutdown_event.is_set() and self.monitoring_active:
                 try:
-                    # Check if it's the 1st of the month at 00:10 ET
-                    now_et = datetime.datetime.now(ET)
+                    # Check if it's the 1st of the month at 00:10 UTC
+                    now_utc = datetime.datetime.utcnow()
 
                     if (
-                        now_et.day == 1
-                        and now_et.time() >= time(0, 10)
-                        and now_et.time() <= time(0, 15)
+                        now_utc.day == 1
+                        and now_utc.time() >= time(0, 10)
+                        and now_utc.time() <= time(0, 15)
                     ):  # 5-minute window
 
                         # Check if we already ran this month
                         if not await self._monthly_rollup_completed():
                             logger.info(
-                                "Starting monthly P&L rollup at 00:10 ET on the 1st"
+                                "Starting monthly P&L rollup at 00:10 UTC on the 1st"
                             )
                             await self._perform_monthly_rollup()
 
@@ -1045,3 +1074,116 @@ class PnLService:
                 "month": month,
                 "error": str(e),
             }
+
+    async def _redis_trade_fills_subscription(self, shutdown_event: asyncio.Event):
+        """Subscribe to Redis 'trade_fills' stream and process trade events."""
+        try:
+            logger.info("Starting Redis trade fills subscription")
+            
+            if not self.redis_client:
+                logger.error("Redis client not connected")
+                return
+            
+            # Start reading from latest messages
+            last_id = "$"
+            
+            while not shutdown_event.is_set() and self.monitoring_active:
+                try:
+                    # Read from stream with block timeout
+                    messages = await self.redis_client.xread(
+                        {"trade_fills": last_id},
+                        block=1000,  # 1 second timeout
+                        count=10
+                    )
+                    
+                    for stream_name, stream_messages in messages:
+                        for message_id, data in stream_messages:
+                            try:
+                                # Parse trade fill data
+                                trade_data = json.loads(data.get("trade", "{}"))
+                                if trade_data:
+                                    await self.record_trade_fill(
+                                        trade_data.get("follower_id"),
+                                        trade_data
+                                    )
+                                
+                                last_id = message_id
+                                
+                            except Exception as e:
+                                logger.error(f"Error processing trade fill message: {e}")
+                    
+                except asyncio.TimeoutError:
+                    # This is normal - no messages within timeout
+                    continue
+                except Exception as e:
+                    logger.error(f"Error reading trade fills stream: {e}")
+                    await asyncio.sleep(5)
+            
+        except asyncio.CancelledError:
+            logger.info("Trade fills subscription cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Error in trade fills subscription: {e}", exc_info=True)
+
+    async def _redis_quotes_subscription(self, shutdown_event: asyncio.Event):
+        """Subscribe to Redis 'quotes' stream and process quote updates."""
+        try:
+            logger.info("Starting Redis quotes subscription")
+            
+            if not self.redis_client:
+                logger.error("Redis client not connected")
+                return
+            
+            # Start reading from latest messages
+            last_id = "$"
+            
+            while not shutdown_event.is_set() and self.monitoring_active:
+                try:
+                    # Read from stream with block timeout
+                    messages = await self.redis_client.xread(
+                        {"quotes": last_id},
+                        block=1000,  # 1 second timeout
+                        count=100  # Process more quotes at once
+                    )
+                    
+                    for stream_name, stream_messages in messages:
+                        for message_id, data in stream_messages:
+                            try:
+                                # Parse quote data
+                                quote_data = json.loads(data.get("quote", "{}"))
+                                if quote_data:
+                                    await self.update_quote(quote_data)
+                                    
+                                    # Trigger MTM recalculation on quote update
+                                    if self._is_market_open():
+                                        # Update MTM for affected followers
+                                        for follower_id in self.active_followers:
+                                            if self.get_follower_positions_callback:
+                                                positions = await self.get_follower_positions_callback(follower_id)
+                                                # Check if this quote affects any position
+                                                for position in positions:
+                                                    if (position.symbol == quote_data.get("symbol") and
+                                                        position.contract_type == quote_data.get("contract_type") and
+                                                        position.strike == quote_data.get("strike") and
+                                                        position.expiration == quote_data.get("expiration")):
+                                                        # Recalculate MTM for this follower
+                                                        await self._calculate_follower_mtm(follower_id)
+                                                        break
+                                
+                                last_id = message_id
+                                
+                            except Exception as e:
+                                logger.error(f"Error processing quote message: {e}")
+                    
+                except asyncio.TimeoutError:
+                    # This is normal - no messages within timeout
+                    continue
+                except Exception as e:
+                    logger.error(f"Error reading quotes stream: {e}")
+                    await asyncio.sleep(5)
+            
+        except asyncio.CancelledError:
+            logger.info("Quotes subscription cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Error in quotes subscription: {e}", exc_info=True)
