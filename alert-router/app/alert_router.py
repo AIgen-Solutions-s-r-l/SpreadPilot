@@ -15,17 +15,16 @@ import aiosmtplib
 import backoff
 import httpx
 import redis.asyncio as redis
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertEvent, AlertSeverity, AlertType
 from spreadpilot_core.utils.vault import get_vault_client
 
 logger = get_logger(__name__)
-
-app = FastAPI(title="Alert Router", version="1.0.0")
 
 
 class AlertRouterConfig(BaseModel):
@@ -194,13 +193,13 @@ class AlertRouter:
     async def _process_single_alert(self, msg_id: str, data: Dict[str, Any]):
         """Process a single alert message."""
         try:
-            # Parse alert data
+            # Parse alert event data
             alert_json = data.get("data", "{}")
-            alert = Alert.model_validate_json(alert_json)
+            alert_event = AlertEvent.model_validate_json(alert_json)
 
             logger.info(
-                f"Processing alert: {alert.reason} for follower {alert.follower_id} "
-                f"with severity {alert.severity}"
+                f"Processing alert event: {alert_event.message} "
+                f"of type {alert_event.event_type}"
             )
 
             # Route to appropriate channels with retry
@@ -211,7 +210,7 @@ class AlertRouter:
             # Send to Telegram
             if self.config.telegram_bot_token and self.config.telegram_chat_id:
                 try:
-                    await self._send_telegram_with_retry(alert)
+                    await self._send_telegram_with_retry(alert_event)
                     telegram_sent = True
                 except Exception as e:
                     logger.error(f"Failed to send Telegram after retries: {e}")
@@ -220,7 +219,7 @@ class AlertRouter:
             # Send email
             if self.config.smtp_uri:
                 try:
-                    await self._send_email_with_retry(alert)
+                    await self._send_email_with_retry(alert_event)
                     email_sent = True
                 except Exception as e:
                     logger.error(f"Failed to send email after retries: {e}")
@@ -228,7 +227,7 @@ class AlertRouter:
 
             # Log to MongoDB
             await self._log_alert_to_mongo(
-                alert, msg_id, success=success, telegram_sent=telegram_sent, email_sent=email_sent
+                alert_event, msg_id, success=success, telegram_sent=telegram_sent, email_sent=email_sent
             )
 
         except Exception as e:
@@ -236,25 +235,42 @@ class AlertRouter:
             raise
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3, max_time=30)
-    async def _send_telegram_with_retry(self, alert: Alert):
+    async def _send_telegram_with_retry(self, alert_event: AlertEvent):
         """Send alert to Telegram with exponential backoff retry."""
-        # Format message
+        # Map event types to severity for emoji
+        type_to_severity = {
+            AlertType.COMPONENT_DOWN: AlertSeverity.CRITICAL,
+            AlertType.NO_MARGIN: AlertSeverity.CRITICAL,
+            AlertType.MID_TOO_LOW: AlertSeverity.WARNING,
+            AlertType.LIMIT_REACHED: AlertSeverity.WARNING,
+            AlertType.ASSIGNMENT_DETECTED: AlertSeverity.INFO,
+            AlertType.ASSIGNMENT_COMPENSATED: AlertSeverity.INFO,
+            AlertType.REPORT_FAILED: AlertSeverity.WARNING,
+            AlertType.PARTIAL_FILL_HIGH: AlertSeverity.WARNING,
+            AlertType.GATEWAY_UNREACHABLE: AlertSeverity.CRITICAL,
+            AlertType.WATCHDOG_FAILURE: AlertSeverity.CRITICAL,
+        }
+        
         severity_emoji = {
             AlertSeverity.INFO: "ℹ️",
             AlertSeverity.WARNING: "⚠️",
             AlertSeverity.CRITICAL: "🚨",
-            AlertSeverity.ERROR: "❌",
         }
 
-        emoji = severity_emoji.get(alert.severity, "📢")
+        severity = type_to_severity.get(alert_event.event_type, AlertSeverity.INFO)
+        emoji = severity_emoji.get(severity, "📢")
+        
+        # Format params for display
+        params_text = ""
+        if alert_event.params:
+            params_text = "\n".join([f"*{k}:* {v}" for k, v in alert_event.params.items()])
+            params_text = f"\n{params_text}"
 
         message = (
             f"{emoji} *SpreadPilot Alert*\n\n"
-            f"*Severity:* {alert.severity.value}\n"
-            f"*Service:* {alert.service}\n"
-            f"*Follower:* {alert.follower_id}\n"
-            f"*Reason:* {alert.reason}\n"
-            f"*Time:* {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(alert.timestamp))}"
+            f"*Type:* {alert_event.event_type.value}\n"
+            f"*Message:* {alert_event.message}{params_text}\n"
+            f"*Time:* {alert_event.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}"
         )
 
         # Send to Telegram
@@ -270,10 +286,10 @@ class AlertRouter:
         )
 
         response.raise_for_status()
-        logger.info(f"Sent Telegram alert for {alert.follower_id}")
+        logger.info(f"Sent Telegram alert: {alert_event.event_type}")
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3, max_time=30)
-    async def _send_email_with_retry(self, alert: Alert):
+    async def _send_email_with_retry(self, alert_event: AlertEvent):
         """Send alert via email with exponential backoff retry."""
         # Parse SMTP URI
         # Format: smtp://user:pass@host:port
@@ -290,17 +306,21 @@ class AlertRouter:
         msg = MIMEMultipart()
         msg["From"] = self.config.email_from
         msg["To"] = self.config.email_to
-        msg["Subject"] = f"SpreadPilot Alert: {alert.severity.value} - {alert.reason[:50]}"
+        msg["Subject"] = f"SpreadPilot Alert: {alert_event.event_type.value} - {alert_event.message[:50]}"
+
+        # Format params for display
+        params_text = ""
+        if alert_event.params:
+            params_lines = [f"{k}: {v}" for k, v in alert_event.params.items()]
+            params_text = "\n" + "\n".join(params_lines)
 
         # Email body
         body = f"""
 SpreadPilot Alert Notification
 
-Severity: {alert.severity.value}
-Service: {alert.service}
-Follower: {alert.follower_id}
-Reason: {alert.reason}
-Time: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(alert.timestamp))}
+Alert Type: {alert_event.event_type.value}
+Message: {alert_event.message}{params_text}
+Time: {alert_event.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}
 
 This is an automated alert from the SpreadPilot trading system.
         """
@@ -313,10 +333,10 @@ This is an automated alert from the SpreadPilot trading system.
                 await smtp.login(smtp_user, smtp_pass)
             await smtp.send_message(msg)
 
-        logger.info(f"Sent email alert for {alert.follower_id}")
+        logger.info(f"Sent email alert: {alert_event.event_type}")
 
     async def _log_alert_to_mongo(
-        self, alert: Alert, msg_id: str, success: bool, telegram_sent: bool, email_sent: bool
+        self, alert_event: AlertEvent, msg_id: str, success: bool, telegram_sent: bool, email_sent: bool
     ):
         """Log alert processing to MongoDB."""
         try:
@@ -325,7 +345,7 @@ This is an automated alert from the SpreadPilot trading system.
             await alerts_collection.insert_one(
                 {
                     "msg_id": msg_id,
-                    "alert": alert.model_dump(),
+                    "alert_event": alert_event.model_dump(),
                     "processed_at": time.time(),
                     "success": success,
                     "channels": {"telegram": telegram_sent, "email": email_sent},
@@ -339,20 +359,23 @@ This is an automated alert from the SpreadPilot trading system.
             logger.error(f"Failed to log alert to MongoDB: {e}")
 
 
+
+
 # Global router instance
 router = AlertRouter()
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Start the alert router on app startup."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for the app."""
+    # Startup
     await router.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Stop the alert router on app shutdown."""
+    yield
+    # Shutdown
     await router.stop()
+
+
+app = FastAPI(title="Alert Router", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/health")
