@@ -5,10 +5,12 @@ graph TD
     Redis --> TradingBot[Trading Bot]
     TradingBot --> OrderExecutor[Order Executor]
     TradingBot --> PnLService[P&L Service]
+    TradingBot --> TimeValueMonitor[Time-Value Monitor]
     OrderExecutor --> GatewayManager[Gateway Manager]
     GatewayManager --> IBGateway1[IB Gateway: Follower 1]
     GatewayManager --> IBGateway2[IB Gateway: Follower 2]
     GatewayManager --> IBGatewayN[IB Gateway: Follower N]
+    TimeValueMonitor --> GatewayManager
     TradingBot --> MongoDB[(MongoDB)]
     PnLService --> PostgreSQL[(PostgreSQL)]
     OrderExecutor --> PubSubAlerts[Pub/Sub: alerts]

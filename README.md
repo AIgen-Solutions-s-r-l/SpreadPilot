@@ -162,6 +162,8 @@ SpreadPilot supports HashiCorp Vault for secure credential management:
 | 👀 **Watchdog** | Autonomous container health monitoring & restart | - |
 | 📊 **Report Worker** | PDF/Excel report generation | 8004 |
 | 🔔 **Alert Router** | Telegram/email notifications | 8005 |
+| 🐳 **Gateway Manager** | IB Gateway Docker container orchestration | - |
+| ⏱️ **Time-Value Monitor** | Options time value monitoring & auto-liquidation | - |
 
 ### 🗄️ Data Stores
 

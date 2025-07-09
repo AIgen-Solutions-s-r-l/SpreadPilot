@@ -426,3 +426,244 @@ class TestGatewayManager:
 
                 # Assert
                 mock_stop.assert_called_once_with("old_follower")
+
+    @pytest.mark.asyncio
+    async def test_is_healthy_returns_true_when_running_and_connected(self):
+        """Test is_healthy returns True when gateway is running and connected."""
+        # Arrange
+        mock_ib_client = Mock()
+        mock_ib_client.isConnected.return_value = True
+        
+        mock_container = Mock()
+        mock_container.reload = Mock()
+        mock_container.status = "running"
+        
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.RUNNING,
+            ib_client=mock_ib_client,
+            container=mock_container,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        # Act
+        result = self.gateway_manager.is_healthy("test_follower")
+        
+        # Assert
+        assert result is True
+        mock_ib_client.isConnected.assert_called_once()
+        mock_container.reload.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_is_healthy_returns_false_when_not_running(self):
+        """Test is_healthy returns False when gateway is not running."""
+        # Arrange
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.STOPPED,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        # Act
+        result = self.gateway_manager.is_healthy("test_follower")
+        
+        # Assert
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_is_healthy_returns_false_when_disconnected(self):
+        """Test is_healthy returns False when IB client is disconnected."""
+        # Arrange
+        mock_ib_client = Mock()
+        mock_ib_client.isConnected.return_value = False
+        
+        mock_container = Mock()
+        mock_container.reload = Mock()
+        mock_container.status = "running"
+        
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.RUNNING,
+            ib_client=mock_ib_client,
+            container=mock_container,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        # Act
+        result = self.gateway_manager.is_healthy("test_follower")
+        
+        # Assert
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_launch_gateway_raises_error_if_already_running(self):
+        """Test launch_gateway raises error if gateway already exists."""
+        # Arrange
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.RUNNING,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        # Act & Assert
+        with pytest.raises(RuntimeError, match="Gateway already running"):
+            await self.gateway_manager.launch_gateway("test_follower")
+
+    @pytest.mark.asyncio
+    async def test_launch_gateway_starts_new_gateway(self):
+        """Test launch_gateway starts a new gateway for follower."""
+        # Arrange
+        mock_db = {"followers": Mock()}
+        follower_doc = {
+            "_id": "test_follower",
+            "id": "test_follower",
+            "ibkr_username": "test_user",
+            "vault_secret_ref": "ibkr/test",
+            "enabled": True,
+            "state": FollowerState.ACTIVE.value,
+        }
+        
+        mock_db["followers"].find_one = AsyncMock(return_value=follower_doc)
+        
+        with patch(
+            "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", 
+            return_value=AsyncMock(return_value=mock_db)
+        ):
+            with patch.object(
+                self.gateway_manager, "_start_gateway", return_value=AsyncMock()
+            ) as mock_start:
+                # Act
+                await self.gateway_manager.launch_gateway("test_follower")
+                
+                # Assert
+                mock_start.assert_called_once()
+                call_args = mock_start.call_args[0][0]
+                assert call_args.id == "test_follower"
+
+    @pytest.mark.asyncio
+    async def test_reconnect_success(self):
+        """Test reconnect successfully reconnects IB client."""
+        # Arrange
+        mock_ib_client = Mock()
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.RUNNING,
+            ib_client=mock_ib_client,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        with patch.object(
+            self.gateway_manager, "_connect_ib_client", return_value=AsyncMock()
+        ) as mock_connect:
+            # Act
+            result = await self.gateway_manager.reconnect("test_follower")
+            
+            # Assert
+            assert result is True
+            mock_connect.assert_called_once_with(gateway)
+
+    @pytest.mark.asyncio
+    async def test_reconnect_returns_false_on_failure(self):
+        """Test reconnect returns False when connection fails."""
+        # Arrange
+        gateway = GatewayInstance(
+            follower_id="test_follower",
+            container_id="test_container",
+            host_port=4100,
+            client_id=1000,
+            status=GatewayStatus.RUNNING,
+        )
+        
+        self.gateway_manager.gateways["test_follower"] = gateway
+        
+        with patch.object(
+            self.gateway_manager, 
+            "_connect_ib_client", 
+            side_effect=Exception("Connection failed")
+        ):
+            # Act
+            result = await self.gateway_manager.reconnect("test_follower")
+            
+            # Assert
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_vault_retry_with_backoff(self):
+        """Test Vault credential retrieval retries with backoff."""
+        # Arrange
+        mock_vault_client = Mock()
+        attempts = 0
+        
+        def mock_get_credentials(secret_ref):
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                raise Exception("Vault error")
+            return {"IB_USER": "test_user", "IB_PASS": "test_pass"}
+        
+        mock_vault_client.get_ibkr_credentials = mock_get_credentials
+        
+        with patch(
+            "spreadpilot_core.ibkr.gateway_manager.get_vault_client",
+            return_value=mock_vault_client
+        ):
+            # Act
+            result = self.gateway_manager._get_ibkr_credentials_from_vault("test_secret")
+            
+            # Assert
+            assert attempts == 3  # Should retry until success
+            assert result["IB_USER"] == "test_user"
+            assert result["IB_PASS"] == "test_pass"
+
+    @pytest.mark.asyncio
+    async def test_stop_method_stops_all_gateways(self):
+        """Test stop method stops all gateways and cleans up resources."""
+        # Arrange
+        # Add multiple gateways
+        for i in range(3):
+            gateway = GatewayInstance(
+                follower_id=f"follower_{i}",
+                container_id=f"container_{i}",
+                host_port=4100 + i,
+                client_id=1000 + i,
+                status=GatewayStatus.RUNNING,
+                container=Mock(),
+            )
+            self.gateway_manager.gateways[f"follower_{i}"] = gateway
+            self.gateway_manager.used_ports.add(4100 + i)
+            self.gateway_manager.used_client_ids.add(1000 + i)
+        
+        # Create mock monitoring task
+        self.gateway_manager._monitor_task = AsyncMock()
+        
+        with patch.object(
+            self.gateway_manager, "_stop_gateway", return_value=AsyncMock()
+        ) as mock_stop:
+            # Act
+            await self.gateway_manager.stop()
+            
+            # Assert
+            assert mock_stop.call_count == 3
+            assert len(self.gateway_manager.gateways) == 0
+            assert len(self.gateway_manager.used_ports) == 0
+            assert len(self.gateway_manager.used_client_ids) == 0

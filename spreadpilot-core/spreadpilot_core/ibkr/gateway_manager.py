@@ -96,10 +96,13 @@ class GatewayManager:
         self._monitor_task: asyncio.Task | None = None
         self._shutdown = False
 
+    @backoff.on_exception(
+        backoff.expo, Exception, max_tries=3, max_time=30
+    )
     def _get_ibkr_credentials_from_vault(
         self, secret_ref: str
     ) -> dict[str, str] | None:
-        """Get IBKR credentials from Vault.
+        """Get IBKR credentials from Vault with retry logic.
 
         Args:
             secret_ref: Secret reference/path for IBKR credentials
@@ -128,7 +131,7 @@ class GatewayManager:
 
         except Exception as e:
             logger.error(f"Error retrieving IBKR credentials from Vault: {e}")
-            return None
+            raise  # Re-raise to trigger backoff retry
 
     async def _pull_vault_credentials(self, follower: Follower) -> dict[str, str] | None:
         """Pull IBKR credentials from Vault for a follower.
@@ -726,3 +729,108 @@ class GatewayManager:
                 ),
             }
         return result
+
+    def is_healthy(self, follower_id: str) -> bool:
+        """Check if a follower's gateway is healthy.
+
+        Args:
+            follower_id: The follower ID
+
+        Returns:
+            True if gateway is running and connected, False otherwise
+        """
+        gateway = self.gateways.get(follower_id)
+        if not gateway:
+            return False
+        
+        # Check if status is running
+        if gateway.status != GatewayStatus.RUNNING:
+            return False
+        
+        # Check if container is running
+        if gateway.container:
+            try:
+                gateway.container.reload()
+                if gateway.container.status != "running":
+                    return False
+            except Exception:
+                return False
+        else:
+            return False
+        
+        # Check if IB client is connected
+        if gateway.ib_client and gateway.ib_client.isConnected():
+            return True
+        
+        return False
+
+    async def launch_gateway(self, follower_id: str) -> None:
+        """Launch IBGateway container for a specific follower.
+
+        Public method to start a follower's gateway on demand.
+
+        Args:
+            follower_id: The follower ID
+
+        Raises:
+            RuntimeError: If follower not found or gateway already running
+        """
+        # Check if gateway already exists
+        if follower_id in self.gateways:
+            raise RuntimeError(f"Gateway already running for follower {follower_id}")
+        
+        # Load follower from database
+        db = get_mongo_db()
+        if not db:
+            raise RuntimeError("MongoDB connection not available")
+        
+        followers_collection = db["followers"]
+        doc = await followers_collection.find_one({"_id": follower_id})
+        
+        if not doc:
+            raise RuntimeError(f"Follower {follower_id} not found")
+        
+        try:
+            follower = Follower.model_validate(doc)
+        except Exception as e:
+            raise RuntimeError(f"Invalid follower data: {e}")
+        
+        # Start the gateway
+        await self._start_gateway(follower)
+        logger.info(f"Successfully launched gateway for follower {follower_id}")
+
+    async def stop_gateway(self, follower_id: str) -> None:
+        """Stop IBGateway container for a specific follower.
+
+        Public method to gracefully stop a follower's gateway.
+
+        Args:
+            follower_id: The follower ID
+        """
+        await self._stop_gateway(follower_id)
+
+    async def reconnect(self, follower_id: str) -> bool:
+        """Reconnect IB client for a specific follower.
+
+        Args:
+            follower_id: The follower ID
+
+        Returns:
+            True if reconnection successful, False otherwise
+        """
+        gateway = self.gateways.get(follower_id)
+        if not gateway:
+            logger.warning(f"No gateway found for follower {follower_id}")
+            return False
+        
+        if gateway.status != GatewayStatus.RUNNING:
+            logger.warning(f"Gateway for follower {follower_id} is not running")
+            return False
+        
+        try:
+            await self._connect_ib_client(gateway)
+            logger.info(f"Successfully reconnected IB client for follower {follower_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to reconnect IB client for follower {follower_id}: {e}")
+            return False
