@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     )
 
     # Email Settings
+    smtp_uri: str | None = Field(
+        None,
+        env="SMTP_URI",
+        description="SMTP URI (e.g., smtp://user:pass@host:port or smtps://...)",
+    )
     smtp_host: str | None = Field(
         None,
         env="SMTP_HOST",
@@ -169,7 +174,37 @@ def get_settings() -> Settings:
         project_id=settings.project_id,
         mongo_db_name=settings.mongo_db_name,
         gcs_bucket_configured=bool(settings.gcs_bucket_name),
-        smtp_configured=bool(settings.smtp_host),
+        smtp_configured=bool(settings.smtp_host or settings.smtp_uri),
         minio_configured=bool(settings.minio_endpoint_url),
     )
     return settings
+
+
+# Create settings instance and export commonly used values
+_settings = get_settings()
+
+# Project settings
+GCP_PROJECT_ID = _settings.project_id
+
+# MongoDB settings
+MONGO_URI = _settings.mongo_uri
+MONGO_DB_NAME = _settings.mongo_db_name
+
+# Report settings
+DEFAULT_COMMISSION_PERCENTAGE = _settings.default_commission_percentage
+REPORT_SENDER_EMAIL = _settings.report_sender_email
+ADMIN_EMAIL = _settings.admin_email
+
+# Timing settings
+MARKET_CLOSE_TIMEZONE = _settings.market_close_timezone
+
+# Email settings
+SMTP_URI = _settings.smtp_uri
+
+# MinIO settings
+MINIO_ENDPOINT_URL = _settings.minio_endpoint_url
+MINIO_ACCESS_KEY = _settings.minio_access_key
+MINIO_SECRET_KEY = _settings.minio_secret_key
+MINIO_BUCKET_NAME = _settings.minio_bucket_name
+MINIO_REGION = _settings.minio_region
+MINIO_SECURE = _settings.minio_secure

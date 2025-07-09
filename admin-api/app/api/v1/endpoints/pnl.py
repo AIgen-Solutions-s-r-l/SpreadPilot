@@ -3,9 +3,11 @@ from datetime import date, datetime
 import pytz
 from app.api.v1.endpoints.auth import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from spreadpilot_core.db.mongodb import get_mongo_db
+from spreadpilot_core.db.postgresql import get_postgres_session
+from spreadpilot_core.models.pnl import PnLIntraday, PnLMonthly
 from spreadpilot_core.logging.logger import get_logger
 
 router = APIRouter()
@@ -18,32 +20,31 @@ NY_TZ = pytz.timezone("America/New_York")
 @router.get("/today", dependencies=[Depends(get_current_user)])
 async def get_today_pnl():
     """
-    Get today's P&L data.
-    Returns the current day's profit and loss information.
+    Get today's P&L data for all followers.
+    Returns the current day's profit and loss information from pnl_intraday table.
     """
     try:
-        db: AsyncIOMotorDatabase = await get_mongo_db()
-
-        # Get today's date in NY timezone
-        today = datetime.now(NY_TZ).date()
-
-        # Query for today's P&L data
-        pnl_collection = db["daily_pnl"]
-        today_pnl = await pnl_collection.find_one(
-            {"date": today.isoformat()}, {"_id": 0}
-        )
-
-        if not today_pnl:
-            return {
-                "date": today.isoformat(),
-                "total_pnl": 0.0,
-                "realized_pnl": 0.0,
-                "unrealized_pnl": 0.0,
-                "trades": [],
-                "message": "No P&L data available for today",
-            }
-
-        return today_pnl
+        async with get_postgres_session() as session:
+            # Get today's date in NY timezone
+            today = datetime.now(NY_TZ).date()
+            
+            # Query for today's P&L data - get latest snapshot for each follower
+            stmt = (
+                select(
+                    PnLIntraday.follower_id,
+                    func.sum(PnLIntraday.total_pnl).label("pnl")
+                )
+                .where(PnLIntraday.trading_date == today)
+                .group_by(PnLIntraday.follower_id)
+            )
+            
+            result = await session.execute(stmt)
+            pnl_data = [
+                {"follower_id": row.follower_id, "pnl": float(row.pnl or 0)}
+                for row in result
+            ]
+            
+            return pnl_data
 
     except Exception as e:
         logger.error(f"Error fetching today's P&L: {e}")
@@ -56,55 +57,43 @@ async def get_today_pnl():
 @router.get("/month", dependencies=[Depends(get_current_user)])
 async def get_month_pnl(year: int | None = None, month: int | None = None):
     """
-    Get monthly P&L data.
-    If year and month are not provided, returns current month's data.
+    Get monthly P&L data for all followers.
+    If year and month are not provided, returns current month's data from pnl_monthly table.
     """
     try:
-        db: AsyncIOMotorDatabase = await get_mongo_db()
+        async with get_postgres_session() as session:
+            # Default to current month if not specified
+            if not year or not month:
+                now = datetime.now(NY_TZ)
+                year = now.year
+                month = now.month
 
-        # Default to current month if not specified
-        if not year or not month:
-            now = datetime.now(NY_TZ)
-            year = now.year
-            month = now.month
+            # Validate month
+            if month < 1 or month > 12:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid month. Must be between 1 and 12",
+                )
 
-        # Validate month
-        if month < 1 or month > 12:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid month. Must be between 1 and 12",
+            # Query pnl_monthly table
+            stmt = (
+                select(
+                    PnLMonthly.follower_id,
+                    PnLMonthly.total_pnl.label("pnl")
+                )
+                .where(
+                    (PnLMonthly.year == year) & 
+                    (PnLMonthly.month == month)
+                )
             )
-
-        # Calculate date range for the month
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-
-        # Query for monthly P&L data
-        pnl_collection = db["daily_pnl"]
-        cursor = pnl_collection.find(
-            {"date": {"$gte": start_date.isoformat(), "$lt": end_date.isoformat()}},
-            {"_id": 0},
-        ).sort("date", 1)
-
-        daily_pnl_list = await cursor.to_list(length=None)
-
-        # Calculate monthly totals
-        total_pnl = sum(day.get("total_pnl", 0) for day in daily_pnl_list)
-        realized_pnl = sum(day.get("realized_pnl", 0) for day in daily_pnl_list)
-        unrealized_pnl = sum(day.get("unrealized_pnl", 0) for day in daily_pnl_list)
-
-        return {
-            "year": year,
-            "month": month,
-            "total_pnl": total_pnl,
-            "realized_pnl": realized_pnl,
-            "unrealized_pnl": unrealized_pnl,
-            "daily_breakdown": daily_pnl_list,
-            "days_with_data": len(daily_pnl_list),
-        }
+            
+            result = await session.execute(stmt)
+            pnl_data = [
+                {"follower_id": row.follower_id, "pnl": float(row.pnl or 0)}
+                for row in result
+            ]
+            
+            return pnl_data
 
     except HTTPException:
         raise

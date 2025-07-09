@@ -2,18 +2,18 @@ from datetime import datetime
 
 import pytz
 from app.api.v1.endpoints.auth import get_current_user
+from app.core.config import get_settings
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from spreadpilot_core.db.mongodb import get_mongo_db
+from spreadpilot_core.ibkr.client import IBKRClient
 from spreadpilot_core.logging.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
 
-# PIN for manual operations (as specified in requirements)
-MANUAL_OPERATION_PIN = "0312"
 
 
 class ManualCloseRequest(BaseModel):
@@ -54,7 +54,8 @@ async def manual_close_positions(request: ManualCloseRequest = Body(...)):
     This endpoint triggers the trading bot to close positions for the specified follower.
     """
     # Verify PIN
-    if request.pin != MANUAL_OPERATION_PIN:
+    settings = get_settings()
+    if request.pin != settings.manual_operation_pin:
         logger.warning(
             f"Invalid PIN attempt for manual close: follower_id={request.follower_id}"
         )
@@ -73,59 +74,66 @@ async def manual_close_positions(request: ManualCloseRequest = Body(...)):
                 detail=f"Follower {request.follower_id} not found",
             )
 
-        # Create manual close command in the database
-        # The trading bot will monitor this collection and execute the closes
-        manual_operations_collection = db["manual_operations"]
-
-        operation = {
-            "type": "MANUAL_CLOSE",
-            "follower_id": request.follower_id,
-            "close_all": request.close_all,
-            "position_ids": request.position_ids,
-            "reason": request.reason,
-            "status": "PENDING",
-            "created_at": datetime.now(pytz.UTC),
-            "created_by": "admin_api",
-        }
-
-        result = await manual_operations_collection.insert_one(operation)
-        operation_id = str(result.inserted_id)
-
-        # Log the manual close request
-        logger.info(
-            f"Manual close requested for follower {request.follower_id}, operation_id: {operation_id}"
-        )
-
-        # Also create an alert for immediate notification
-        alerts_collection = db["alerts"]
-        await alerts_collection.insert_one(
-            {
-                "type": "MANUAL_CLOSE_REQUESTED",
-                "follower_id": request.follower_id,
-                "operation_id": operation_id,
-                "message": f"Manual close requested for follower {follower.get('name', request.follower_id)}",
-                "severity": "HIGH",
-                "timestamp": datetime.now(pytz.UTC),
-                "acknowledged": False,
-            }
-        )
-
-        # Count current positions that would be affected
-        positions_collection = db["positions"]
-        if request.close_all:
-            position_count = await positions_collection.count_documents(
-                {"follower_id": request.follower_id, "status": "OPEN"}
+        # Initialize IBKR client for the follower
+        client = IBKRClient(follower_id=request.follower_id)
+        
+        try:
+            # Call executor.close_all_positions() 
+            close_result = await client.close_all_positions()
+            
+            # Log the manual close request
+            logger.info(
+                f"Manual close executed for follower {request.follower_id}: {close_result}"
             )
-        else:
-            position_count = len(request.position_ids) if request.position_ids else 0
-
-        return ManualCloseResponse(
-            success=True,
-            message=f"Manual close operation created successfully. Operation ID: {operation_id}",
-            closed_positions=position_count,
-            follower_id=request.follower_id,
-            timestamp=datetime.now(pytz.UTC).isoformat(),
-        )
+            
+            # Create audit trail in database
+            manual_operations_collection = db["manual_operations"]
+            operation = {
+                "type": "MANUAL_CLOSE",
+                "follower_id": request.follower_id,
+                "close_all": request.close_all,
+                "position_ids": request.position_ids,
+                "reason": request.reason,
+                "status": close_result.get("status", "UNKNOWN"),
+                "result": close_result,
+                "created_at": datetime.now(pytz.UTC),
+                "created_by": "admin_api",
+            }
+            
+            result = await manual_operations_collection.insert_one(operation)
+            operation_id = str(result.inserted_id)
+            
+            # Also create an alert for notification
+            alerts_collection = db["alerts"]
+            await alerts_collection.insert_one(
+                {
+                    "type": "MANUAL_CLOSE_EXECUTED",
+                    "follower_id": request.follower_id,
+                    "operation_id": operation_id,
+                    "message": f"Manual close executed for follower {follower.get('name', request.follower_id)}: {close_result.get('status')}",
+                    "severity": "HIGH",
+                    "timestamp": datetime.now(pytz.UTC),
+                    "acknowledged": False,
+                }
+            )
+            
+            # Extract closed positions count from result
+            closed_positions = close_result.get("closed_positions", 0)
+            
+            return ManualCloseResponse(
+                success=close_result.get("status") == "SUCCESS",
+                message=close_result.get("message", f"Operation completed. Operation ID: {operation_id}"),
+                closed_positions=closed_positions,
+                follower_id=request.follower_id,
+                timestamp=datetime.now(pytz.UTC).isoformat(),
+            )
+            
+        except Exception as e:
+            logger.error(f"Error executing manual close: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to execute manual close: {str(e)}",
+            )
 
     except HTTPException:
         raise

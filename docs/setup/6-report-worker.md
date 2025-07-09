@@ -115,11 +115,20 @@ MARKET_CLOSE_HOUR=16
 MARKET_CLOSE_MINUTE=10
 
 # Email Settings
+# Option 1: SMTP URI (recommended - single configuration string)
+SMTP_URI=smtp://user:pass@smtp.example.com:587
+# or for SMTPS (TLS):
+# SMTP_URI=smtps://user:pass@smtp.example.com:465
+
+# Option 2: Individual SMTP settings (legacy)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your_smtp_username
 SMTP_PASSWORD=your_smtp_password
 SMTP_TLS=true
+
+# Optional: SendGrid API (alternative email provider)
+# SENDGRID_API_KEY=your_sendgrid_api_key
 
 # Logging
 LOG_LEVEL=INFO
@@ -137,7 +146,28 @@ Replace the placeholder values with your actual credentials and settings.
 - The `ADMIN_EMAIL` is the email address to CC on all reports
 - The `MARKET_CLOSE_TIMEZONE`, `MARKET_CLOSE_HOUR`, and `MARKET_CLOSE_MINUTE` are used for daily P&L calculation
 - The SMTP settings are required for sending reports via email
+- SMTP_URI is the preferred method for configuring email delivery (simpler and more secure)
 - For production environments, you should use strong, unique values for all these variables
+
+### 📦 Optional: MinIO/S3 Configuration
+
+For enhanced report storage and delivery, you can configure MinIO:
+
+```
+# MinIO/S3 Settings (Optional)
+MINIO_ENDPOINT_URL=https://minio.example.com
+MINIO_ACCESS_KEY=your-access-key
+MINIO_SECRET_KEY=your-secret-key
+MINIO_BUCKET_NAME=spreadpilot-reports
+MINIO_REGION=us-east-1
+MINIO_SECURE=true
+```
+
+When MinIO is configured:
+- Reports are uploaded with 180-day retention policy
+- Pre-signed URLs are generated (valid for 30 days)
+- Emails contain download links instead of attachments
+- Automatic fallback to attachments if upload fails
 
 ## 4. 🚀 Starting the Report Worker
 

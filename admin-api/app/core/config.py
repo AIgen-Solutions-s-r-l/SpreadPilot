@@ -29,6 +29,12 @@ class Settings(BaseModel):
 
     # Background task configuration
     follower_update_interval: int = 60  # seconds
+    
+    # PostgreSQL configuration for P&L data
+    postgres_uri: str = os.getenv("POSTGRES_URI", "")
+    
+    # Manual operation PIN
+    manual_operation_pin: str = os.getenv("MANUAL_OPERATION_PIN", "0312")
 
 
 @lru_cache

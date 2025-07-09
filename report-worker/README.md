@@ -61,13 +61,19 @@ MARKET_CLOSE_HOUR=16
 MARKET_CLOSE_MINUTE=10
 
 # 📧 Email Settings
+# Option 1: SMTP URI (preferred - single configuration string)
+SMTP_URI=smtp://user:pass@smtp.example.com:587
+# or for SMTPS (TLS):
+# SMTP_URI=smtps://user:pass@smtp.example.com:465
+
+# Option 2: Individual SMTP settings (legacy)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=user
 SMTP_PASSWORD=password
 SMTP_TLS=true
 
-# 📮 SendGrid Settings (for commission report emails)
+# 📮 SendGrid Settings (alternative email provider)
 SENDGRID_API_KEY=your_sendgrid_api_key
 
 # ☁️ GCS Settings (for report file storage)
@@ -211,6 +217,92 @@ When MinIO environment variables are configured, the service will:
 4. Store URLs in database for tracking
 
 If MinIO is not configured or upload fails, the service automatically falls back to sending reports as email attachments.
+
+---
+
+## 📧 Email Delivery Options
+
+The Report Worker supports multiple email delivery methods for sending reports to followers:
+
+### **SMTP Email Delivery** (NEW)
+- 🔌 **Direct SMTP**: Connect to any SMTP server using standard protocols
+- 🔐 **URI Configuration**: Simple SMTP URI format for easy configuration
+- 📎 **Attachment Support**: Full support for PDF and Excel attachments
+- 🔗 **MinIO Integration**: Seamlessly works with MinIO for download links
+- ⚡ **Async Operation**: Non-blocking email sending with aiosmtplib
+
+### **Configuration Options**:
+
+1. **SMTP URI Format** (Recommended):
+   ```bash
+   # Standard SMTP (port 587 with STARTTLS)
+   SMTP_URI=smtp://username:password@smtp.gmail.com:587
+   
+   # SMTPS (port 465 with implicit TLS)
+   SMTP_URI=smtps://username:password@smtp.gmail.com:465
+   
+   # No authentication
+   SMTP_URI=smtp://mail.example.com:25
+   ```
+
+2. **SendGrid API** (Alternative):
+   ```bash
+   SENDGRID_API_KEY=your_sendgrid_api_key
+   ```
+
+### **Email Delivery Flow**:
+1. 📊 Generate PDF and Excel reports
+2. 🔍 Check if MinIO is configured
+3. 📤 If MinIO available: Upload files and generate pre-signed URLs
+4. 📧 Send email with:
+   - Download links (if MinIO upload succeeded)
+   - File attachments (if MinIO not available or upload failed)
+5. 💾 Update database with delivery status
+
+### **Fallback Behavior**:
+- If SMTP_URI is not configured, falls back to SendGrid (if API key provided)
+- If MinIO upload fails, automatically attaches files to email
+- If email sending fails, logs error and marks report as not sent
+
+---
+
+## 📊 Report Generation Workflow
+
+```mermaid
+graph TD
+    A[📮 Pub/Sub Message] --> B{Job Type?}
+    
+    B -->|Monthly Report| C[🗓️ Monthly Report Generation]
+    B -->|Daily P&L| D[📊 Daily P&L Calculation]
+    
+    C --> E[📊 Generate PDF/Excel Reports]
+    E --> F{MinIO Configured?}
+    
+    F -->|Yes| G[📤 Upload to MinIO]
+    G --> H[🔗 Generate Pre-signed URLs<br/>30-day expiration]
+    H --> I[📧 Send Email with Links]
+    
+    F -->|No| J[📎 Attach Files to Email]
+    J --> I
+    
+    I --> K{SMTP URI<br/>Configured?}
+    K -->|Yes| L[📨 Send via SMTP]
+    K -->|No| M{SendGrid<br/>Configured?}
+    M -->|Yes| N[📮 Send via SendGrid]
+    M -->|No| O[❌ Log Error]
+    
+    L --> P[💾 Update Database<br/>report_sent = true]
+    N --> P
+    
+    D --> Q[🔄 Calculate MTM Values]
+    Q --> R[💾 Store in PostgreSQL]
+    R --> S[✅ Daily P&L Complete]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:4px
+    style P fill:#9f9,stroke:#333,stroke-width:2px
+    style S fill:#9f9,stroke:#333,stroke-width:2px
+    style O fill:#f99,stroke:#333,stroke-width:2px
+```
 
 ---
 

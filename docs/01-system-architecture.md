@@ -152,17 +152,20 @@ Advanced report generation service with cloud storage integration.
 **🎯 Primary Responsibilities:**
 - 📄 **PDF Reports** - Professional layouts with ReportLab integration
 - 📊 **Excel Reports** - Structured spreadsheets with pandas/openpyxl
-- ☁️ **Cloud Storage** - GCS bucket integration with signed URL generation
+- ☁️ **Cloud Storage** - GCS/MinIO integration with signed URL generation (30-day expiration)
+- 🔗 **MinIO Support** - S3-compatible storage with 180-day retention policy
 - 💰 **P&L Integration** - Real-time data from PostgreSQL with commission calculations
-- 📧 **Email Delivery** - Automated report distribution via SendGrid
+- 📧 **Email Delivery** - Multi-provider support (SMTP/SendGrid) with automatic fallback
 - ⏰ **Scheduled Processing** - Google Cloud Pub/Sub triggered workflows
 - 📅 **Weekly Email Reports** - Cron-based commission report emails every Monday
 
 **🏗️ Architecture Components:**
-- 📄 **ReportGenerator** - Core report generation engine with GCS integration
+- 📄 **ReportGenerator** - Core report generation engine with GCS/MinIO integration
 - 💰 **PnLDataService** - PostgreSQL integration for P&L and commission data
-- ☁️ **GCSManager** - Google Cloud Storage operations and signed URL generation
-- 📧 **EmailService** - SendGrid integration for report delivery
+- ☁️ **StorageManager** - Unified interface for GCS and MinIO operations
+- 🔗 **MinIOService** - S3-compatible storage with lifecycle management
+- 📧 **EmailService** - Multi-provider support (SMTP/SendGrid) with fallback
+- 📨 **SMTPSender** - Direct SMTP integration using aiosmtplib
 - ⏰ **JobProcessor** - Pub/Sub message handling and workflow coordination
 
 **🔧 Technology Stack:**

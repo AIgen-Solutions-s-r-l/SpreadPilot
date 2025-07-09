@@ -24,7 +24,8 @@ SECRETS_TO_FETCH = [
     # MinIO credentials
     "MINIO_ACCESS_KEY",
     "MINIO_SECRET_KEY",
-    # Add SMTP credentials here if needed in the future
+    # SMTP credentials
+    "SMTP_URI",
 ]
 
 

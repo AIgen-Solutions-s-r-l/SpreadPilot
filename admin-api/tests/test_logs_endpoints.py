@@ -67,7 +67,7 @@ async def test_get_recent_logs_with_filters(client: TestClient, auth_headers: di
         mock_db.return_value = {"logs": mock_collection}
 
         response = client.get(
-            "/api/v1/logs/recent?n=50&service=trading-bot&level=ERROR&search=error",
+            "/api/v1/logs/recent?limit=50&service=trading-bot&level=ERROR&search=error",
             headers=auth_headers,
         )
 
@@ -83,16 +83,50 @@ async def test_get_recent_logs_with_filters(client: TestClient, auth_headers: di
 @pytest.mark.asyncio
 async def test_get_recent_logs_limit_validation(client: TestClient, auth_headers: dict):
     """Test log limit validation."""
-    # Test with n > 1000
-    response = client.get("/api/v1/logs/recent?n=1500", headers=auth_headers)
+    # Test with limit > 1000
+    response = client.get("/api/v1/logs/recent?limit=1500", headers=auth_headers)
     assert response.status_code == 422  # Validation error
 
-    # Test with n < 1
-    response = client.get("/api/v1/logs/recent?n=0", headers=auth_headers)
+    # Test with limit < 1
+    response = client.get("/api/v1/logs/recent?limit=0", headers=auth_headers)
     assert response.status_code == 422
 
 
+@pytest.mark.asyncio
+async def test_get_logs_endpoint(client: TestClient, auth_headers: dict):
+    """Test the /logs endpoint (without /recent)."""
+    mock_logs = [
+        {
+            "timestamp": datetime(2024, 1, 15, 10, 30, 0),
+            "service": "trading-bot",
+            "level": "INFO",
+            "message": "Test log entry",
+        }
+    ]
+
+    with patch("admin-api.app.api.v1.endpoints.logs.get_mongo_db") as mock_db:
+        mock_cursor = AsyncMock()
+        mock_cursor.to_list.return_value = mock_logs
+
+        mock_collection = AsyncMock()
+        mock_collection.find.return_value.sort.return_value.limit.return_value = (
+            mock_cursor
+        )
+
+        mock_db.return_value = {"logs": mock_collection}
+
+        response = client.get("/api/v1/logs?limit=100", headers=auth_headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["requested"] == 100
+
+
 def test_logs_endpoint_requires_auth(client: TestClient):
-    """Test that logs endpoint requires authentication."""
+    """Test that logs endpoints require authentication."""
     response = client.get("/api/v1/logs/recent")
+    assert response.status_code == 401
+    
+    response = client.get("/api/v1/logs")
     assert response.status_code == 401
