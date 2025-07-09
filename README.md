@@ -155,13 +155,14 @@ SpreadPilot supports HashiCorp Vault for secure credential management:
 
 | Service | Description | Port |
 |---------|-------------|------|
-| 🤖 **Trading Bot** | Executes trades, manages positions | 8001 |
+| 🤖 **Trading Bot** | Executes trades, manages positions, monitors time value | 8001 |
 | 🎛️ **Admin API** | Backend for dashboard, follower management | 8002 |
 | 🖥️ **Frontend** | React admin dashboard | 8080 |
 | 📱 **Admin Dashboard** | Vue 3 mobile-responsive SPA | 3001 |
 | 👀 **Watchdog** | Autonomous container health monitoring & restart | - |
 | 📊 **Report Worker** | PDF/Excel report generation | 8004 |
 | 🔔 **Alert Router** | Telegram/email notifications | 8005 |
+| ⏱️ **Time-Value Monitor** | Auto-closes options when time value ≤ $0.10 | (in Trading Bot) |
 
 ### 🗄️ Data Stores
 
