@@ -29,6 +29,7 @@ The Admin API serves as the central management hub for SpreadPilot, offering com
 
 ### 🗄️ **Data Management**
 - 🍃 **MongoDB Integration**: Async database operations with Motor
+- 🐘 **PostgreSQL Support**: P&L data queries with SQLAlchemy/asyncpg
 - 📊 **FastAPI Framework**: High-performance async API
 - 🎯 **RESTful Design**: Clean, predictable API endpoints
 - 📝 **Auto Documentation**: Built-in Swagger/OpenAPI docs
@@ -94,20 +95,21 @@ docker-compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 📅 GET | `/api/v1/pnl/today` | Get today's P&L data |
-| 📊 GET | `/api/v1/pnl/month` | Get monthly P&L data |
+| 📅 GET | `/api/v1/pnl/today` | Get today's P&L data from PostgreSQL |
+| 📊 GET | `/api/v1/pnl/month` | Get monthly P&L data from PostgreSQL |
 
 ### 📝 **System Logs**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 📋 GET | `/api/v1/logs/recent` | Get recent system logs (max 1000) |
+| 📋 GET | `/api/v1/logs` | Get recent system logs (max 1000) |
+| 📋 GET | `/api/v1/logs/recent` | Get recent system logs (alias) |
 
 ### 🔧 **Manual Operations**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| 🚨 POST | `/api/v1/manual-close` | Manually close positions (PIN: 0312) |
+| 🚨 POST | `/api/v1/manual-close` | Manually close positions via IBKR (PIN: 0312) |
 
 ### 🏥 **Health Monitoring**
 
@@ -172,6 +174,12 @@ curl -X POST "http://localhost:8002/api/v1/followers/follower123/toggle" \
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   "http://localhost:8002/api/v1/pnl/today"
 
+# Response (PostgreSQL data)
+[
+  {"follower_id": "follower1", "pnl": 1500.50},
+  {"follower_id": "follower2", "pnl": -200.75}
+]
+
 # Get monthly P&L (current month)
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   "http://localhost:8002/api/v1/pnl/month"
@@ -190,13 +198,13 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 # Get logs with filters
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost:8002/api/v1/logs/recent?n=50&service=trading-bot&level=ERROR&search=connection"
+  "http://localhost:8002/api/v1/logs?limit=50&service=trading-bot&level=ERROR&search=connection"
 ```
 
 ### 🔧 Manual Operations
 
 ```bash
-# Manually close all positions for a follower
+# Manually close all positions for a follower (calls IBKR executor directly)
 curl -X POST "http://localhost:8002/api/v1/manual-close" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
@@ -206,6 +214,15 @@ curl -X POST "http://localhost:8002/api/v1/manual-close" \
     "close_all": true,
     "reason": "Emergency market conditions"
   }'
+
+# Response
+{
+  "success": true,
+  "message": "Successfully closed all positions",
+  "closed_positions": 5,
+  "follower_id": "follower123",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
 
 # Close specific positions
 curl -X POST "http://localhost:8002/api/v1/manual-close" \
@@ -300,12 +317,18 @@ MONGO_INITDB_ROOT_PASSWORD=password
 MONGO_DB_NAME=spreadpilot_admin
 MONGO_URI=mongodb://admin:password@localhost:27017
 
+# 🐘 PostgreSQL Configuration (for P&L data)
+POSTGRES_URI=postgresql+asyncpg://user:password@localhost:5432/spreadpilot_pnl
+
 # 🔐 Authentication
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=your_bcrypt_hash
 JWT_SECRET=your_secret_key_here
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=1440
+
+# 🔧 Manual Operations
+MANUAL_OPERATION_PIN=0312
 
 # 🌐 CORS & Networking
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
