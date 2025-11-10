@@ -14,6 +14,8 @@ aiosignal==1.3.2
     # via aiohttp
 alabaster==1.0.0
     # via sphinx
+alembic==1.17.1
+    # via -r requirements-dev.in
 annotated-types==0.7.0
     # via pydantic
 anyio==4.9.0
@@ -24,6 +26,8 @@ anyio==4.9.0
     #   watchfiles
 asttokens==3.0.0
     # via stack-data
+asyncpg==0.30.0
+    # via -r requirements-dev.in
 attrs==25.3.0
     # via aiohttp
 babel==2.17.0
@@ -84,19 +88,21 @@ execnet==2.1.1
     # via pytest-xdist
 executing==2.2.0
     # via stack-data
+fakeredis==2.32.1
+    # via -r requirements-dev.in
 fastapi==0.110.3
-    # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    # via -r admin-api/requirements.in
 firebase-admin==6.8.0
     # via -r requirements-dev.in
-freezegun==1.5.2
-    # via -r requirements-dev.in
 flake8==7.2.0
+    # via -r requirements-dev.in
+freezegun==1.5.2
     # via -r requirements-dev.in
 frozenlist==1.6.0
     # via
     #   aiohttp
     #   aiosignal
-google-api-core[grpc]==2.24.2
+google-api-core[grpc]==2.28.1
     # via
     #   firebase-admin
     #   google-api-python-client
@@ -121,8 +127,10 @@ google-cloud-core==2.4.3
     #   google-cloud-storage
 google-cloud-firestore==2.20.2
     # via firebase-admin
-google-cloud-storage==3.1.0
-    # via firebase-admin
+google-cloud-storage==3.5.0
+    # via
+    #   -r requirements-dev.in
+    #   firebase-admin
 google-crc32c==1.7.1
     # via
     #   google-cloud-storage
@@ -133,6 +141,8 @@ googleapis-common-protos==1.70.0
     # via
     #   google-api-core
     #   grpcio-status
+greenlet==3.2.4
+    # via sqlalchemy
 grpcio==1.71.0
     # via
     #   google-api-core
@@ -156,10 +166,12 @@ httptools==0.6.4
     # via uvicorn
 httpx==0.27.2
     # via
-    #   -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    #   -r admin-api/requirements.in
     #   -r requirements-dev.in
     #   httpx-ws
 httpx-ws==0.7.2
+    # via -r requirements-dev.in
+hvac==2.4.0
     # via -r requirements-dev.in
 id==1.5.0
     # via twine
@@ -200,10 +212,14 @@ jinja2==3.1.6
     # via sphinx
 keyring==25.6.0
     # via twine
+mako==1.3.10
+    # via alembic
 markdown-it-py==3.0.0
     # via rich
 markupsafe==3.0.2
-    # via jinja2
+    # via
+    #   jinja2
+    #   mako
 matplotlib-inline==0.1.7
     # via ipython
 mccabe==0.7.0
@@ -216,7 +232,7 @@ more-itertools==10.7.0
     #   jaraco-functools
 motor==3.7.0
     # via
-    #   -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    #   -r admin-api/requirements.in
     #   -r requirements-dev.in
 msgpack==1.1.0
     # via cachecontrol
@@ -243,7 +259,7 @@ packaging==25.0
 parso==0.8.4
     # via jedi
 passlib[bcrypt]==1.7.4
-    # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    # via -r admin-api/requirements.in
 pathspec==0.12.1
     # via black
 pexpect==4.9.0
@@ -271,6 +287,10 @@ protobuf==5.29.4
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
+psutil==5.9.8
+    # via -r admin-api/requirements.in
+psycopg2-binary==2.9.11
+    # via -r requirements-dev.in
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.3
@@ -288,7 +308,7 @@ pycparser==2.22
     # via cffi
 pydantic[email]==2.11.3
     # via
-    #   -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    #   -r admin-api/requirements.in
     #   fastapi
     #   pydantic-settings
 pydantic-core==2.33.1
@@ -308,7 +328,7 @@ pyjwt[crypto]==2.10.1
     # via firebase-admin
 pymongo==4.12.0
     # via
-    #   -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    #   -r admin-api/requirements.in
     #   motor
 pyparsing==3.2.3
     # via httplib2
@@ -334,25 +354,32 @@ pytest-timeout==2.3.1
     # via -r requirements-dev.in
 pytest-xdist==3.6.1
     # via -r requirements-dev.in
+python-dateutil==2.9.0.post0
+    # via freezegun
 python-dotenv==1.1.0
     # via
     #   pydantic-settings
     #   testcontainers
     #   uvicorn
 python-jose[cryptography]==3.5.0
-    # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    # via -r admin-api/requirements.in
 python-multipart==0.0.20
-    # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    # via -r admin-api/requirements.in
+pytz==2025.2
+    # via -r requirements-dev.in
 pyyaml==6.0.2
     # via uvicorn
 readme-renderer==44.0
     # via twine
+redis==7.0.1
+    # via fakeredis
 requests==2.32.3
     # via
     #   cachecontrol
     #   docker
     #   google-api-core
     #   google-cloud-storage
+    #   hvac
     #   id
     #   requests-toolbelt
     #   sphinx
@@ -372,13 +399,17 @@ rsa==4.9.1
 secretstorage==3.3.3
     # via keyring
 six==1.17.0
-    # via ecdsa
+    # via
+    #   ecdsa
+    #   python-dateutil
 sniffio==1.3.1
     # via
     #   anyio
     #   httpx
 snowballstemmer==2.2.0
     # via sphinx
+sortedcontainers==2.4.0
+    # via fakeredis
 sphinx==8.2.3
     # via
     #   -r requirements-dev.in
@@ -400,6 +431,10 @@ sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
+sqlalchemy[asyncio]==2.0.44
+    # via
+    #   -r requirements-dev.in
+    #   alembic
 stack-data==0.6.3
     # via ipython
 starlette==0.37.2
@@ -418,11 +453,13 @@ types-requests==2.32.0.20250328
     # via -r requirements-dev.in
 typing-extensions==4.13.2
     # via
+    #   alembic
     #   anyio
     #   fastapi
     #   mypy
     #   pydantic
     #   pydantic-core
+    #   sqlalchemy
     #   testcontainers
     #   typing-inspection
 typing-inspection==0.4.0
@@ -439,7 +476,7 @@ urllib3==2.4.0
     #   twine
     #   types-requests
 uvicorn[standard]==0.29.0
-    # via -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    # via -r admin-api/requirements.in
 uvloop==0.21.0
     # via uvicorn
 watchfiles==1.0.5
@@ -448,7 +485,7 @@ wcwidth==0.2.13
     # via prompt-toolkit
 websockets==12.0
     # via
-    #   -r /home/alessio/Customers/Emiliano/SpreadPilot/admin-api/requirements.in
+    #   -r admin-api/requirements.in
     #   -r requirements-dev.in
     #   uvicorn
 wheel==0.45.1
