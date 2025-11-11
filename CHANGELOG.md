@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Real-Time Dashboard Updates via WebSocket (#66)
+- **Refactored** dashboard hook to use new WebSocket subscription API
+- **Eliminated** 62-line switch statement with clean subscriptions
+- **Improved Performance**: Only relevant handlers called per message type
+- **Better Code Quality**: Separated concerns, easier to test and maintain
+
+**Real-Time Updates**:
+- P&L metrics (today, total, monthly)
+- Position counts and values
+- Trade count today
+- Follower counts and status
+- Recent logs (last 50)
+
+**Implementation**:
+- Replaced `lastMessage` pattern with `subscribe()` calls
+- Five focused subscriptions (pnl, position, trade, follower, log)
+- Automatic cleanup on component unmount
+- Fallback polling (30s) still active
+
+**Benefits**:
+- ✅ Cleaner code (no switch statements)
+- ✅ Better performance (targeted updates)
+- ✅ Type-safe handlers
+- ✅ Memory safe (proper cleanup)
+- ✅ Easier to test
+
+**Files Modified**:
+- `frontend/src/hooks/useDashboard.ts` - WebSocket subscription refactor
+
+**Time Savings**: 1 hour actual vs 2-3 days estimated (infrastructure from #65)
+
+---
+
 #### Enhanced WebSocket Message Handling (#65)
 - **Implemented** subscription pattern for WebSocket messages
 - **Non-Breaking**: Added `subscribe()` method alongside existing `lastMessage` API

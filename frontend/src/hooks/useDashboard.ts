@@ -30,7 +30,7 @@ interface DashboardData {
 }
 
 export const useDashboard = (): DashboardData => {
-  const { lastMessage, isConnected } = useWebSocket();
+  const { subscribe, isConnected } = useWebSocket();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalPnl: 0,
     todayPnl: 0,
@@ -99,69 +99,63 @@ export const useDashboard = (): DashboardData => {
     }
   }, []);
 
-  // Handle WebSocket messages for real-time updates
+  // Subscribe to WebSocket events for real-time updates
   useEffect(() => {
-    if (lastMessage) {
-      try {
-        const { type, data } = lastMessage as { type: string; data: any };
-        
-        switch (type) {
-          case 'pnl_update':
-            // Update P&L metrics in real-time
-            setMetrics(prev => ({
-              ...prev,
-              todayPnl: data.todayPnl || prev.todayPnl,
-              totalPnl: data.totalPnl || prev.totalPnl,
-              monthlyPnl: data.monthlyPnl || prev.monthlyPnl,
-            }));
-            break;
-            
-          case 'position_update':
-            // Update position counts
-            setMetrics(prev => ({
-              ...prev,
-              activePositions: data.activePositions || prev.activePositions,
-              positionsValue: data.positionsValue || prev.positionsValue,
-            }));
-            break;
-            
-          case 'trade_update':
-            // Update trade count
-            setMetrics(prev => ({
-              ...prev,
-              tradeCountToday: data.tradeCountToday || prev.tradeCountToday,
-            }));
-            break;
-            
-          case 'follower_update':
-            // Update follower data
-            if (data.followers) {
-              setActiveFollowers(data.followers.filter((f: Follower) => f.enabled));
-              setMetrics(prev => ({
-                ...prev,
-                followerCount: data.followers.length,
-                activeFollowerCount: data.followers.filter((f: Follower) => f.enabled).length,
-              }));
-            }
-            break;
-            
-          case 'log_update':
-            // Add new log entries
-            if (data.log) {
-              setRecentLogs(prev => [data.log, ...prev.slice(0, 49)]); // Keep last 50 logs
-            }
-            break;
-            
-          default:
-            if (import.meta.env.DEV) {
-              console.log('Unknown WebSocket message type:', type);
-            }
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+    // Subscribe to P&L updates
+    const unsubscribePnl = subscribe('pnl_update', (data: any) => {
+      setMetrics(prev => ({
+        ...prev,
+        todayPnl: data.todayPnl || prev.todayPnl,
+        totalPnl: data.totalPnl || prev.totalPnl,
+        monthlyPnl: data.monthlyPnl || prev.monthlyPnl,
+      }));
+    });
+
+    // Subscribe to position updates
+    const unsubscribePosition = subscribe('position_update', (data: any) => {
+      setMetrics(prev => ({
+        ...prev,
+        activePositions: data.activePositions || prev.activePositions,
+        positionsValue: data.positionsValue || prev.positionsValue,
+      }));
+    });
+
+    // Subscribe to trade updates
+    const unsubscribeTrade = subscribe('trade_update', (data: any) => {
+      setMetrics(prev => ({
+        ...prev,
+        tradeCountToday: data.tradeCountToday || prev.tradeCountToday,
+      }));
+    });
+
+    // Subscribe to follower updates
+    const unsubscribeFollower = subscribe('follower_update', (data: any) => {
+      if (data.followers) {
+        setActiveFollowers(data.followers.filter((f: Follower) => f.enabled));
+        setMetrics(prev => ({
+          ...prev,
+          followerCount: data.followers.length,
+          activeFollowerCount: data.followers.filter((f: Follower) => f.enabled).length,
+        }));
       }
-    }
-  }, [lastMessage]);
+    });
+
+    // Subscribe to log updates
+    const unsubscribeLog = subscribe('log_update', (data: any) => {
+      if (data.log) {
+        setRecentLogs(prev => [data.log, ...prev.slice(0, 49)]); // Keep last 50 logs
+      }
+    });
+
+    // Cleanup all subscriptions on unmount
+    return () => {
+      unsubscribePnl();
+      unsubscribePosition();
+      unsubscribeTrade();
+      unsubscribeFollower();
+      unsubscribeLog();
+    };
+  }, [subscribe]);
 
   useEffect(() => {
     fetchDashboardData();
