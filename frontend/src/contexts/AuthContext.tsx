@@ -1,7 +1,6 @@
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { User, LoginCredentials } from '../types/auth';
-// Placeholder for API service - will be created later
-// import * as authService from '../services/authService';
+import * as authService from '../services/authService';
 
 // Define the shape of the context data
 export interface AuthContextType {
@@ -28,28 +27,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading initially
 
-  // TODO: Check for existing token/session on initial load (e.g., from localStorage)
+  // Check for existing token/session on initial load
   useEffect(() => {
-    // Simulate checking local storage or session
-    const storedToken = localStorage.getItem('authToken');
-    if (storedToken) {
-      // TODO: Validate token with backend, fetch user data
-      setToken(storedToken);
-      setIsAuthenticated(true);
-      // setUser(fetchedUserData); // Fetch user data based on token
-    }
-    setIsLoading(false); // Finished initial check
+    const initializeAuth = async () => {
+      const storedToken = authService.getToken();
+      if (storedToken) {
+        try {
+          // Validate token and fetch user data
+          const isValid = await authService.validateToken();
+          if (isValid) {
+            const userData = await authService.getCurrentUser();
+            setToken(storedToken);
+            setUser(userData);
+            setIsAuthenticated(true);
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          // Clear invalid token
+          authService.logout();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = async (_credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      // TODO: Call actual authService.login(credentials)
-      // const { token: newToken, user: loggedInUser } = await authService.login(credentials);
-      throw new Error('Authentication service not implemented');
+      // Call authentication service
+      const response = await authService.login(credentials);
+
+      // Get user data
+      const userData = await authService.getCurrentUser();
+
+      // Update state
+      setToken(response.access_token);
+      setUser(userData);
+      setIsAuthenticated(true);
     } catch (error) {
       console.error('Login failed:', error);
-      // Handle login error (e.g., show message to user)
+      // Clear any partial state
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
       throw error; // Re-throw for the component to handle
     } finally {
       setIsLoading(false);
@@ -57,11 +79,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
+    // Clear token from storage
+    authService.logout();
+
+    // Clear state
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    // Optionally redirect to login page
   };
 
   // Value provided to consuming components

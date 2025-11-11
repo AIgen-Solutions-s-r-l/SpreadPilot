@@ -11,6 +11,11 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
-  token: string;
-  user: User;
+  access_token: string;
+  token_type: string;
+}
+
+export interface TokenPayload {
+  sub: string; // username
+  exp: number; // expiration timestamp
 }

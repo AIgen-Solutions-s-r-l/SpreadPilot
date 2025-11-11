@@ -10,13 +10,22 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null); // Clear previous errors
+
+    // Validate input
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both username and password.');
+      return;
+    }
+
     try {
-      // TODO: Pass actual credentials when authService is implemented
-      await login({ username: 'admin', password: 'password' });
+      // Pass actual credentials from form
+      await login({ username: username.trim(), password });
       // Navigation will be handled by the App component based on isAuthenticated state
-    } catch (err) {
-      setError('Login failed. Please check your credentials.'); // Basic error message
-      console.error(err);
+    } catch (err: any) {
+      // Display error message from service or fallback
+      const errorMessage = err.message || 'Login failed. Please check your credentials.';
+      setError(errorMessage);
+      console.error('Login error:', err);
     }
   };
 
