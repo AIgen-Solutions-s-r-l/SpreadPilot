@@ -284,6 +284,40 @@ services:
     profiles:
       - dev  # Only start with --profile dev
 
+  # Paper trading gateway (optional - only for paper trading mode)
+  paper-gateway:
+    build:
+      context: ./paper-gateway
+      dockerfile: Dockerfile
+    container_name: spreadpilot-paper-gateway
+    labels:
+      - "spreadpilot"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - MONGO_DB_NAME=spreadpilot_paper
+      - PAPER_INITIAL_BALANCE=${PAPER_INITIAL_BALANCE:-100000}
+      - PAPER_COMMISSION_RATE=${PAPER_COMMISSION_RATE:-0.005}
+      - PAPER_OPTION_COMMISSION=${PAPER_OPTION_COMMISSION:-0.65}
+      - PAPER_SLIPPAGE_BPS=${PAPER_SLIPPAGE_BPS:-5}
+      - PAPER_VOLATILITY=${PAPER_VOLATILITY:-0.02}
+      - MARKET_DATA_SOURCE=${MARKET_DATA_SOURCE:-mock}
+      - LOG_LEVEL=INFO
+    ports:
+      - "4003:4003"  # Paper gateway API
+    networks:
+      - spreadpilot-network
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    profiles:
+      - paper  # Only start with --profile paper
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
 volumes:
   mongo_data:
   redis_data:
