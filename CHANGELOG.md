@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Email Preview Mode with MailHog (#71)
+- **Added** MailHog email testing service to docker-compose.yml
+- **Created** comprehensive EMAIL_PREVIEW_MODE.md documentation
+- **Development-only**: Service uses Docker profile (--profile dev)
+- **Web UI**: Access at http://localhost:8025
+- **SMTP Server**: localhost:1025 for email capture
+
+**Use Cases**:
+- Local email testing without SendGrid
+- E2E test automation (already configured)
+- Email template debugging
+- Offline development
+
+**Configuration**:
+All email-sending services can use MailHog in development:
+- trading-bot: Alerts and notifications
+- report-worker: P&L reports
+- alert-router: System alerts
+
+**Quick Start**:
+```bash
+# Start with MailHog
+docker-compose --profile dev up -d
+
+# Access web UI
+open http://localhost:8025
+
+# Services auto-connect to mailhog:1025
+```
+
+**Benefits**:
+- ✅ No SendGrid API key needed for development
+- ✅ No accidental emails sent to real users
+- ✅ Works offline
+- ✅ Instant email capture (no network delays)
+- ✅ API access for automated testing
+- ✅ Visual email debugging
+
+**Files Modified**:
+- `docker-compose.yml` - Added MailHog service with dev profile
+- `docs/EMAIL_PREVIEW_MODE.md` - Complete usage guide
+
+**Time**: 1-2 days
+
+---
+
 #### Dev-Prompts Orchestrator Documentation (#68)
 - **Clarified** that "stub" implementations are intentional graceful fallbacks
 - **Enhanced** documentation for GitHub adapters and secret providers
