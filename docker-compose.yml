@@ -271,6 +271,19 @@ services:
 
   # Observability services
 
+  # Development email preview (optional - only for dev/testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: spreadpilot-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - spreadpilot-network
+    restart: unless-stopped
+    profiles:
+      - dev  # Only start with --profile dev
+
 volumes:
   mongo_data:
   redis_data:
