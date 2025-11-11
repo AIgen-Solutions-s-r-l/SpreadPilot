@@ -31,11 +31,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
       ws.current.close();
     }
 
-    // TODO: Potentially add token to URL query params or handle auth differently if needed
-    // const connectionUrl = token ? `${url}?token=${token}` : url;
-    const connectionUrl = url; // Using plain URL for now
+    // Add JWT token to URL query params for authentication
+    const connectionUrl = _token ? `${url}?token=${_token}` : url;
 
-    console.log(`Attempting to connect WebSocket to ${connectionUrl}`);
+    console.log(`Attempting to connect WebSocket to ${url.split('?')[0]}`); // Log URL without token
     ws.current = new WebSocket(connectionUrl);
 
     ws.current.onopen = () => {
@@ -65,7 +64,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
         console.error('Failed to parse WebSocket message:', event.data, error);
       }
     };
-  }, [url]); // Reconnect if URL changes
+  }, [url, _token]); // Reconnect if URL or token changes
 
   useEffect(() => {
     // Connect when the component mounts or URL/token changes

@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### WebSocket Authentication (#63)
+- **Implemented** JWT token authentication for WebSocket connections
+- **Security Enhancement**: Prevents unauthorized access to real-time data
+- **Query Parameter Auth**: Token passed as URL query parameter
+- **User Context**: Track authenticated user per WebSocket connection
+- **Graceful Error Handling**: Clear error messages for auth failures
+
+**Implementation**:
+- Backend: Token validation before WebSocket accept()
+- Frontend: Automatic token injection from useAuth() hook
+- User tracking: Log authenticated user activity
+- Error codes: 1008 (policy violation) for auth failures
+
+**Security Benefits**:
+- ✅ WebSocket connections now require valid JWT token
+- ✅ Unauthorized access prevented
+- ✅ User activity logged for audit trail
+- ✅ Token expiration handled (reconnect on token change)
+- ✅ Addresses MEDIUM-HIGH security vulnerability
+
+**Files Modified**:
+- `admin-api/app/api/v1/endpoints/websocket.py` - Added token validation
+- `frontend/src/contexts/WebSocketContext.tsx` - Added token to connection URL
+
+---
+
 #### Email Alert Notifications (#62)
 - **Implemented** email notifications for trading alerts
 - **Leverage** existing SendGrid integration from spreadpilot-core
