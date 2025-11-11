@@ -1,12 +1,13 @@
 import React, { createContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth'; // To potentially use auth token for connection
-import { WebSocketMessage } from '../types/websocket';
+import { WebSocketMessage, MessageHandler } from '../types/websocket';
 
 // Define the shape of the context data
 interface WebSocketContextType {
   isConnected: boolean;
   lastMessage: WebSocketMessage | null; // Store the last received message
   sendMessage: (message: WebSocketMessage | string) => void; // Function to send messages
+  subscribe: (type: string, handler: MessageHandler) => () => void; // Subscribe to specific message types
 }
 
 // Create the context
@@ -24,6 +25,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const { token: _token } = useAuth(); // Get token if needed for authentication
+
+  // Subscription system: Map of message type to Set of handlers
+  const handlersRef = useRef<Map<string, Set<MessageHandler>>>(new Map());
 
   const connectWebSocket = useCallback(() => {
     // Close existing connection if any
@@ -66,8 +70,21 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
         if (import.meta.env.DEV) {
           console.log('WebSocket Message Received:', { type: messageData.type });
         }
+
+        // Keep existing behavior: update lastMessage state
         setLastMessage(messageData);
-        // TODO: Implement more sophisticated message handling/dispatching if needed
+
+        // NEW: Dispatch to subscribers
+        const handlers = handlersRef.current.get(messageData.type);
+        if (handlers && handlers.size > 0) {
+          handlers.forEach(handler => {
+            try {
+              handler(messageData.data);
+            } catch (handlerError) {
+              console.error(`Error in WebSocket handler for type "${messageData.type}":`, handlerError);
+            }
+          });
+        }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', event.data, error);
       }
@@ -105,10 +122,41 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     }
   }, []);
 
+  const subscribe = useCallback((type: string, handler: MessageHandler) => {
+    if (import.meta.env.DEV) {
+      console.log(`WebSocket: Subscribing to message type "${type}"`);
+    }
+
+    // Get or create handler set for this type
+    if (!handlersRef.current.has(type)) {
+      handlersRef.current.set(type, new Set());
+    }
+
+    handlersRef.current.get(type)!.add(handler);
+
+    // Return unsubscribe function
+    return () => {
+      if (import.meta.env.DEV) {
+        console.log(`WebSocket: Unsubscribing from message type "${type}"`);
+      }
+
+      const handlers = handlersRef.current.get(type);
+      if (handlers) {
+        handlers.delete(handler);
+
+        // Cleanup empty sets to prevent memory leaks
+        if (handlers.size === 0) {
+          handlersRef.current.delete(type);
+        }
+      }
+    };
+  }, []);
+
   const value = {
     isConnected,
     lastMessage,
     sendMessage,
+    subscribe,
   };
 
   return <WebSocketContext.Provider value={value}>{children}</WebSocketContext.Provider>;

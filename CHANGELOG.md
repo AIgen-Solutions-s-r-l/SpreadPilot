@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Enhanced WebSocket Message Handling (#65)
+- **Implemented** subscription pattern for WebSocket messages
+- **Non-Breaking**: Added `subscribe()` method alongside existing `lastMessage` API
+- **Type-Safe**: Message type constants and payload definitions
+- **Memory Safe**: Automatic cleanup via unsubscribe functions
+- **Error Handling**: Handler errors don't affect other subscribers
+
+**New API**:
+```typescript
+const { subscribe } = useWebSocket();
+
+useEffect(() => {
+  const unsubscribe = subscribe('follower_update', (data) => {
+    // Handle follower updates
+  });
+  return unsubscribe; // Cleanup on unmount
+}, [subscribe]);
+```
+
+**Benefits**:
+- ✅ Components subscribe to specific message types only
+- ✅ No code duplication (no more switch statements)
+- ✅ Automatic cleanup prevents memory leaks
+- ✅ Type-safe with TypeScript constants
+- ✅ Error in one handler doesn't affect others
+- ✅ Existing `lastMessage` API still works (backwards compatible)
+
+**Files Modified**:
+- `frontend/src/contexts/WebSocketContext.tsx` - Added subscription system
+- `frontend/src/types/websocket.ts` - Added message type constants and payloads
+
+**Message Types Supported**:
+- `follower_update` - Follower count changes
+- `log_entry` - Real-time log entries
+- `position_update` - Position changes
+- `trade_execution` - Trade confirmations
+- `pnl_update` - P&L changes
+- `alert` - System alerts
+- `health_update` - Service health changes
+
+**Future Migration**:
+- Components can gradually migrate from `lastMessage` to `subscribe()`
+- No breaking changes in this release
+- Deprecation of `lastMessage` in future major version
+
+---
+
 #### Frontend Console Logging Cleanup (#64)
 - **Secured** production builds by gating debug logs behind `import.meta.env.DEV`
 - **Removed** debug console statements from production bundles
