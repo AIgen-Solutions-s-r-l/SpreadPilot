@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Dev-Prompts Orchestrator Documentation (#68)
+- **Clarified** that "stub" implementations are intentional graceful fallbacks
+- **Enhanced** documentation for GitHub adapters and secret providers
+- **Documented** dependency injection pattern for VaultProvider
+
+**Key Finding**:
+"Stub" implementations are **not incomplete** - they're graceful degradation patterns that allow the orchestrator to work without:
+- GitHub credentials
+- External dependencies (httpx)
+- Vault integration
+
+**Pattern**:
+1. Try real implementation (GitHub API, Vault client)
+2. Fall back to stub mode if unavailable
+3. Tool keeps working (no crashes)
+
+**Changes**:
+- Added comprehensive docstrings to `pr.comment()`
+- Added comprehensive docstrings to `github_status.set_status()`
+- Enhanced VaultProvider documentation with usage examples
+- Documented when stub mode activates
+- Clarified return value structures
+
+**Benefits**:
+- ✅ Local development without GitHub access
+- ✅ Testing without external dependencies
+- ✅ Quick start (no complex setup)
+- ✅ Resilient (never crashes)
+
+**Files Modified**:
+- `dev-prompts/orchestrator/adapters/pr.py` - Documentation
+- `dev-prompts/orchestrator/adapters/github_status.py` - Documentation
+- `dev-prompts/orchestrator/secret_providers.py` - Enhanced docs
+
+**Time**: 30 minutes (documentation only, no code changes needed)
+
+---
+
 #### IBKR Contract Caching for Performance (#67)
 - **Implemented** LRU cache for Stock contract creation
 - **Performance**: Cached lookups reduce object allocation overhead
