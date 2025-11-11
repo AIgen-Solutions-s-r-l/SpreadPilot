@@ -7,6 +7,7 @@ from bson import ObjectId  # Added ObjectId
 
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Alert, AlertSeverity, AlertType
+from spreadpilot_core.utils.email import EmailSender
 from spreadpilot_core.utils.telegram import send_alert_message
 
 logger = get_logger(__name__)
@@ -123,8 +124,13 @@ class AlertManager:
                     follower_id=follower_id,
                 )
 
-            # TODO: Send email notification
-            # This would be implemented in a future version
+            # Send email notification for all severities
+            await self._send_email_notification(
+                alert_type=alert_type,
+                severity=severity,
+                message=message,
+                follower_id=follower_id,
+            )
         except Exception as e:
             logger.error(f"Error sending notifications for alert {alert_id}: {e}")
 
@@ -167,6 +173,101 @@ class AlertManager:
             )
         except Exception as e:
             logger.error(f"Error sending Telegram notification: {e}")
+
+    async def _send_email_notification(
+        self,
+        alert_type: AlertType,
+        severity: AlertSeverity,
+        message: str,
+        follower_id: str | None = None,
+    ):
+        """Send email notification for alert.
+
+        Args:
+            alert_type: Alert type
+            severity: Alert severity
+            message: Alert message
+            follower_id: Follower ID (optional)
+        """
+        try:
+            # Check if email settings are configured
+            if (
+                not self.service.settings.sendgrid_api_key
+                or not self.service.settings.admin_email
+            ):
+                logger.warning("Email settings not configured, skipping notification")
+                return
+
+            # Initialize email sender
+            email_sender = EmailSender(
+                api_key=self.service.settings.sendgrid_api_key,
+                from_email=self.service.settings.admin_email,
+                from_name="SpreadPilot Alerts",
+            )
+
+            # Format email subject
+            severity_emoji = {
+                AlertSeverity.CRITICAL: "🔴",
+                AlertSeverity.HIGH: "🟠",
+                AlertSeverity.MEDIUM: "🟡",
+                AlertSeverity.LOW: "🟢",
+                AlertSeverity.INFO: "ℹ️",
+            }.get(severity, "⚠️")
+
+            subject = f"{severity_emoji} {severity.value.upper()} Alert: {alert_type.value}"
+
+            # Format email HTML content
+            dashboard_link = ""
+            if self.service.settings.dashboard_url:
+                if follower_id:
+                    dashboard_link = f'<p><a href="{self.service.settings.dashboard_url}/followers/{follower_id}">View in Dashboard</a></p>'
+                else:
+                    dashboard_link = f'<p><a href="{self.service.settings.dashboard_url}">View Dashboard</a></p>'
+
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #333;">{severity_emoji} {severity.value.upper()} Alert</h2>
+                <div style="background-color: #f5f5f5; padding: 15px; border-left: 4px solid #ff6b6b; margin: 20px 0;">
+                    <p><strong>Type:</strong> {alert_type.value}</p>
+                    <p><strong>Severity:</strong> {severity.value.upper()}</p>
+                    {"<p><strong>Follower ID:</strong> " + follower_id + "</p>" if follower_id else ""}
+                    <p><strong>Message:</strong></p>
+                    <p style="white-space: pre-wrap;">{message}</p>
+                </div>
+                {dashboard_link}
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                <p style="color: #666; font-size: 12px;">
+                    This is an automated alert from SpreadPilot trading system.
+                    <br>Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")}
+                </p>
+            </body>
+            </html>
+            """
+
+            # Send email
+            success = email_sender.send_email(
+                to_email=self.service.settings.admin_email,
+                subject=subject,
+                html_content=html_content,
+            )
+
+            if success:
+                logger.info(
+                    "Sent email notification",
+                    alert_type=alert_type,
+                    severity=severity,
+                    follower_id=follower_id,
+                )
+            else:
+                logger.warning(
+                    "Failed to send email notification",
+                    alert_type=alert_type,
+                    severity=severity,
+                )
+
+        except Exception as e:
+            logger.error(f"Error sending email notification: {e}", exc_info=True)
 
     async def acknowledge_alert(self, alert_id: str, user: str) -> bool:
         """Acknowledge an alert.

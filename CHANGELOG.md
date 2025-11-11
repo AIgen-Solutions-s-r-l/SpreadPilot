@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Features
+
+#### Email Alert Notifications (#62)
+- **Implemented** email notifications for trading alerts
+- **Leverage** existing SendGrid integration from spreadpilot-core
+- **Multi-channel** alerts: Telegram (CRITICAL) + Email (all severities)
+- **Professional HTML** email templates with severity indicators
+- **Dashboard links** included in email for quick navigation
+- **Graceful fallback** if email settings not configured
+
+**Implementation**:
+- New method `_send_email_notification()` in `trading-bot/app/service/alerts.py`
+- Uses `EmailSender` from spreadpilot-core (no new dependencies)
+- Async email sending via SendGrid API
+- Comprehensive error logging
+
+**Benefits**:
+- ✅ Multi-channel alert delivery (increased reliability)
+- ✅ Email audit trail for compliance
+- ✅ Reach stakeholders without Telegram access
+- ✅ Professional notification system
+
+**Configuration Required**:
+- `SENDGRID_API_KEY` - SendGrid API key for email delivery
+- `ADMIN_EMAIL` - Admin email address for alerts
+
+---
+
 ### 🗑️ Removed
 
 #### Dead Code Removal - Original Strategy Handler (#60)
