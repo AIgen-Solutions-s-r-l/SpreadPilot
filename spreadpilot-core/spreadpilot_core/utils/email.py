@@ -21,6 +21,20 @@ from sendgrid.helpers.mail import (
     Mail,
 )
 
+try:
+    from ..dry_run import dry_run, dry_run_async
+except ImportError:
+    # Fallback if dry_run not available
+    def dry_run(operation_type: str, return_value=None, log_args: bool = True):
+        def decorator(func):
+            return func
+        return decorator
+
+    def dry_run_async(operation_type: str, return_value=None, log_args: bool = True):
+        def decorator(func):
+            return func
+        return decorator
+
 from ..logging import get_logger
 
 logger = get_logger(__name__)
@@ -48,6 +62,7 @@ class EmailSender:
             from_name=from_name,
         )
 
+    @dry_run("email", return_value=True, log_args=False)
     def send_email(
         self,
         to_email: str,
@@ -69,6 +84,10 @@ class EmailSender:
 
         Returns:
             True if email was sent successfully, False otherwise
+
+        Note:
+            When dry-run mode is enabled, this method will log the email
+            but not actually send it. Returns True in dry-run mode.
         """
         try:
             # Create message
@@ -213,6 +232,7 @@ class SMTPEmailSender:
             from_name=from_name,
         )
 
+    @dry_run_async("email", return_value=True, log_args=False)
     async def send_email(
         self,
         to_email: str,
@@ -234,6 +254,10 @@ class SMTPEmailSender:
 
         Returns:
             True if email was sent successfully, False otherwise
+
+        Note:
+            When dry-run mode is enabled, this method will log the email
+            but not actually send it. Returns True in dry-run mode.
         """
         try:
             # Create message
@@ -315,6 +339,7 @@ class SMTPEmailSender:
             return False
 
 
+@dry_run("email", return_value=True, log_args=False)
 def send_email(
     to_email: str,
     subject: str,
@@ -341,6 +366,10 @@ def send_email(
 
     Returns:
         True if email was sent successfully, False otherwise
+
+    Note:
+        When dry-run mode is enabled, this function will log the email
+        but not actually send it. Returns True in dry-run mode.
     """
     # Get from email and name from environment if not provided
     if not from_email:

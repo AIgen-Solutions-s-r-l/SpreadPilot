@@ -10,6 +10,15 @@ from app.services.follower_service import FollowerService
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+try:
+    from spreadpilot_core.dry_run import DryRunConfig
+except ImportError:
+    # Fallback if dry_run not available
+    class DryRunConfig:
+        @staticmethod
+        def enable():
+            pass
+
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 
 # Setup logging from the core library
@@ -18,6 +27,11 @@ logger = get_logger(__name__)
 
 # Get settings instance
 settings = get_settings()
+
+# Enable dry-run mode if configured
+if settings.dry_run_mode:
+    DryRunConfig.enable()
+    logger.warning("🔵 DRY-RUN MODE ENABLED - Manual operations will be simulated")
 
 
 # Lifespan context manager for startup/shutdown events

@@ -150,6 +150,13 @@ class Settings(BaseSettings):
         description="Enable Vault integration for secrets",
     )
 
+    # Dry-run mode
+    dry_run_mode: bool = Field(
+        default=False,
+        env="DRY_RUN_MODE",
+        description="Enable dry-run mode (simulate operations without executing)",
+    )
+
     @validator("ib_trading_mode")
     def validate_trading_mode(cls, v):
         """Validate trading mode."""

@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     # Redis Settings
     REDIS_URL: str = Field(..., env="REDIS_URL")
 
+    # Dry-run mode
+    DRY_RUN_MODE: bool = Field(
+        default=False,
+        env="DRY_RUN_MODE",
+        description="Enable dry-run mode (simulate operations without executing)",
+    )
+
     @validator("TELEGRAM_ADMIN_IDS", "EMAIL_ADMIN_RECIPIENTS", pre=True)
     def split_string(cls, v):
         """Split comma-separated strings into lists."""

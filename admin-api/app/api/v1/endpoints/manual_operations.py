@@ -7,6 +7,15 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+try:
+    from spreadpilot_core.dry_run import dry_run_async
+except ImportError:
+    # Fallback if dry_run not available
+    def dry_run_async(operation_type: str, return_value=None, log_args: bool = True):
+        def decorator(func):
+            return func
+        return decorator
+
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 
@@ -38,18 +47,8 @@ class ManualCloseResponse(BaseModel):
     timestamp: str
 
 
-@router.post(
-    "/manual-close",
-    response_model=ManualCloseResponse,
-    dependencies=[Depends(get_current_user)],
-)
-async def manual_close_positions(request: ManualCloseRequest = Body(...)):
-    """
-    Manually close positions for a specific follower.
-    Requires authentication and correct PIN (0312).
-
-    This endpoint triggers the trading bot to close positions for the specified follower.
-    """
+async def _manual_close_positions_impl(request: ManualCloseRequest):
+    """Implementation of manual close positions."""
     # Verify PIN
     if request.pin != MANUAL_OPERATION_PIN:
         logger.warning(f"Invalid PIN attempt for manual close: follower_id={request.follower_id}")
@@ -130,3 +129,33 @@ async def manual_close_positions(request: ManualCloseRequest = Body(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create manual close operation",
         )
+
+
+@router.post(
+    "/manual-close",
+    response_model=ManualCloseResponse,
+    dependencies=[Depends(get_current_user)],
+)
+@dry_run_async(
+    "manual_operation",
+    return_value=ManualCloseResponse(
+        success=True,
+        message="[DRY-RUN] Manual close operation simulated (not executed)",
+        closed_positions=0,
+        follower_id="DRY_RUN",
+        timestamp=datetime.now(pytz.UTC).isoformat(),
+    ),
+    log_args=False,
+)
+async def manual_close_positions(request: ManualCloseRequest = Body(...)):
+    """
+    Manually close positions for a specific follower.
+    Requires authentication and correct PIN (0312).
+
+    This endpoint triggers the trading bot to close positions for the specified follower.
+
+    Note:
+        When dry-run mode is enabled, this operation will be logged but no database
+        entries will be created and no positions will be closed. Returns simulated response.
+    """
+    return await _manual_close_positions_impl(request)

@@ -157,6 +157,13 @@ class Settings(BaseSettings):
         description="Use HTTPS for MinIO connections",
     )
 
+    # Dry-run mode
+    dry_run_mode: bool = Field(
+        default=False,
+        env="DRY_RUN_MODE",
+        description="Enable dry-run mode (simulate operations without executing)",
+    )
+
     class Config:
         """Pydantic config."""
 

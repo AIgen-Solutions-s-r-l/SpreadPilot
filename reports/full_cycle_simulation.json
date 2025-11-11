@@ -1,0 +1,246 @@
+{
+  "simulation": {
+    "mode": "dry-run",
+    "total_cycles": 3,
+    "successful_cycles": 3,
+    "failed_cycles": 0,
+    "success_rate": 100.0,
+    "duration_seconds": 4.104985,
+    "timestamp": "2025-11-11T16:52:57.254699"
+  },
+  "steps": {
+    "market_data": {
+      "success": 3,
+      "failed": 0
+    },
+    "paper_gateway": {
+      "success": 3,
+      "failed": 0
+    },
+    "trading_signal": {
+      "success": 3,
+      "failed": 0
+    },
+    "alert": {
+      "success": 3,
+      "failed": 0
+    },
+    "mailhog": {
+      "success": 3,
+      "failed": 0
+    },
+    "report": {
+      "success": 3,
+      "failed": 0
+    },
+    "manual_close": {
+      "success": 3,
+      "failed": 0
+    },
+    "log_verification": {
+      "success": 3,
+      "failed": 0
+    }
+  },
+  "errors": [],
+  "results": [
+    {
+      "cycle": 1,
+      "timestamp": "2025-11-11T16:52:53.149751",
+      "steps": {
+        "market_data": {
+          "success": true,
+          "data_points": 390,
+          "price_range": "$379.94 - $379.62"
+        },
+        "paper_gateway": {
+          "success": true,
+          "status": "not_running"
+        },
+        "trading_signal": {
+          "success": true,
+          "signal": {
+            "symbol": "QQQ",
+            "action": "SELL",
+            "quantity": 100,
+            "current_price": 379.62,
+            "avg_price": 379.591,
+            "timestamp": "2025-11-11T16:52:53.163123"
+          }
+        },
+        "alert": {
+          "success": true,
+          "channels": [
+            "telegram",
+            "email"
+          ]
+        },
+        "mailhog": {
+          "success": true,
+          "emails_captured": 0
+        },
+        "report": {
+          "success": true,
+          "report": {
+            "type": "daily_pnl",
+            "date": "2025-11-11",
+            "pnl": 1250.5,
+            "trades": 3,
+            "win_rate": 66.7
+          }
+        },
+        "manual_close": {
+          "success": true,
+          "result": {
+            "success": true,
+            "message": "[DRY-RUN] Manual close operation simulated",
+            "closed_positions": 0,
+            "follower_id": "DRY_RUN"
+          }
+        },
+        "log_verification": {
+          "success": true,
+          "verified": {
+            "operations_logged": 7,
+            "dry_run_prefix_present": true,
+            "errors": 0
+          }
+        }
+      },
+      "success": true,
+      "errors": []
+    },
+    {
+      "cycle": 2,
+      "timestamp": "2025-11-11T16:52:55.170759",
+      "steps": {
+        "market_data": {
+          "success": true,
+          "data_points": 390,
+          "price_range": "$379.97 - $380.21"
+        },
+        "paper_gateway": {
+          "success": true,
+          "status": "not_running"
+        },
+        "trading_signal": {
+          "success": true,
+          "signal": {
+            "symbol": "QQQ",
+            "action": "BUY",
+            "quantity": 100,
+            "current_price": 380.21,
+            "avg_price": 380.217,
+            "timestamp": "2025-11-11T16:52:55.207265"
+          }
+        },
+        "alert": {
+          "success": true,
+          "channels": [
+            "telegram",
+            "email"
+          ]
+        },
+        "mailhog": {
+          "success": true,
+          "emails_captured": 0
+        },
+        "report": {
+          "success": true,
+          "report": {
+            "type": "daily_pnl",
+            "date": "2025-11-11",
+            "pnl": 1250.5,
+            "trades": 3,
+            "win_rate": 66.7
+          }
+        },
+        "manual_close": {
+          "success": true,
+          "result": {
+            "success": true,
+            "message": "[DRY-RUN] Manual close operation simulated",
+            "closed_positions": 0,
+            "follower_id": "DRY_RUN"
+          }
+        },
+        "log_verification": {
+          "success": true,
+          "verified": {
+            "operations_logged": 7,
+            "dry_run_prefix_present": true,
+            "errors": 0
+          }
+        }
+      },
+      "success": true,
+      "errors": []
+    },
+    {
+      "cycle": 3,
+      "timestamp": "2025-11-11T16:52:57.217547",
+      "steps": {
+        "market_data": {
+          "success": true,
+          "data_points": 390,
+          "price_range": "$379.97 - $380.34"
+        },
+        "paper_gateway": {
+          "success": true,
+          "status": "not_running"
+        },
+        "trading_signal": {
+          "success": true,
+          "signal": {
+            "symbol": "QQQ",
+            "action": "BUY",
+            "quantity": 100,
+            "current_price": 380.34,
+            "avg_price": 380.348,
+            "timestamp": "2025-11-11T16:52:57.248007"
+          }
+        },
+        "alert": {
+          "success": true,
+          "channels": [
+            "telegram",
+            "email"
+          ]
+        },
+        "mailhog": {
+          "success": true,
+          "emails_captured": 0
+        },
+        "report": {
+          "success": true,
+          "report": {
+            "type": "daily_pnl",
+            "date": "2025-11-11",
+            "pnl": 1250.5,
+            "trades": 3,
+            "win_rate": 66.7
+          }
+        },
+        "manual_close": {
+          "success": true,
+          "result": {
+            "success": true,
+            "message": "[DRY-RUN] Manual close operation simulated",
+            "closed_positions": 0,
+            "follower_id": "DRY_RUN"
+          }
+        },
+        "log_verification": {
+          "success": true,
+          "verified": {
+            "operations_logged": 7,
+            "dry_run_prefix_present": true,
+            "errors": 0
+          }
+        }
+      },
+      "success": true,
+      "errors": []
+    }
+  ]
+}

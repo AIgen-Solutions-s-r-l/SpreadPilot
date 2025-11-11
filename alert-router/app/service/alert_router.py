@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import aiosmtplib
 import httpx
 
+from spreadpilot_core.dry_run import dry_run_async
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 from ..config import settings
@@ -177,6 +178,7 @@ class AlertRouter:
         html += "</ul>"
         return html
 
+    @dry_run_async("notification", return_value=True)
     async def send_telegram_alert(self, chat_id: str, message: str) -> bool:
         """Send alert via Telegram.
 
@@ -186,6 +188,10 @@ class AlertRouter:
 
         Returns:
             True if successful, False otherwise
+
+        Note:
+            When dry-run mode is enabled, this method will log the notification
+            but not actually send it. Returns True in dry-run mode.
         """
         if not self.telegram_token:
             logger.warning("Telegram token not configured")
@@ -223,6 +229,7 @@ class AlertRouter:
             logger.error(f"Failed to send Telegram alert to {chat_id}: {e}", exc_info=True)
             return False
 
+    @dry_run_async("email", return_value=True)
     async def send_email_alert(self, recipient: str, subject: str, html_content: str) -> bool:
         """Send alert via email using async SMTP.
 
@@ -233,6 +240,10 @@ class AlertRouter:
 
         Returns:
             True if successful, False otherwise
+
+        Note:
+            When dry-run mode is enabled, this method will log the email
+            but not actually send it. Returns True in dry-run mode.
         """
         if not all([self.email_sender, self.smtp_config.get("host")]):
             logger.warning("Email configuration incomplete")

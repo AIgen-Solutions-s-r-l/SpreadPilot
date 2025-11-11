@@ -13,6 +13,15 @@ from ib_insync import Trade as IBTrade
 
 from ..logging import get_logger
 
+try:
+    from ..dry_run import dry_run_async
+except ImportError:
+    # Fallback if dry_run not available (backwards compatibility)
+    def dry_run_async(operation_type: str, return_value: Any = None, log_args: bool = True):
+        def decorator(func):
+            return func
+        return decorator
+
 logger = get_logger(__name__)
 
 
@@ -366,6 +375,7 @@ class IBKRClient:
             )
             return []  # Return empty list on error
 
+    @dry_run_async("trade", return_value=None)
     async def place_order(self, contract: Contract, order: Order) -> IBTrade | None:
         """Place an order (MKT or TRAIL) for a contract.
 
@@ -375,6 +385,10 @@ class IBKRClient:
 
         Returns:
             An ib_insync.Trade object with order status and details, or None on error.
+
+        Note:
+            When dry-run mode is enabled, this method will log the operation
+            but not actually place the order. Returns None in dry-run mode.
         """
         if not await self.ensure_connected():
             logger.error("Not connected to IB Gateway, cannot place order")

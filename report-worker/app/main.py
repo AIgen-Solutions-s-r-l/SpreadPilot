@@ -8,6 +8,15 @@ import os
 import pytz
 from flask import Flask, Response, request
 
+try:
+    from spreadpilot_core.dry_run import DryRunConfig
+except ImportError:
+    # Fallback if dry_run not available
+    class DryRunConfig:
+        @staticmethod
+        def enable():
+            pass
+
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 from spreadpilot_core.utils.vault import get_secret
 
@@ -82,6 +91,11 @@ from .service.report_service_enhanced import EnhancedReportService
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 setup_logging(service_name="report-worker", log_level=getattr(logging, log_level, logging.INFO))
 logger = get_logger(__name__)
+
+# Enable dry-run mode if configured
+if config.get_settings().dry_run_mode:
+    DryRunConfig.enable()
+    logger.warning("🔵 DRY-RUN MODE ENABLED - Reports and emails will be simulated")
 
 # Setup Cloud Logging integration if running in GCP
 if config.GCP_PROJECT_ID:

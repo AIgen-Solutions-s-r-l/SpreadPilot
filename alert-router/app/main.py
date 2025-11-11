@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 # Import from spreadpilot_core
 try:
+    from spreadpilot_core.dry_run import DryRunConfig
     from spreadpilot_core.logging.logger import get_logger, setup_logging
     from spreadpilot_core.models.alert import AlertEvent
     from spreadpilot_core.utils.secrets import get_secret_from_mongo
@@ -16,6 +17,11 @@ except ImportError:
     logging.error("Could not import from spreadpilot_core. Ensure it's installed.")
     # Define dummy classes/functions if needed for basic startup
     AlertEvent = None
+
+    class DryRunConfig:
+        @staticmethod
+        def enable():
+            pass
 
     def setup_logging(*args, **kwargs):
         pass
@@ -116,6 +122,11 @@ async def lifespan(app: FastAPI):
     global redis_subscriber, subscriber_task
 
     logger.info("Alert Router service starting...")
+
+    # Enable dry-run mode if configured
+    if settings.DRY_RUN_MODE:
+        DryRunConfig.enable()
+        logger.warning("🔵 DRY-RUN MODE ENABLED - Notifications will be simulated")
 
     # Start Redis subscriber
     redis_subscriber = RedisAlertSubscriber()

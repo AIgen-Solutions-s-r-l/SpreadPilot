@@ -32,6 +32,9 @@ class Settings(BaseModel):
     # Background task configuration
     follower_update_interval: int = 60  # seconds
 
+    # Dry-run mode
+    dry_run_mode: bool = os.getenv("DRY_RUN_MODE", "false").lower() == "true"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient  # Import motor
 from pydantic import BaseModel
 
+from spreadpilot_core.dry_run import DryRunConfig
 from spreadpilot_core.logging import get_logger, setup_logging
 from spreadpilot_core.utils.secrets import get_secret_from_mongo  # Import secret getter
 
@@ -160,6 +161,11 @@ async def startup_event():
 
     # Load settings (AFTER environment variables are potentially populated)
     settings = get_settings()
+
+    # Enable dry-run mode if configured
+    if settings.dry_run_mode:
+        DryRunConfig.enable()
+        logger.warning("🔵 DRY-RUN MODE ENABLED - Operations will be simulated")
 
     # Create shutdown event
     shutdown_event = asyncio.Event()

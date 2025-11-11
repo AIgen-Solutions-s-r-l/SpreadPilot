@@ -23,6 +23,15 @@ from sendgrid.helpers.mail import (
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+try:
+    from spreadpilot_core.dry_run import dry_run
+except ImportError:
+    # Fallback if dry_run not available
+    def dry_run(operation_type: str, return_value=None, log_args: bool = True):
+        def decorator(func):
+            return func
+        return decorator
+
 from spreadpilot_core.models.pnl import CommissionMonthly
 from spreadpilot_core.utils.gcs import get_signed_url
 from spreadpilot_core.utils.pdf import generate_commission_report_pdf
@@ -88,12 +97,17 @@ class CommissionMailer:
 
         return results
 
+    @dry_run("email", return_value=None, log_args=False)
     def _send_commission_email(self, record: CommissionMonthly, db: Session):
         """Send commission email for a single record with retry logic.
 
         Args:
             record: Commission record to send
             db: Database session
+
+        Note:
+            When dry-run mode is enabled, this method will log the email
+            but not actually send it. Database update is also skipped in dry-run mode.
         """
         month_name = datetime(record.year, record.month, 1).strftime("%B %Y")
         subject = f"Commission Report - {month_name}"
