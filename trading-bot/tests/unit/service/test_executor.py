@@ -516,13 +516,6 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
         self.assertEqual(result["status"], OrderStatus.FILLED)
         self.assertEqual(result["attempts"], 3)
 
-    def test_convenience_function_not_implemented(self):
-        """Test the convenience function raises NotImplementedError."""
-        from trading_bot.app.service.executor import execute_vertical_spread
-
-        with self.assertRaises(NotImplementedError):
-            asyncio.run(execute_vertical_spread(self.test_signal, self.follower_id))
-
 
 # Async test runner
 class AsyncTestRunner:

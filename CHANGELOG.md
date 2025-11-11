@@ -37,6 +37,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🗑️ Removed
 
+#### Unused execute_vertical_spread() Function (#61)
+- **Removed** unused standalone `execute_vertical_spread()` function from executor.py
+- **Reason**: Function was a stub that raised NotImplementedError and was never used in production
+- **Impact**: Zero production impact - only removed dead code
+
+**Details**:
+- Removed lines 583-606 in `trading-bot/app/service/executor.py`
+- Removed corresponding test `test_convenience_function_not_implemented()`
+- Production code uses `VerticalSpreadExecutor.execute_vertical_spread()` class method (fully implemented)
+- Eliminated confusion from having two functions with same name
+
+---
+
+### 🗑️ Removed (Previous)
+
 #### Dead Code Removal - Original Strategy Handler (#60)
 - **Removed** `OriginalStrategyHandler` and all associated code (~600 lines)
 - **Reason**: Handler was disabled in configuration and never invoked in production

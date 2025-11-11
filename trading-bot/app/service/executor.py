@@ -578,29 +578,3 @@ class VerticalSpreadExecutor:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.disconnect_redis()
-
-
-# Convenience function that matches the task requirements
-async def execute_vertical_spread(signal: dict[str, Any], follower_id: str) -> dict[str, Any]:
-    """Execute a vertical spread order with limit-ladder strategy.
-
-    This is a convenience function that creates an executor instance and executes
-    the spread. In a real application, you would typically create the executor
-    once and reuse it, but this function matches the task specification.
-
-    Args:
-        signal: Trading signal containing strategy details
-        follower_id: ID of the follower to execute for
-
-    Returns:
-        Dict containing execution results and fill details
-    """
-    # This would typically get the IBKR client from a service or dependency injection
-    # For now, we assume it's available through some means
-
-    # Get IBKR client for the follower (this would be injected in real implementation)
-    # For demonstration, we'll raise an error since this needs proper integration
-    raise NotImplementedError(
-        "execute_vertical_spread() requires integration with GatewayManager to get IBKR client. "
-        "Use VerticalSpreadExecutor class directly with an IBKR client instance."
-    )
