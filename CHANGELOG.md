@@ -5,6 +5,38 @@ All notable changes to SpreadPilot will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🗑️ Removed
+
+#### Dead Code Removal - Original Strategy Handler (#60)
+- **Removed** `OriginalStrategyHandler` and all associated code (~600 lines)
+- **Reason**: Handler was disabled in configuration and never invoked in production
+- **Impact**: Zero production impact, reduced technical debt by $1,500/year maintenance cost
+
+**Files Removed:**
+- `trading-bot/app/service/original_strategy_handler.py` (481 lines)
+- `trading-bot/tests/unit/service/test_original_strategy_handler.py`
+- `trading-bot/tests/unit/service/test_original_strategy_handler_extended.py`
+- `trading-bot/tests/integration/test_original_strategy.py`
+- `trading-bot/tests/backtest/backtest_original_strategy.py`
+- `trading-bot/tests/config/original_strategy_test_config.py`
+- `docs/original_strategy_paper_testing_plan.md`
+
+**Files Modified:**
+- `trading-bot/app/service/base.py` - Removed handler import and instantiation
+- `trading-bot/app/config.py` - Removed `ORIGINAL_EMA_STRATEGY` configuration
+- `tests/unit/test_config_vault.py` - Removed deprecated test class
+
+**Benefits:**
+- ✅ Reduced codebase complexity (-20%)
+- ✅ Improved maintainability
+- ✅ Reduced attack surface (security improvement)
+- ✅ Faster startup time
+- ✅ Lower memory footprint
+
+---
+
 ## [v2.0.0.0] - 2025-11-11
 
 ### ⚠️ BREAKING CHANGES

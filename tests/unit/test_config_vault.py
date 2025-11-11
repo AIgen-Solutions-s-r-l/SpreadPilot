@@ -174,36 +174,8 @@ class TestSettingsVaultIntegration:
             )
 
 
-class TestSettingsIntegrationWithOriginalStrategy:
-    """Test Settings integration with original strategy configuration."""
-
-    @patch("app.config.get_vault_client")
-    def test_original_strategy_vault_integration(self, mock_get_vault_client):
-        """Test that original strategy configuration can work with Vault."""
-        # Arrange
-        from app.config import ORIGINAL_EMA_STRATEGY
-
-        mock_vault_client = Mock()
-        mock_vault_client.get_ibkr_credentials.return_value = {
-            "IB_USER": "original_user",
-            "IB_PASS": "original_pass",
-        }
-        mock_get_vault_client.return_value = mock_vault_client
-
-        settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test"
-        )
-
-        # Act - Get credentials for original strategy
-        result = settings.get_ibkr_credentials_from_vault(
-            ORIGINAL_EMA_STRATEGY["ibkr_secret_ref"]
-        )
-
-        # Assert
-        assert result == {"IB_USER": "original_user", "IB_PASS": "original_pass"}
-        mock_vault_client.get_ibkr_credentials.assert_called_once_with(
-            "ibkr_original_strategy"
-        )
+class TestSettingsIntegrationWithStrategies:
+    """Test Settings integration with strategy configurations."""
 
     @patch("app.config.get_vault_client")
     def test_vertical_spreads_strategy_vault_integration(self, mock_get_vault_client):

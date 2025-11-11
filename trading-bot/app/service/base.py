@@ -22,11 +22,10 @@ from spreadpilot_core.utils.time import (
     seconds_until_market_open,
 )
 
-from ..config import ORIGINAL_EMA_STRATEGY, VERTICAL_SPREADS_STRATEGY, Settings
+from ..config import VERTICAL_SPREADS_STRATEGY, Settings
 from ..sheets import GoogleSheetsClient
 from .alerts import AlertManager
 from .ibkr import IBKRManager
-from .original_strategy_handler import OriginalStrategyHandler
 from .pnl_service import PnLService
 from .positions import PositionManager
 from .signals import SignalProcessor
@@ -83,7 +82,6 @@ class TradingService:
         self.signal_processor = SignalProcessor(self)
         self.pnl_service = PnLService(self)
         self.time_value_monitor = TimeValueMonitor(self)
-        self.original_strategy_handler = OriginalStrategyHandler(self, ORIGINAL_EMA_STRATEGY)
         self.vertical_spreads_strategy_handler = VerticalSpreadsStrategyHandler(
             self, VERTICAL_SPREADS_STRATEGY
         )
