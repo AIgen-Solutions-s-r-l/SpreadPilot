@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import time
 from enum import Enum
+from functools import lru_cache
 from typing import Any
 
 import ib_insync
@@ -13,6 +14,28 @@ from ib_insync import Trade as IBTrade
 from ..logging import get_logger
 
 logger = get_logger(__name__)
+
+
+@lru_cache(maxsize=128)
+def _create_stock_contract_cached(
+    symbol: str, exchange: str = "SMART", currency: str = "USD"
+) -> Stock:
+    """Create and cache Stock contract objects.
+
+    Args:
+        symbol: Stock ticker symbol.
+        exchange: The exchange to trade on (default: SMART).
+        currency: The currency (default: USD).
+
+    Returns:
+        An ib_insync.Stock contract object (cached).
+
+    Note:
+        This function is cached with LRU (Least Recently Used) policy.
+        Cache size is 128 contracts, suitable for most trading scenarios.
+        Cache is shared across all IBKRClient instances.
+    """
+    return Stock(symbol=symbol, exchange=exchange, currency=currency)
 
 
 class OrderSide(str, Enum):
@@ -255,26 +278,32 @@ class IBKRClient:
             currency: The currency (default: USD).
 
         Returns:
-            An ib_insync.Stock contract object.
+            An ib_insync.Stock contract object (cached).
+
+        Note:
+            Contract creation is cached with LRU policy (maxsize=128).
+            Repeated calls with the same parameters return cached instances.
         """
         logger.debug(
-            f"Creating stock contract - symbol: {symbol}, exchange: {exchange}, currency: {currency}"
+            f"Getting stock contract - symbol: {symbol}, exchange: {exchange}, currency: {currency}"
         )
-        # TODO: Add caching?
         try:
-            contract = Stock(symbol=symbol, exchange=exchange, currency=currency)
+            # Use cached contract creation
+            contract = _create_stock_contract_cached(
+                symbol=symbol, exchange=exchange, currency=currency
+            )
             # Optional: Qualify contract details if needed
             # qualified_contracts = await self.ib.qualifyContractsAsync(contract)
             # if not qualified_contracts:
             #     logger.error("Could not qualify contract", contract=contract)
             #     raise ValueError(f"Could not qualify contract for {symbol}")
             # contract = qualified_contracts[0]
-            # Log a representation instead of the object itself
-            logger.info(f"Stock contract created successfully: {repr(contract)}")
+
+            logger.debug(f"Stock contract retrieved: {repr(contract)}")
             return contract
         except Exception:
             logger.error(
-                f"Error creating stock contract for symbol: {symbol}",
+                f"Error getting stock contract for symbol: {symbol}",
                 exc_info=True,
             )
             raise  # Re-raise the exception after logging
