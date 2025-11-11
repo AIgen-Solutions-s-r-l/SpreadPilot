@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Frontend Console Logging Cleanup (#64)
+- **Secured** production builds by gating debug logs behind `import.meta.env.DEV`
+- **Removed** debug console statements from production bundles
+- **Preserved** legitimate error logging (console.error)
+- **Development-friendly**: Debug logs still available in development mode
+
+**Security Benefits**:
+- ✅ No sensitive data exposure in production console
+- ✅ JWT tokens not logged (WebSocket context)
+- ✅ User data not exposed
+- ✅ API responses sanitized
+
+**Files Modified** (20 files):
+- **Contexts**: `WebSocketContext.tsx`, `AuthContext.tsx` (kept errors only)
+- **Components**: `DashboardLayout.tsx`, Dashboard components
+- **Pages**: `DashboardPage.tsx`, `FollowersPage.tsx`, `LogsPage.tsx`, etc.
+- **Hooks**: `useDashboard.ts`, `useLogs.ts`, etc. (kept errors only)
+- **Services**: `tradingActivityService.ts`, API services (kept errors only)
+
+**Implementation Pattern**:
+```typescript
+// Development only
+if (import.meta.env.DEV) {
+  console.log('Debug info');
+}
+
+// Production errors (kept)
+console.error('Error occurred', error);
+```
+
+**Verification**:
+- Production bundle size: 1.62 MB (no increase from logging cleanup)
+- Zero console.log in production dist/
+- Vite tree-shaking successfully removes DEV-gated code
+
+---
+
 #### WebSocket Authentication (#63)
 - **Implemented** JWT token authentication for WebSocket connections
 - **Security Enhancement**: Prevents unauthorized access to real-time data

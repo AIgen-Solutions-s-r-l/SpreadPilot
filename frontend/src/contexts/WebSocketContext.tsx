@@ -34,16 +34,22 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     // Add JWT token to URL query params for authentication
     const connectionUrl = _token ? `${url}?token=${_token}` : url;
 
-    console.log(`Attempting to connect WebSocket to ${url.split('?')[0]}`); // Log URL without token
+    if (import.meta.env.DEV) {
+      console.log(`Attempting to connect WebSocket to ${url.split('?')[0]}`); // Log URL without token
+    }
     ws.current = new WebSocket(connectionUrl);
 
     ws.current.onopen = () => {
-      console.log('WebSocket Connected');
+      if (import.meta.env.DEV) {
+        console.log('WebSocket Connected');
+      }
       setIsConnected(true);
     };
 
     ws.current.onclose = (event) => {
-      console.log('WebSocket Disconnected:', event.reason, event.code);
+      if (import.meta.env.DEV) {
+        console.log('WebSocket Disconnected:', event.reason, event.code);
+      }
       setIsConnected(false);
       // Optional: Implement reconnection logic here (e.g., with exponential backoff)
       // setTimeout(connectWebSocket, 5000); // Simple reconnect attempt after 5s
@@ -57,7 +63,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     ws.current.onmessage = (event) => {
       try {
         const messageData = JSON.parse(event.data);
-        console.log('WebSocket Message Received:', messageData);
+        if (import.meta.env.DEV) {
+          console.log('WebSocket Message Received:', { type: messageData.type });
+        }
         setLastMessage(messageData);
         // TODO: Implement more sophisticated message handling/dispatching if needed
       } catch (error) {
@@ -73,7 +81,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     // Cleanup function to close WebSocket connection when component unmounts
     return () => {
       if (ws.current) {
-        console.log('Closing WebSocket connection');
+        if (import.meta.env.DEV) {
+          console.log('Closing WebSocket connection');
+        }
         ws.current.close();
       }
     };
@@ -83,7 +93,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children, 
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       try {
         const messageString = JSON.stringify(message);
-        console.log('Sending WebSocket Message:', messageString);
+        if (import.meta.env.DEV) {
+          console.log('Sending WebSocket Message:', messageString);
+        }
         ws.current.send(messageString);
       } catch (error) {
         console.error('Failed to send WebSocket message:', message, error);

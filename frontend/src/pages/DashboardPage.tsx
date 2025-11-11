@@ -60,22 +60,18 @@ const DashboardPage: React.FC = () => {
   ];
 
   const handleRefresh = () => {
-    console.log('Refreshing dashboard data...');
     // In a real app, this would fetch fresh data
   };
 
   const handleViewAllFollowers = () => {
-    console.log('Navigating to followers page...');
     // In a real app, this would navigate to the followers page
   };
 
   const handleViewAllActivity = () => {
-    console.log('Navigating to trading activity page...');
     // In a real app, this would navigate to the trading activity page
   };
 
   const handleViewAllAlerts = () => {
-    console.log('Navigating to alerts page...');
     // In a real app, this would navigate to the alerts page
   };
 

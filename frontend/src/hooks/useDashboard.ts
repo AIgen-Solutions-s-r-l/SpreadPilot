@@ -153,7 +153,9 @@ export const useDashboard = (): DashboardData => {
             break;
             
           default:
-            console.log('Unknown WebSocket message type:', type);
+            if (import.meta.env.DEV) {
+              console.log('Unknown WebSocket message type:', type);
+            }
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);

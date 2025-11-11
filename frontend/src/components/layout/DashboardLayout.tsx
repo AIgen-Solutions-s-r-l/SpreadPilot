@@ -76,7 +76,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   
   const handleLogout = () => {
     // Add actual logout logic here
-    console.log("Logout clicked");
     handleCloseUserMenu();
     navigate('/login');
   };
@@ -149,7 +148,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <Box>
             <Typography variant="subtitle2" sx={{ color: 'common.white', fontWeight: 'medium' }}>Admin User</Typography>
             <Stack direction="row" spacing={0.5} alignItems="center">
-              <IconButton size="small" sx={{p:0.2, color: 'primary.light', '&:hover': {color: 'common.white'}}} onClick={() => console.log("Settings")}>
+              <IconButton size="small" sx={{p:0.2, color: 'primary.light', '&:hover': {color: 'common.white'}}}>
                 <SettingsIcon sx={{fontSize: '1rem'}}/>
               </IconButton>
                <Divider orientation="vertical" flexItem sx={{borderColor: 'primary.main', height: '12px', alignSelf: 'center'}}/>
@@ -207,11 +206,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             open={Boolean(anchorElUser)}
             onClose={handleCloseUserMenu}
           >
-            <MenuItem onClick={() => { console.log("Profile"); handleCloseUserMenu(); }}>
+            <MenuItem onClick={handleCloseUserMenu}>
               <ListItemIcon><AccountCircleIcon fontSize="small" /></ListItemIcon>
               <ListItemText>Profile</ListItemText>
             </MenuItem>
-            <MenuItem onClick={() => { console.log("Settings"); handleCloseUserMenu(); }}>
+            <MenuItem onClick={handleCloseUserMenu}>
                <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
               <ListItemText>Settings</ListItemText>
             </MenuItem>

@@ -35,7 +35,9 @@ const LogsPage: React.FC = () => {
   useEffect(() => {
     if (lastMessage) {
       // TODO: Implement more specific logic based on message content
-      console.log('Processing WebSocket message in LogsPage:', lastMessage);
+      if (import.meta.env.DEV) {
+        console.log('Processing WebSocket message in LogsPage:', lastMessage.type);
+      }
       if (lastMessage.type === 'log_entry') {
         const newLog = lastMessage.data as LogEntry;
         // Add new log to the top, respecting the filter and limit (optional)

@@ -145,7 +145,9 @@ class TradingActivityService {
   subscribeToActivities(_onActivity: (activity: TradingActivity) => void): () => void {
     // This would be implemented when WebSocket support is added for trading activities
     // For now, return a no-op unsubscribe function
-    console.log('Trading activity subscription not yet implemented');
+    if (import.meta.env.DEV) {
+      console.log('Trading activity subscription not yet implemented');
+    }
     return () => {};
   }
 }

@@ -370,7 +370,7 @@ const FollowersPage: React.FC = () => {
         <GridActionsCellItem
           icon={<EditIcon />}
           label="Edit"
-          onClick={() => { console.log("Edit", row.id); handleOpenAddDialog(); /* Pass follower data to dialog */ }}
+          onClick={() => { handleOpenAddDialog(); /* Pass follower data to dialog */ }}
           color="primary"
         />,
         <GridActionsCellItem
@@ -526,11 +526,11 @@ const FollowersPage: React.FC = () => {
           open={openActionMenu}
           onClose={handleActionMenuClose}
         >
-          <MenuItem onClick={() => { console.log("View Trades", actionFollower.id); handleActionMenuClose(); }}>
+          <MenuItem onClick={handleActionMenuClose}>
             <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
             <ListItemText>View Trades</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { console.log("View Logs", actionFollower.id); handleActionMenuClose(); }}>
+          <MenuItem onClick={handleActionMenuClose}>
             <ListItemIcon><ArticleIcon fontSize="small" /></ListItemIcon>
             <ListItemText>View Logs</ListItemText>
           </MenuItem>
