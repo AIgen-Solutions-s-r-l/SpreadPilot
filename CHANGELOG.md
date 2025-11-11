@@ -9,6 +9,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Features
 
+#### Simulation/Replay Mode for Backtesting (#73)
+- **Implemented** time-travel simulation engine for strategy backtesting
+- **Three Modes**: Backtest (fast), Replay (real-time), Step (manual debugging)
+- **Realistic Execution**: Slippage and commission simulation
+- **Performance Metrics**: Return, drawdown, win rate, equity curve
+- **Configurable Speed**: 1x to 100x replay speed
+
+**Features**:
+- Time-travel through historical data
+- Order execution simulation (market/limit orders)
+- Slippage modeling (0.1% default)
+- Commission tracking ($1 per trade default)
+- Performance tracking (equity curve, max drawdown)
+
+**Usage**:
+```python
+from spreadpilot_core.simulation import run_backtest
+
+results = run_backtest(historical_data, my_strategy, initial_capital=100000)
+print(f"Return: {results['performance']['total_return_pct']:.2f}%")
+```
+
+**Benefits**:
+- ✅ Test strategies on historical data
+- ✅ Parameter optimization
+- ✅ Risk assessment
+- ✅ Strategy comparison
+- ✅ Regression testing
+
+**Time**: 2-3 hours (framework complete)
+
+---
+
+#### Test Data Generator for Realistic Scenarios (#74)
+- **Implemented** comprehensive test data generation framework
+- **10 Scenario Types**: Winning/losing trades, crashes, gaps, volatility spikes
+- **Realistic Prices**: GBM-based OHLCV data generation
+- **Export Formats**: JSON and CSV
+- **Reproducible**: Seed-based generation
+
+**Scenarios**:
+1. Winning Trade - Profitable vertical spread
+2. Losing Trade - Unprofitable trade
+3. Assignment - Option assignment
+4. Early Close - 50% profit target
+5. Market Crash - 10-25% drop
+6. Gap Up/Down - Overnight gaps
+7. Low Liquidity - Wide spreads
+8. High Volatility - Volatile prices
+9. Sideways Market - Mean-reverting
+
+**Usage**:
+```python
+from spreadpilot_core.test_data_generator import generate_test_prices, generate_scenario
+
+# Generate price data
+prices = generate_test_prices("QQQ", days=30)
+
+# Generate scenario
+crash = generate_scenario(ScenarioType.MARKET_CRASH)
+
+# Generate all test fixtures
+generate_all_fixtures("tests/fixtures")
+```
+
+**Benefits**:
+- ✅ Realistic test data
+- ✅ Edge case testing
+- ✅ Reproducible results
+- ✅ pytest integration
+
+**Time**: 1-2 hours (framework complete)
+
+---
+
+#### Dry-Run Mode Framework (#72)
+- **Implemented** decorator-based dry-run system for operation simulation
+- **Global Control**: Enable/disable dry-run mode system-wide
+- **Automatic Logging**: All operations logged with arguments
+- **Detailed Reports**: Comprehensive operation reports with metrics
+- **Context Manager**: Temporary dry-run for specific code blocks
+
+**Decorators**:
+- `@dry_run_trade()` - Trading operations
+- `@dry_run_database()` / `@dry_run_database_async()` - Database ops
+- `@dry_run_email()` - Email operations
+- `@dry_run_notification()` - Telegram/webhooks
+- `@dry_run_api_call()` - External API calls
+
+**Usage**:
+```python
+from spreadpilot_core.dry_run import dry_run_trade, DryRunConfig
+
+@dry_run_trade()
+def place_order(symbol, quantity):
+    return ibkr.place_order(symbol, quantity)
+
+# Enable globally
+DryRunConfig.enable()
+
+# Or use context manager
+with dry_run_context():
+    place_order("QQQ", 100)  # Simulated
+
+# Get report
+report = DryRunConfig.get_report()
+```
+
+**Use Cases**:
+- Configuration validation
+- Strategy testing
+- Disaster recovery testing
+- Training and demonstrations
+- Compliance auditing
+
+**Benefits**:
+- ✅ Zero side effects
+- ✅ Detailed logging
+- ✅ Comprehensive reports
+- ✅ Easy integration (decorators)
+- ✅ Type-safe
+
+**Time**: 2-3 hours (framework complete)
+
+---
+
 #### Paper Trading Gateway with Realistic Market Simulation (#70)
 - **Implemented** production-ready paper trading gateway as standalone service
 - **Realistic Simulation**: Geometric Brownian Motion (GBM) for stocks, simplified Black-Scholes for options
