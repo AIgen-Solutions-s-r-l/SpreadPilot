@@ -7,7 +7,6 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 from app.service.mailer import CommissionMailer, create_mailer_from_env
-
 from spreadpilot_core.models.pnl import CommissionMonthly
 
 

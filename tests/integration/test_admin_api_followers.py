@@ -10,7 +10,6 @@ import pytest
 from bson import ObjectId  # Added for MongoDB IDs
 from fastapi.testclient import TestClient  # Import TestClient
 from motor.motor_asyncio import AsyncIOMotorDatabase  # Added for type hinting
-
 from spreadpilot_core.models.follower import Follower, FollowerState
 
 # Explicitly import the fixtures we intend to use

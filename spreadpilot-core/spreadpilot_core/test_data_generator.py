@@ -3,11 +3,11 @@
 Generates realistic market data, trade scenarios, and edge cases for testing.
 """
 
+import json
 import random
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Dict, Any, Optional
-import json
+from typing import Any, Dict, List, Optional
 
 
 class ScenarioType(str, Enum):

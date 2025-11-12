@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-
 # Add project root to path for imports
 import sys
 from logging.config import fileConfig

@@ -16,7 +16,6 @@ import asyncio
 from datetime import datetime, timedelta
 
 from ib_insync import IB, Option, Stock
-
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.utils.time import get_ny_time
 

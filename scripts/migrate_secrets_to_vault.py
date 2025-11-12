@@ -19,12 +19,9 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.utils.secret_manager import (
-    SECRET_CONFIGS,
-    SecretManager,
-    SecretType,
-    get_secret_manager,
-)
+from spreadpilot_core.utils.secret_manager import (SECRET_CONFIGS,
+                                                   SecretManager, SecretType,
+                                                   get_secret_manager)
 from spreadpilot_core.utils.vault import VaultClient
 
 logger = get_logger(__name__)

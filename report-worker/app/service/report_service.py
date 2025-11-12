@@ -1,7 +1,6 @@
 import datetime
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower

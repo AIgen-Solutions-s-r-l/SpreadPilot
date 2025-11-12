@@ -5,13 +5,8 @@ import uuid
 from typing import Any
 
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models import (
-    AlertSeverity,
-    AlertType,
-    Trade,
-    TradeSide,
-    TradeStatus,
-)
+from spreadpilot_core.models import (AlertSeverity, AlertType, Trade,
+                                     TradeSide, TradeStatus)
 
 logger = get_logger(__name__)
 

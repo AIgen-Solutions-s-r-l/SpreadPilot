@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from report_worker.app.service.minio_service import MinIOService
 from spreadpilot_core.models.follower import Follower, FollowerState
 

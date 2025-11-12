@@ -2,12 +2,9 @@ import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 # Assuming spreadpilot-core is installed or in PYTHONPATH
-from spreadpilot_core.utils.secrets import (
-    SECRETS_COLLECTION_NAME,
-    get_secret_from_mongo,
-)
+from spreadpilot_core.utils.secrets import (SECRETS_COLLECTION_NAME,
+                                            get_secret_from_mongo)
 
 # Mark all tests in this module as async using pytest-asyncio
 pytestmark = pytest.mark.asyncio

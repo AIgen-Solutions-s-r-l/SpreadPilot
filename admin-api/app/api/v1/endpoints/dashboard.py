@@ -7,7 +7,6 @@ from app.db.mongodb import get_db
 from app.services.follower_service import FollowerService
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from spreadpilot_core.logging.logger import get_logger
 
 router = APIRouter()

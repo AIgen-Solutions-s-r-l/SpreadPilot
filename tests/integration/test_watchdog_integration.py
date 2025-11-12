@@ -10,9 +10,7 @@ import pytest
 from fakeredis import aioredis as fakeredis
 from fastapi import FastAPI
 from fastapi.responses import Response
-
 from spreadpilot_core.models.alert import Alert, AlertSeverity
-
 
 # Create a simple FastAPI app that can return different statuses
 app = FastAPI()

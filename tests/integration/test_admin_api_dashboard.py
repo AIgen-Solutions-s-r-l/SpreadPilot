@@ -10,7 +10,6 @@ import pytest
 from bson import ObjectId  # Added for MongoDB IDs
 from fastapi.testclient import TestClient  # Import TestClient
 from motor.motor_asyncio import AsyncIOMotorDatabase  # Added for type hinting
-
 from spreadpilot_core.models.follower import Follower, FollowerState
 
 # Explicitly import the fixtures we intend to use
@@ -149,7 +148,8 @@ async def test_periodic_follower_update_task(
     """
     Test the periodic follower update background task logic more directly.
     """
-    from admin_api.app.api.v1.endpoints.dashboard import periodic_follower_update_task
+    from admin_api.app.api.v1.endpoints.dashboard import \
+        periodic_follower_update_task
     from admin_api.app.core.config import get_settings
     from admin_api.app.services.follower_service import FollowerService
 

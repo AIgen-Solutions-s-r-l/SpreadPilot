@@ -6,11 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import docker
 import pytest
-
-from spreadpilot_core.ibkr.gateway_manager import (
-    GatewayManager,
-    GatewayStatus,
-)
+from spreadpilot_core.ibkr.gateway_manager import GatewayManager, GatewayStatus
 from spreadpilot_core.models.follower import FollowerState
 
 

@@ -14,7 +14,6 @@ import redis.asyncio as redis
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from ib_insync import Contract, MarketOrder
-
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 

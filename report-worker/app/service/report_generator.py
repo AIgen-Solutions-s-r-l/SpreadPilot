@@ -14,7 +14,6 @@ import tempfile
 
 from google.cloud import storage
 from google.cloud.exceptions import GoogleCloudError
-
 from spreadpilot_core.db.postgresql import get_async_db_session
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Follower

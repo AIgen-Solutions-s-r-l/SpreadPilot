@@ -4,9 +4,8 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from admin_api.app.services.follower_service import FollowerService
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from spreadpilot_core.models.follower import FollowerState
 from spreadpilot_core.utils.vault import VaultClient
 

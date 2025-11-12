@@ -15,11 +15,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import redis.asyncio as redis
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from spreadpilot_core.models.alert import AlertEvent, AlertSeverity, AlertType
 from spreadpilot_core.models.follower import Follower
 from spreadpilot_core.models.position import Position, PositionState
-from trading_bot.app.service.time_value_monitor import TimeValueMonitor, TimeValueStatus
+from trading_bot.app.service.time_value_monitor import (TimeValueMonitor,
+                                                        TimeValueStatus)
 
 
 @pytest.mark.asyncio

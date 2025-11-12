@@ -5,13 +5,8 @@ import datetime
 from typing import Any
 
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models import (
-    AlertSeverity,
-    AlertType,
-    AssignmentState,
-    Position,
-    Trade,
-)
+from spreadpilot_core.models import (AlertSeverity, AlertType, AssignmentState,
+                                     Position, Trade)
 from spreadpilot_core.utils.time import get_current_trading_date
 
 logger = get_logger(__name__)

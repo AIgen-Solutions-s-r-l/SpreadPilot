@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core"))
 
 from app.service.executor import VerticalSpreadExecutor
-
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
 from spreadpilot_core.models.alert import AlertSeverity
 

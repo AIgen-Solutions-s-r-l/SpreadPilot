@@ -4,7 +4,6 @@ from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
-
 from spreadpilot_core.logging import get_logger
 
 logger = get_logger(__name__)

@@ -18,7 +18,6 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import BaseModel
-
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 from spreadpilot_core.utils.vault import get_vault_client

@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../../spreadpilot-core"))
 
 from app.service.time_value_monitor import TimeValueMonitor, TimeValueStatus
-
 from spreadpilot_core.models.alert import AlertType
 
 

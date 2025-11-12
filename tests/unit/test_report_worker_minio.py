@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from moto import mock_s3
-
 from report_worker.app.service.minio_service import MinIOService, minio_service
-from report_worker.app.service.notifier_minio import send_report_email_with_minio
+from report_worker.app.service.notifier_minio import \
+    send_report_email_with_minio
 from spreadpilot_core.models.follower import Follower
 
 
@@ -356,8 +356,10 @@ class TestReportServiceEnhanced:
     @pytest.mark.asyncio
     async def test_process_monthly_reports(self, mock_pnl, mock_generator, mock_email, mock_mongo):
         """Test complete monthly report processing."""
-        from report_worker.app.service.report_service_enhanced import EnhancedReportService
         import datetime
+
+        from report_worker.app.service.report_service_enhanced import \
+            EnhancedReportService
 
         # Mock database
         mock_db = AsyncMock()
@@ -419,7 +421,8 @@ class TestReportServiceEnhanced:
     @pytest.mark.asyncio
     async def test_report_sent_status_update(self):
         """Test report sent status database update."""
-        from report_worker.app.service.report_service_enhanced import EnhancedReportService
+        from report_worker.app.service.report_service_enhanced import \
+            EnhancedReportService
 
         with patch("report_worker.app.service.report_service_enhanced.get_mongo_db") as mock_mongo:
             mock_db = AsyncMock()

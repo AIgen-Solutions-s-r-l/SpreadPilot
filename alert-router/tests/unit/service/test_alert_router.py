@@ -7,7 +7,6 @@ import httpx
 import pytest
 from app.service.alert_router import AlertRouter
 from httpx import Response
-
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 

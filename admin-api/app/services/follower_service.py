@@ -2,10 +2,10 @@ from datetime import datetime
 
 import pymongo
 from app.db.mongodb import get_db
-from app.schemas.follower import FollowerCreate, FollowerResponse, FollowerUpdate
+from app.schemas.follower import (FollowerCreate, FollowerResponse,
+                                  FollowerUpdate)
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
-
 from spreadpilot_core.logging.logger import get_logger
 
 logger = get_logger(__name__)

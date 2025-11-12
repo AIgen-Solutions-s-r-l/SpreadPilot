@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
-
 from spreadpilot_core.logging.logger import get_logger
 
 from .. import config

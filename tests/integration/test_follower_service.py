@@ -6,14 +6,12 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from bson import ObjectId  # Added for MongoDB IDs
-from motor.motor_asyncio import AsyncIOMotorDatabase  # Added for type hinting
-
 from admin_api.app.core.config import get_settings
 from admin_api.app.schemas.follower import FollowerCreate, FollowerUpdate
-
 # Import necessary components from the application
 from admin_api.app.services.follower_service import FollowerService
+from bson import ObjectId  # Added for MongoDB IDs
+from motor.motor_asyncio import AsyncIOMotorDatabase  # Added for type hinting
 from spreadpilot_core.models.follower import FollowerState
 from spreadpilot_core.models.position import AssignmentState, Position
 from spreadpilot_core.models.trade import TradeStatus

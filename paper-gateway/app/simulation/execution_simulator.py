@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 
 from ..config import get_settings
-from ..models import AssetType, OrderAction, OrderStatus, OrderType, OptionType
+from ..models import AssetType, OptionType, OrderAction, OrderStatus, OrderType
 from .commission import calculate_commission, calculate_slippage
 from .market_hours import validate_trading_hours
 from .price_simulator import get_price_simulator

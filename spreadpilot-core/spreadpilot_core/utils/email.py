@@ -11,15 +11,8 @@ from email.mime.text import MIMEText
 
 import aiosmtplib
 import sendgrid
-from sendgrid.helpers.mail import (
-    Attachment,
-    Disposition,
-    Email,
-    FileContent,
-    FileName,
-    FileType,
-    Mail,
-)
+from sendgrid.helpers.mail import (Attachment, Disposition, Email, FileContent,
+                                   FileName, FileType, Mail)
 
 try:
     from ..dry_run import dry_run, dry_run_async

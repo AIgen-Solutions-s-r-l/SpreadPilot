@@ -8,12 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fakeredis import aioredis as fakeredis
 from ib_insync import Contract, Stock
-
 from spreadpilot_core.models.alert import Alert, AlertSeverity
-from trading_bot.app.service.time_value_monitor import (
-    TimeValueMonitor,
-    TimeValueStatus,
-)
+from trading_bot.app.service.time_value_monitor import (TimeValueMonitor,
+                                                        TimeValueStatus)
 
 
 @pytest.fixture

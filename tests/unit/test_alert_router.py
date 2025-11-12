@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fakeredis import aioredis as fakeredis
 from httpx import Response
-
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 

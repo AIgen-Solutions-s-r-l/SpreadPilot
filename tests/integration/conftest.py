@@ -7,10 +7,13 @@ import asyncio
 import datetime
 import importlib
 import socket
+# Add service directories to Python path to handle hyphenated module names
+import sys
 import threading
 import time
 import uuid
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -21,24 +24,18 @@ import pytest_asyncio
 import testcontainers.core.config  # Added for timeout adjustment
 import uvicorn
 from fastapi import Depends
-
 # Removed Firestore import line
 from fastapi.testclient import TestClient  # Add TestClient import
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from testcontainers.mongodb import MongoDbContainer  # Added for Testcontainers
-
 from spreadpilot_core.ibkr.client import OrderStatus
-
 # Import the dependency getter to override using importlib
 # from admin_api.app.db.mongodb import get_mongo_db # Replaced with importlib below
 from spreadpilot_core.models.follower import Follower, FollowerState
 from spreadpilot_core.models.position import AssignmentState
+from testcontainers.mongodb import MongoDbContainer  # Added for Testcontainers
 
 # Import services for testing
 
-# Add service directories to Python path to handle hyphenated module names
-import sys
-from pathlib import Path
 
 # Get the project root directory
 project_root = Path(__file__).parent.parent.parent

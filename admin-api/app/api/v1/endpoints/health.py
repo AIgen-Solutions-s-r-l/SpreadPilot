@@ -8,7 +8,6 @@ from app.api.v1.endpoints.auth import get_current_user
 from app.db.mongodb import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from spreadpilot_core.logging.logger import get_logger
 
 logger = get_logger(__name__)

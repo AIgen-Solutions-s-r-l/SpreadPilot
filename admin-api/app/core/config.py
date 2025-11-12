@@ -2,8 +2,8 @@ import os
 from functools import lru_cache
 
 from pydantic import BaseModel
-
-from spreadpilot_core.utils.secret_manager import SecretType, get_secret_manager
+from spreadpilot_core.utils.secret_manager import (SecretType,
+                                                   get_secret_manager)
 
 
 class Settings(BaseModel):

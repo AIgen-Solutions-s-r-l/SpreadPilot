@@ -5,7 +5,6 @@ import datetime
 from typing import TYPE_CHECKING, Any
 
 from ib_insync import Order
-
 from spreadpilot_core.ibkr.client import IBKRClient
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models.alert import Alert

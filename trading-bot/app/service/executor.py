@@ -9,7 +9,6 @@ from typing import Any
 import ib_insync
 import redis.asyncio as redis
 from ib_insync import LimitOrder
-
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models.alert import Alert, AlertSeverity

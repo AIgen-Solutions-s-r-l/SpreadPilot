@@ -2,15 +2,14 @@
 
 import asyncio
 import json
-import pytest
 import time
 from unittest.mock import AsyncMock, patch
 
 import fakeredis.aioredis
 import httpx
-from httpx_mock import HTTPXMock
-
+import pytest
 from alert_router.app.alert_router import AlertRouter, AlertRouterConfig
+from httpx_mock import HTTPXMock
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 

@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime  # Added datetime
 
 from bson import ObjectId  # Added ObjectId
-
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Alert, AlertSeverity, AlertType
 from spreadpilot_core.utils.email import EmailSender

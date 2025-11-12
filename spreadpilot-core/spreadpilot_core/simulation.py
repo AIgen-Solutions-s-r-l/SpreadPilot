@@ -3,10 +3,10 @@
 Replays historical market data with configurable speed for strategy validation.
 """
 
+import time
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Dict, Any, Optional, Callable
-import time
+from typing import Any, Callable, Dict, List, Optional
 
 
 class SimulationMode(str, Enum):

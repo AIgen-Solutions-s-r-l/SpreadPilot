@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from app.service.backoff_router import BackoffAlertRouter
-
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 
 

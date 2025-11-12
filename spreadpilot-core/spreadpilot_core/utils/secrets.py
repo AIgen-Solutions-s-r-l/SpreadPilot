@@ -2,7 +2,6 @@ import os
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from spreadpilot_core.logging import get_logger
 
 from .secret_manager import SecretType, get_secret_manager

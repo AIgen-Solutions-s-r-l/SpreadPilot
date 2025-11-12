@@ -7,16 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from google.cloud.exceptions import GoogleCloudError
-
 from spreadpilot_core.models import Follower
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../"))
 
 from app.config import Settings
-from app.service.report_generator import (
-    ReportGenerator,
-    generate_follower_reports,
-)
+from app.service.report_generator import (ReportGenerator,
+                                          generate_follower_reports)
 
 
 @pytest.fixture

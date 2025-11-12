@@ -1,14 +1,13 @@
 """Unit tests for QQQ signal generator."""
 
+# Import from trading_bot package
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from ib_insync import IB
-
-# Import from trading_bot package
-import sys
-from pathlib import Path
 
 # Add trading-bot directory to path
 trading_bot_dir = Path(__file__).parent.parent.parent

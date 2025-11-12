@@ -11,7 +11,6 @@ import pytest
 import pytz
 from fakeredis import aioredis as fakeredis
 from freezegun import freeze_time
-
 from spreadpilot_core.models.pnl import PnLIntraday, Trade
 from spreadpilot_core.pnl.service import PnLService
 

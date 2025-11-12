@@ -18,7 +18,6 @@ import pytest
 import pytest_asyncio
 import yaml
 from motor.motor_asyncio import AsyncIOMotorClient
-
 # Import SpreadPilot components
 from spreadpilot_core.utils.logger import setup_logger
 

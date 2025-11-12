@@ -7,7 +7,6 @@ from email.mime.text import MIMEText
 
 import aiosmtplib
 import httpx
-
 from spreadpilot_core.dry_run import dry_run_async
 from spreadpilot_core.models.alert import AlertEvent, AlertType
 

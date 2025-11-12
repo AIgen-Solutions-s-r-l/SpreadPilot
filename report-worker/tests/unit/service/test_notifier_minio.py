@@ -9,7 +9,6 @@ import pytest
 os.environ["TESTING"] = "true"
 
 from app.service.notifier_minio import send_report_email_with_minio
-
 from spreadpilot_core.models.follower import Follower
 
 

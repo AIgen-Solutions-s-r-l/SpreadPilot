@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fakeredis import aioredis as fakeredis
-from watchdog import ServiceWatchdog
-
 from spreadpilot_core.models.alert import Alert, AlertSeverity
+
+from watchdog import ServiceWatchdog
 
 
 @pytest.fixture

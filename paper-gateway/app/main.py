@@ -10,20 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import get_settings
-from .models import (
-    AccountInfo,
-    BalanceUpdateRequest,
-    HealthResponse,
-    OrderRequest,
-    OrderResponse,
-    PerformanceMetrics,
-    Position,
-)
+from .models import (AccountInfo, BalanceUpdateRequest, HealthResponse,
+                     OrderRequest, OrderResponse, PerformanceMetrics, Position)
 from .simulation.execution_simulator import get_execution_simulator
 from .simulation.market_hours import get_market_status, is_market_open
 from .storage.mongo import get_mongo_client
 from .storage.state import get_state_manager
-
 
 # Configure logging
 logging.basicConfig(
@@ -171,7 +163,8 @@ async def place_order(order_request: OrderRequest):
                 filled_quantity = 0
 
     # Save order
-    from .models import OrderDocument, OrderStatus as OrderStatusEnum
+    from .models import OrderDocument
+    from .models import OrderStatus as OrderStatusEnum
 
     order_doc = OrderDocument(
         order_id=order_id,
@@ -252,7 +245,9 @@ async def get_order(order_id: str):
     if not order:
         raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
 
-    from .models import OrderAction, OrderStatus as OrderStatusEnum, OrderType
+    from .models import OrderAction
+    from .models import OrderStatus as OrderStatusEnum
+    from .models import OrderType
 
     return OrderResponse(
         order_id=order.order_id,
@@ -300,7 +295,8 @@ async def close_position(symbol: str):
         raise HTTPException(status_code=404, detail=f"Position {symbol} not found")
 
     # Create closing order
-    from .models import OrderAction, OrderType as OrderTypeEnum, AssetType
+    from .models import AssetType, OrderAction
+    from .models import OrderType as OrderTypeEnum
 
     order_request = OrderRequest(
         symbol=symbol,

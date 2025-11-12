@@ -4,12 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 from hvac.exceptions import VaultError
-
-from spreadpilot_core.utils.vault import (
-    VaultClient,
-    get_ibkr_credentials_from_vault,
-    get_vault_client,
-)
+from spreadpilot_core.utils.vault import (VaultClient,
+                                          get_ibkr_credentials_from_vault,
+                                          get_vault_client)
 
 
 class TestVaultClient:

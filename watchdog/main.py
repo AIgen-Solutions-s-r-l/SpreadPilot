@@ -11,7 +11,6 @@ import time
 import docker
 import httpx
 import redis.asyncio as redis
-
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 # Configure logging

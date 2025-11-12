@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import redis.asyncio as redis
-
 from spreadpilot_core.models.alert import AlertEvent
 
 from ..config import settings

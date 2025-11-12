@@ -12,8 +12,8 @@ from datetime import datetime
 import httpx
 import redis.asyncio as redis
 from motor.motor_asyncio import AsyncIOMotorClient
-
-from spreadpilot_core.models.alert import Alert, AlertEvent, AlertSeverity, AlertType
+from spreadpilot_core.models.alert import (Alert, AlertEvent, AlertSeverity,
+                                           AlertType)
 
 # Configure logging
 logging.basicConfig(

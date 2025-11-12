@@ -2,7 +2,6 @@ import asyncio
 import os
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-
 from spreadpilot_core.logging.logger import get_logger
 
 # Get logger

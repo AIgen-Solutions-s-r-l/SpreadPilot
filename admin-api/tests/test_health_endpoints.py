@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from app.api.v1.endpoints.health import router
-
 # Create a test client
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

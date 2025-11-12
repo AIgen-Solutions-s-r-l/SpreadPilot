@@ -7,7 +7,6 @@ import pytz
 
 from ..config import get_settings
 
-
 # US market holidays for 2024-2025 (simplified)
 MARKET_HOLIDAYS = [
     "2024-01-01",  # New Year's Day

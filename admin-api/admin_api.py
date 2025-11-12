@@ -18,7 +18,6 @@ from app.services.follower_service import FollowerService
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 
 # Setup logging

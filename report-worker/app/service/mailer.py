@@ -9,17 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Attachment,
-    Content,
-    Disposition,
-    Email,
-    FileContent,
-    FileName,
-    FileType,
-    Mail,
-    To,
-)
+from sendgrid.helpers.mail import (Attachment, Content, Disposition, Email,
+                                   FileContent, FileName, FileType, Mail, To)
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 

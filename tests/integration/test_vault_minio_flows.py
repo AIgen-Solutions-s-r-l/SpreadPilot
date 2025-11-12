@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from spreadpilot_core.models.follower import Follower, FollowerState
 from spreadpilot_core.utils.vault import VaultClient, get_vault_client
 

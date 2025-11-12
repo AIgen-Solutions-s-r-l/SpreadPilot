@@ -4,7 +4,6 @@ from functools import lru_cache
 
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
-
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.utils.vault import get_vault_client
 

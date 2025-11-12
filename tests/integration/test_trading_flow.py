@@ -2,16 +2,14 @@
 
 import datetime
 import importlib
+# Add trading-bot to path and import
+import sys
 import uuid
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from spreadpilot_core.ibkr.client import OrderStatus
-
-# Add trading-bot to path and import
-import sys
-from pathlib import Path
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "trading-bot"))

@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from spreadpilot_core.models.alert import AlertEvent
 
 from ..config import settings

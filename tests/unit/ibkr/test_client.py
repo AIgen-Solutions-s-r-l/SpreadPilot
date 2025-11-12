@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import ib_insync
 import pytest
-from ib_insync import BarData, CommissionReport, Fill, Order, Stock
+from ib_insync import BarData, CommissionReport, Fill, Order
 from ib_insync import OrderStatus as IBOrderStatus
+from ib_insync import Stock
 from ib_insync import Trade as IBTrade
-
 from spreadpilot_core.ibkr.client import IBKRClient
 
 # Mock data

@@ -19,10 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient  # Import motor
 from pydantic import BaseModel
-
 from spreadpilot_core.dry_run import DryRunConfig
 from spreadpilot_core.logging import get_logger, setup_logging
-from spreadpilot_core.utils.secrets import get_secret_from_mongo  # Import secret getter
+from spreadpilot_core.utils.secrets import \
+    get_secret_from_mongo  # Import secret getter
 
 from .config import Settings, get_settings
 from .service import TradingService

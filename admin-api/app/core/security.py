@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
-
 from spreadpilot_core.logging.logger import get_logger
 
 from ..db.mongodb import get_db

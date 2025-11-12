@@ -4,12 +4,11 @@ from typing import List
 import pytz
 from app.api.v1.endpoints.auth import get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from spreadpilot_core.db.postgresql import get_postgres_session
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.pnl import PnLDaily, PnLIntraday, PnLMonthly
+from sqlalchemy import and_, desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 logger = get_logger(__name__)
