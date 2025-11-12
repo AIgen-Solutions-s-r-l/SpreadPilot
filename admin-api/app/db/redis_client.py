@@ -1,7 +1,6 @@
 """Redis client for admin-api rate limiting and caching."""
 
 import os
-from typing import Optional
 
 try:
     import redis.asyncio as redis
@@ -13,7 +12,7 @@ from spreadpilot_core.logging.logger import get_logger
 logger = get_logger(__name__)
 
 # Global Redis client instance
-_redis_client: Optional[redis.Redis] = None
+_redis_client: redis.Redis | None = None
 
 
 async def connect_to_redis() -> None:
@@ -59,7 +58,7 @@ async def close_redis_connection() -> None:
         logger.info("Redis connection closed.")
 
 
-def get_redis_client() -> Optional[redis.Redis]:
+def get_redis_client() -> redis.Redis | None:
     """
     Get the Redis client instance.
 
