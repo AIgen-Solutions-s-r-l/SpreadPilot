@@ -465,3 +465,7 @@ yarl==1.20.0
 # The following packages are considered to be unsafe in a requirements file:
 # pip
 # setuptools
+aiosmtplib==3.0.2
+    # via -r requirements-dev.in
+moto==5.0.33
+    # via -r requirements-dev.in

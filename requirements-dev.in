@@ -14,6 +14,8 @@ httpx>=0.27.0,<0.28.0  # For async HTTP client testing - Aligned with admin-api 
 aioresponses>=0.7.4  # For mocking async HTTP requests
 freezegun>=1.2.2  # For mocking datetime/time in tests
 fakeredis>=2.18.0  # For mocking Redis in tests
+aiosmtplib>=3.0.0  # Async SMTP library for email testing
+moto>=5.0.0  # AWS service mocking
 
 testcontainers # For managing Docker containers in tests
 wrapt>=1.15.0 # Force newer version compatible with Python 3.12+
