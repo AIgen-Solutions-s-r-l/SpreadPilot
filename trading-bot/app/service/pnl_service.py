@@ -9,8 +9,14 @@ import pytz
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.db.postgresql import get_postgres_session
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.pnl import (CommissionMonthly, PnLDaily,
-                                         PnLIntraday, PnLMonthly, Quote, Trade)
+from spreadpilot_core.models.pnl import (
+    CommissionMonthly,
+    PnLDaily,
+    PnLIntraday,
+    PnLMonthly,
+    Quote,
+    Trade,
+)
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -8,8 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytz
-from spreadpilot_core.models.pnl import (CommissionMonthly, PnLDaily,
-                                         PnLIntraday, PnLMonthly, Quote, Trade)
+from spreadpilot_core.models.pnl import (
+    CommissionMonthly,
+    PnLDaily,
+    PnLIntraday,
+    PnLMonthly,
+    Quote,
+    Trade,
+)
 from spreadpilot_core.pnl.service import PnLService
 
 ET = pytz.timezone("US/Eastern")

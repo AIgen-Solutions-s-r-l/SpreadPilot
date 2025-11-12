@@ -12,9 +12,7 @@ sys.modules["ib_insync"] = Mock()
 sys.modules["motor"] = Mock()
 sys.modules["motor.motor_asyncio"] = Mock()
 
-from spreadpilot_core.ibkr.gateway_manager import (GatewayInstance,
-                                                   GatewayManager,
-                                                   GatewayStatus)
+from spreadpilot_core.ibkr.gateway_manager import GatewayInstance, GatewayManager, GatewayStatus
 
 
 @dataclass

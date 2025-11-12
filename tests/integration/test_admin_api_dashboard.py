@@ -148,8 +148,7 @@ async def test_periodic_follower_update_task(
     """
     Test the periodic follower update background task logic more directly.
     """
-    from admin_api.app.api.v1.endpoints.dashboard import \
-        periodic_follower_update_task
+    from admin_api.app.api.v1.endpoints.dashboard import periodic_follower_update_task
     from admin_api.app.core.config import get_settings
     from admin_api.app.services.follower_service import FollowerService
 

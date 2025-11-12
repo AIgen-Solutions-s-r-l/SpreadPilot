@@ -3,9 +3,13 @@
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from app.db.redis_client import (_redis_client, connect_to_redis,
-                                 disconnect_from_redis, get_redis_client,
-                                 is_redis_available)
+from app.db.redis_client import (
+    _redis_client,
+    connect_to_redis,
+    disconnect_from_redis,
+    get_redis_client,
+    is_redis_available,
+)
 
 
 @pytest.mark.asyncio

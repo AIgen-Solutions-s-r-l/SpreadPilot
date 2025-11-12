@@ -6,8 +6,7 @@ from typing import Annotated, Any  # Added Annotated
 
 from bson import ObjectId  # Added ObjectId
 from pydantic import BaseModel, EmailStr, Field, validator
-from pydantic.functional_validators import \
-    BeforeValidator  # Added BeforeValidator
+from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
 class FollowerState(str, Enum):

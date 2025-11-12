@@ -2,6 +2,7 @@
 
 import datetime
 import importlib
+
 # Add trading-bot to path and import
 import sys
 import uuid
@@ -11,8 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from spreadpilot_core.models.alert import AlertType
 from spreadpilot_core.models.position import AssignmentState, Position
-from spreadpilot_core.utils.time import \
-    get_current_trading_date  # Added import
+from spreadpilot_core.utils.time import get_current_trading_date  # Added import
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "trading-bot"))
@@ -215,8 +215,7 @@ async def test_alert_routing_for_assignment(
 
     # Import the function directly
     from alert_router.app.service.router import route_alert
-    from spreadpilot_core.models.alert import (  # Ensure AlertType is imported
-        AlertEvent, AlertType)
+    from spreadpilot_core.models.alert import AlertEvent, AlertType  # Ensure AlertType is imported
 
     # Create test alert event
     alert_event = AlertEvent(

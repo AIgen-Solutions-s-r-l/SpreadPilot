@@ -6,8 +6,7 @@ from typing import Annotated, Any  # Added Any, Annotated
 
 from bson import ObjectId  # Added ObjectId
 from pydantic import BaseModel, Field
-from pydantic.functional_validators import \
-    BeforeValidator  # Added BeforeValidator
+from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
 # Validator function to convert ObjectId to str

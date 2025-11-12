@@ -19,8 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.mongodb import get_mongo_db
 from ..db.postgresql import get_postgres_session
 from ..logging import get_logger
-from ..models.pnl import (CommissionMonthly, PnLDaily, PnLIntraday, PnLMonthly,
-                          Quote, Trade)
+from ..models.pnl import CommissionMonthly, PnLDaily, PnLIntraday, PnLMonthly, Quote, Trade
 from ..utils.redis_client import get_redis_client
 
 logger = get_logger(__name__)

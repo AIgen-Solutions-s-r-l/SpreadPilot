@@ -10,8 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import get_settings
-from .models import (AccountInfo, BalanceUpdateRequest, HealthResponse,
-                     OrderRequest, OrderResponse, PerformanceMetrics, Position)
+from .models import (
+    AccountInfo,
+    BalanceUpdateRequest,
+    HealthResponse,
+    OrderRequest,
+    OrderResponse,
+    PerformanceMetrics,
+    Position,
+)
 from .simulation.execution_simulator import get_execution_simulator
 from .simulation.market_hours import get_market_status, is_market_open
 from .storage.mongo import get_mongo_client

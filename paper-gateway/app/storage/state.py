@@ -5,9 +5,17 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from ..config import get_settings
-from ..models import (AccountDocument, AccountInfo, AssetType, OrderAction,
-                      OrderDocument, OrderStatus, PerformanceMetrics, Position,
-                      PositionDocument)
+from ..models import (
+    AccountDocument,
+    AccountInfo,
+    AssetType,
+    OrderAction,
+    OrderDocument,
+    OrderStatus,
+    PerformanceMetrics,
+    Position,
+    PositionDocument,
+)
 from ..simulation.price_simulator import get_price_simulator
 from .mongo import get_mongo_client
 

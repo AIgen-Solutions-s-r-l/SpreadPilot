@@ -3,8 +3,7 @@
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from trading_bot.app.service.vertical_spreads_strategy_handler import \
-    VerticalSpreadsStrategyHandler
+from trading_bot.app.service.vertical_spreads_strategy_handler import VerticalSpreadsStrategyHandler
 
 
 class TestVerticalSpreadsStrategyHandler(unittest.TestCase):

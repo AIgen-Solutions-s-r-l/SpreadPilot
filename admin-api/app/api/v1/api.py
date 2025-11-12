@@ -1,5 +1,13 @@
-from app.api.v1.endpoints import (auth, dashboard, followers, health, logs,
-                                  manual_operations, pnl, websocket)
+from app.api.v1.endpoints import (
+    auth,
+    dashboard,
+    followers,
+    health,
+    logs,
+    manual_operations,
+    pnl,
+    websocket,
+)
 from fastapi import APIRouter
 
 # Create the main API router

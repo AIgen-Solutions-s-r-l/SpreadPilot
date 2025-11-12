@@ -4,8 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from app.core.security import (MAX_PIN_ATTEMPTS, PIN_LOCKOUT_DURATION,
-                               PINVerification)
+from app.core.security import MAX_PIN_ATTEMPTS, PIN_LOCKOUT_DURATION, PINVerification
 from fastapi import HTTPException
 
 
@@ -415,8 +414,7 @@ class TestClearAttempts:
 
     async def test_clear_attempts_redis_failure_uses_fallback(self, pin_verifier):
         """Test fallback when Redis fails to clear attempts."""
-        from app.core.security import (_locked_users_fallback,
-                                       _pin_attempts_fallback)
+        from app.core.security import _locked_users_fallback, _pin_attempts_fallback
 
         _pin_attempts_fallback["user123"] = [datetime.utcnow()]
         _locked_users_fallback["user123"] = datetime.utcnow()
@@ -434,8 +432,7 @@ class TestClearAttempts:
 
     async def test_clear_attempts_in_memory(self, pin_verifier):
         """Test clearing attempts in memory when Redis unavailable."""
-        from app.core.security import (_locked_users_fallback,
-                                       _pin_attempts_fallback)
+        from app.core.security import _locked_users_fallback, _pin_attempts_fallback
 
         _pin_attempts_fallback.clear()
         _locked_users_fallback.clear()

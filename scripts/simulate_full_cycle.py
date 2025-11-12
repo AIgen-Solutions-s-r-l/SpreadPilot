@@ -37,9 +37,11 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "spreadpilot-core"))
 
 from spreadpilot_core.dry_run import DryRunConfig
-from spreadpilot_core.test_data_generator import (ScenarioType,
-                                                  generate_scenario,
-                                                  generate_test_prices)
+from spreadpilot_core.test_data_generator import (
+    ScenarioType,
+    generate_scenario,
+    generate_test_prices,
+)
 
 # Setup basic logging
 logging.basicConfig(

@@ -8,12 +8,18 @@ from enum import Enum
 # Removed firebase_admin imports
 from motor.motor_asyncio import AsyncIOMotorDatabase  # Added Motor import
 from spreadpilot_core.db.mongodb import (  # Added MongoDB imports
-    close_mongo_connection, connect_to_mongo, get_mongo_db)
+    close_mongo_connection,
+    connect_to_mongo,
+    get_mongo_db,
+)
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.models import Follower
-from spreadpilot_core.utils.time import (format_ny_time, get_ny_time,
-                                         is_market_open,
-                                         seconds_until_market_open)
+from spreadpilot_core.utils.time import (
+    format_ny_time,
+    get_ny_time,
+    is_market_open,
+    seconds_until_market_open,
+)
 
 from ..config import VERTICAL_SPREADS_STRATEGY, Settings
 from ..signal_generator import QQQSignalGenerator

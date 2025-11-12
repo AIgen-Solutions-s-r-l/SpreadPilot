@@ -7,9 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import docker
 import pytest
-from spreadpilot_core.ibkr.gateway_manager import (GatewayInstance,
-                                                   GatewayManager,
-                                                   GatewayStatus)
+from spreadpilot_core.ibkr.gateway_manager import GatewayInstance, GatewayManager, GatewayStatus
 from spreadpilot_core.models.alert import AlertSeverity
 from spreadpilot_core.models.follower import FollowerState
 
