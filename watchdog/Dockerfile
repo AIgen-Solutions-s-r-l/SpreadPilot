@@ -9,16 +9,14 @@ RUN apt-get update && apt-get install -y \
 # Set the working directory in the container
 WORKDIR /app
 
-# Install pip-tools for compiling requirements.txt
-RUN pip install pip-tools
-
 # Copy the requirements files into the container at /app
 COPY watchdog/requirements.in ./
 
-# Compile requirements.in to requirements.txt and install dependencies
+# Install compatible pip-tools version and compile requirements
 # This step leverages Docker layer caching. If requirements.in hasn't changed,
 # this layer won't be rebuilt.
-RUN pip-compile requirements.in -o requirements.txt && \
+RUN pip install --no-cache-dir --upgrade "pip>=24.0" "pip-tools>=7.4.0" && \
+    pip-compile requirements.in -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy spreadpilot-core library
