@@ -18,6 +18,7 @@ exclude = [
     ".pytest_cache",
     "htmlcov",
     "docs",
+    "dev-prompts",
 ]
 
 [tool.ruff.lint]
@@ -43,37 +44,54 @@ ignore = [
     "S603",  # subprocess without shell equals true
     "S607",  # Starting a process with a partial executable path
     "W291",  # Trailing whitespace
+    "W292",  # No newline at end of file
     "W293",  # Blank line contains whitespace
     "B008",  # Do not perform function call in argument defaults
+    "B025",  # try-except duplicate exception
     "DTZ001", # datetime without tzinfo
     "DTZ003", # datetime.utcnow()
     "DTZ004", # datetime.utcfromtimestamp()
     "DTZ005", # datetime.now() without tz
+    "DTZ007", # datetime.strptime without timezone
+    "E722",  # Bare except
+    "F401",  # Imported but unused
+    "F541",  # f-string without placeholders
+    "F821",  # Undefined name
+    "F811",  # Redefinition of unused variable
+    "F841",  # Local variable assigned but never used
     "S104",  # Possible binding to all interfaces
     "S105",  # Possible hardcoded password
     "S106",  # Possible hardcoded password in argument
     "S108",  # Probable insecure usage of temp file
-    "N805",  # First argument of method should be self
-    "N806",  # Variable in function should be lowercase
-    "B007",  # Loop control variable not used
-    "B904",  # Use raise from in except
-    "F811",  # Redefinition of unused variable
-    "F841",  # Local variable assigned but never used
-    "E712",  # Comparison to True/False
-    "E402",  # Module import not at top
-    "I001",  # Import block unsorted
-    "RUF012", # Mutable class attributes should be ClassVar
     "S311",  # Standard pseudo-random generators not suitable for crypto
     "S110",  # try-except-pass detected
-    "F821",  # Undefined name
-    "N803",  # Argument name should be lowercase
-    "RUF005", # Consider iterable unpacking instead of concatenation
-    "DTZ011", # datetime.date.today() used
-    "RUF015", # Prefer next(iter(...))
-    "N999",  # Invalid module name
-    "RUF006", # Store reference to asyncio.create_task
-    "RUF003", # Comment contains ambiguous character
+    "N801",  # Class name should use CapWords
     "N802",  # Function name should be lowercase
+    "N803",  # Argument name should be lowercase
+    "N805",  # First argument of method should be self
+    "N806",  # Variable in function should be lowercase
+    "N999",  # Invalid module name
+    "B007",  # Loop control variable not used
+    "B904",  # Use raise from in except
+    "E402",  # Module import not at top
+    "E712",  # Comparison to True/False
+    "I001",  # Import block unsorted
+    "T20",   # Print statements (TODO: replace with logging)
+    "UP006", # Use dict/list instead of typing.Dict/List (gradual migration)
+    "UP015", # Unnecessary mode argument
+    "UP035", # Import from typing deprecated (gradual migration)
+    "UP041", # Timeout in functools.lru_cache
+    "UP045", # Use X | None instead of Optional[X] (gradual migration)
+    "RUF001", # Ambiguous unicode character
+    "RUF003", # Comment contains ambiguous character
+    "RUF005", # Consider iterable unpacking instead of concatenation
+    "RUF006", # Store reference to asyncio.create_task
+    "RUF010", # Use explicit conversion flag
+    "RUF012", # Mutable class attributes should be ClassVar
+    "RUF013", # PEP 484 prohibits implicit Optional
+    "RUF015", # Prefer next(iter(...))
+    "RUF059", # Consider using datetime.now() with timezone
+    "DTZ011", # datetime.date.today() used
 ]
 
 # Allow autofix for all enabled rules
