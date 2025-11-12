@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY admin-api/requirements.in .
-RUN pip install --no-cache-dir --upgrade "pip>=24.0" "pip-tools>=7.4.0" && \
+RUN pip install --no-cache-dir --upgrade "pip>=24.0,<25.0" "pip-tools>=7.4.0" && \
     pip-compile requirements.in && \
     pip install --no-cache-dir -r requirements.txt
 

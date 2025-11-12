@@ -15,7 +15,7 @@ COPY watchdog/requirements.in ./
 # Install compatible pip-tools version and compile requirements
 # This step leverages Docker layer caching. If requirements.in hasn't changed,
 # this layer won't be rebuilt.
-RUN pip install --no-cache-dir --upgrade "pip>=24.0" "pip-tools>=7.4.0" && \
+RUN pip install --no-cache-dir --upgrade "pip>=24.0,<25.0" "pip-tools>=7.4.0" && \
     pip-compile requirements.in -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt
 

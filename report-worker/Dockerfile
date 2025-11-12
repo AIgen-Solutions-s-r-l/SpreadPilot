@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -e /app/spreadpilot-core
 # Copy the requirements file
 COPY ./report-worker/requirements.in /app/requirements.in
 # Install compatible pip-tools version and compile requirements
-RUN pip install --no-cache-dir --upgrade "pip>=24.0" "pip-tools>=7.4.0" \
+RUN pip install --no-cache-dir --upgrade "pip>=24.0,<25.0" "pip-tools>=7.4.0" \
     && pip-compile requirements.in -o requirements.txt --resolver=backtracking \
     && pip install --no-cache-dir -r requirements.txt
 
