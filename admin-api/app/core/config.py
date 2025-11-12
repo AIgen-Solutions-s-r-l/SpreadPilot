@@ -32,6 +32,9 @@ class Settings(BaseModel):
     # Background task configuration
     follower_update_interval: int = 60  # seconds
 
+    # Redis configuration
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+
     # Dry-run mode
     dry_run_mode: bool = os.getenv("DRY_RUN_MODE", "false").lower() == "true"
 

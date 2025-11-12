@@ -26,7 +26,6 @@ from spreadpilot_core.utils.secrets import get_secret_from_mongo  # Import secre
 
 from .config import Settings, get_settings
 from .service import TradingService
-from .sheets import GoogleSheetsClient
 
 # --- Secret Pre-loading ---
 
@@ -35,7 +34,6 @@ preload_logger = logging.getLogger(__name__ + ".preload")
 
 # Define secrets needed by this specific service
 SECRETS_TO_FETCH = [
-    "GOOGLE_SHEETS_API_KEY",
     "TELEGRAM_BOT_TOKEN",
     "SENDGRID_API_KEY",
     "ADMIN_EMAIL",
@@ -103,9 +101,22 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# Load CORS origins from environment variable or use secure defaults
+cors_origins_env = os.getenv("CORS_ORIGINS")
+if cors_origins_env:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    # Default to localhost for development only
+    # In production, MUST set CORS_ORIGINS environment variable
+    cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+    logger.warning(
+        "CORS_ORIGINS not set - using development defaults. "
+        "Set CORS_ORIGINS environment variable in production!"
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to specific origins
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,7 +125,6 @@ app.add_middleware(
 # Global variables
 settings: Settings | None = None
 trading_service: TradingService | None = None
-sheets_client: GoogleSheetsClient | None = None
 shutdown_event: asyncio.Event | None = None
 
 
@@ -170,16 +180,10 @@ async def startup_event():
     # Create shutdown event
     shutdown_event = asyncio.Event()
 
-    # Initialize Google Sheets client
-    sheets_client = GoogleSheetsClient(
-        sheet_url=settings.google_sheet_url,
-        api_key=settings.google_sheets_api_key,
-    )
-
     # Initialize trading service
+    # Note: Signal generator will be initialized in the service after IBKR connection
     trading_service = TradingService(
         settings=settings,
-        sheets_client=sheets_client,
     )
 
     # Start background tasks
@@ -222,7 +226,7 @@ async def get_status():
     return {
         "status": trading_service.get_status(),
         "ibkr_connected": trading_service.is_ibkr_connected(),
-        "sheets_connected": trading_service.is_sheets_connected(),
+        "signal_generator_enabled": trading_service.is_signal_generator_enabled(),
         "active_followers": trading_service.get_active_follower_count(),
     }
 

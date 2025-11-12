@@ -98,7 +98,6 @@ def get_secret(secret_name: str, fallback_to_env: bool = True) -> Optional[str]:
             "DATABASE_URL": SecretType.POSTGRES_URI,
             "POSTGRES_URI": SecretType.POSTGRES_URI,
             "REDIS_URL": SecretType.REDIS_URL,
-            "GOOGLE_SHEETS_API_KEY": SecretType.GOOGLE_SHEETS_API_KEY,
             "SENDGRID_API_KEY": SecretType.SENDGRID_API_KEY,
             "TELEGRAM_BOT_TOKEN": SecretType.TELEGRAM_BOT_TOKEN,
             "TELEGRAM_CHAT_ID": SecretType.TELEGRAM_CHAT_ID,

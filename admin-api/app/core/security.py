@@ -7,11 +7,14 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 
 from spreadpilot_core.logging.logger import get_logger
+
+from ..db.mongodb import get_db
+from ..db.redis_client import get_redis_client, is_redis_available
 
 logger = get_logger(__name__)
 
@@ -34,9 +37,9 @@ DANGEROUS_ENDPOINTS = [
 # Password context for PIN hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Rate limiting storage (in production, use Redis)
-pin_attempts: dict[str, list[datetime]] = defaultdict(list)
-locked_users: dict[str, datetime] = {}
+# In-memory fallback rate limiting storage (only used if Redis unavailable)
+_pin_attempts_fallback: dict[str, list[datetime]] = defaultdict(list)
+_locked_users_fallback: dict[str, datetime] = {}
 
 # Security headers
 security = HTTPBearer()
@@ -72,7 +75,7 @@ class PINVerification:
 
         logger.info("PIN updated successfully")
 
-    def verify_pin(self, pin: str, user_id: str) -> bool:
+    async def verify_pin(self, pin: str, user_id: str) -> bool:
         """
         Verify PIN with rate limiting.
 
@@ -87,8 +90,8 @@ class PINVerification:
             HTTPException: If user is locked out or PIN expired
         """
         # Check if user is locked out
-        if user_id in locked_users:
-            lockout_end = locked_users[user_id]
+        lockout_end = await self._get_lockout_end(user_id)
+        if lockout_end:
             if datetime.utcnow() < lockout_end:
                 remaining = int((lockout_end - datetime.utcnow()).total_seconds())
                 raise HTTPException(
@@ -96,9 +99,8 @@ class PINVerification:
                     detail=f"Too many failed attempts. Try again in {remaining} seconds.",
                 )
             else:
-                # Lockout expired, remove from locked users
-                del locked_users[user_id]
-                pin_attempts[user_id].clear()
+                # Lockout expired, clear attempts
+                await self._clear_attempts(user_id)
 
         # Check PIN expiry
         if self.pin_created_at:
@@ -112,13 +114,13 @@ class PINVerification:
         # Verify PIN
         if not self.pin_hash or not pwd_context.verify(pin, self.pin_hash):
             # Record failed attempt
-            self._record_failed_attempt(user_id)
+            await self._record_failed_attempt(user_id)
 
             # Check if user should be locked out
-            attempts = self._get_recent_attempts(user_id)
+            attempts = await self._get_recent_attempts(user_id)
             if len(attempts) >= MAX_PIN_ATTEMPTS:
                 lockout_end = datetime.utcnow() + timedelta(seconds=PIN_LOCKOUT_DURATION)
-                locked_users[user_id] = lockout_end
+                await self._set_lockout(user_id, lockout_end)
                 logger.warning(f"User {user_id} locked out due to multiple failed PIN attempts")
 
                 raise HTTPException(
@@ -133,7 +135,7 @@ class PINVerification:
             )
 
         # Clear failed attempts on successful verification
-        pin_attempts[user_id].clear()
+        await self._clear_attempts(user_id)
         logger.info(f"PIN verified successfully for user {user_id}")
 
         return True
@@ -177,18 +179,127 @@ class PINVerification:
         descending = all(int(pin[i]) == int(pin[i - 1]) - 1 for i in range(1, len(pin)))
         return ascending or descending
 
-    def _record_failed_attempt(self, user_id: str) -> None:
-        """Record a failed PIN attempt."""
-        pin_attempts[user_id].append(datetime.utcnow())
+    async def _record_failed_attempt(self, user_id: str) -> None:
+        """Record a failed PIN attempt (uses Redis if available, otherwise in-memory)."""
+        redis_client = get_redis_client()
+
+        if redis_client and is_redis_available():
+            # Use Redis sorted set with timestamp as score
+            key = f"pin_attempts:{user_id}"
+            timestamp = datetime.utcnow().timestamp()
+
+            try:
+                # Add attempt with timestamp as score
+                await redis_client.zadd(key, {str(timestamp): timestamp})
+
+                # Set expiry on the key
+                await redis_client.expire(key, PIN_LOCKOUT_DURATION)
+
+                # Clean up old attempts
+                cutoff = timestamp - PIN_LOCKOUT_DURATION
+                await redis_client.zremrangebyscore(key, "-inf", cutoff)
+            except Exception as e:
+                logger.error(f"Failed to record attempt in Redis: {e}", exc_info=True)
+                # Fallback to in-memory
+                self._record_failed_attempt_fallback(user_id)
+        else:
+            # Fallback to in-memory storage
+            self._record_failed_attempt_fallback(user_id)
+
+    def _record_failed_attempt_fallback(self, user_id: str) -> None:
+        """Fallback: Record failed attempt in memory."""
+        _pin_attempts_fallback[user_id].append(datetime.utcnow())
 
         # Clean up old attempts
         cutoff = datetime.utcnow() - timedelta(seconds=PIN_LOCKOUT_DURATION)
-        pin_attempts[user_id] = [attempt for attempt in pin_attempts[user_id] if attempt > cutoff]
+        _pin_attempts_fallback[user_id] = [
+            attempt for attempt in _pin_attempts_fallback[user_id] if attempt > cutoff
+        ]
 
-    def _get_recent_attempts(self, user_id: str) -> list[datetime]:
+    async def _get_recent_attempts(self, user_id: str) -> list[datetime]:
         """Get recent PIN attempts within the lockout window."""
+        redis_client = get_redis_client()
+
+        if redis_client and is_redis_available():
+            key = f"pin_attempts:{user_id}"
+            cutoff = datetime.utcnow().timestamp() - PIN_LOCKOUT_DURATION
+
+            try:
+                # Get attempts after cutoff
+                attempts = await redis_client.zrangebyscore(key, cutoff, "+inf")
+                # Using utcfromtimestamp since we store timestamps in UTC
+                return [datetime.utcfromtimestamp(float(ts)) for ts in attempts]
+            except Exception as e:
+                logger.error(f"Failed to get attempts from Redis: {e}", exc_info=True)
+                # Fallback to in-memory
+                return self._get_recent_attempts_fallback(user_id)
+        else:
+            # Fallback to in-memory storage
+            return self._get_recent_attempts_fallback(user_id)
+
+    def _get_recent_attempts_fallback(self, user_id: str) -> list[datetime]:
+        """Fallback: Get recent attempts from memory."""
         cutoff = datetime.utcnow() - timedelta(seconds=PIN_LOCKOUT_DURATION)
-        return [attempt for attempt in pin_attempts[user_id] if attempt > cutoff]
+        return [attempt for attempt in _pin_attempts_fallback[user_id] if attempt > cutoff]
+
+    async def _set_lockout(self, user_id: str, lockout_end: datetime) -> None:
+        """Set lockout time for a user."""
+        redis_client = get_redis_client()
+
+        if redis_client and is_redis_available():
+            key = f"pin_lockout:{user_id}"
+
+            try:
+                # Store lockout end time
+                await redis_client.set(key, lockout_end.isoformat(), ex=PIN_LOCKOUT_DURATION)
+            except Exception as e:
+                logger.error(f"Failed to set lockout in Redis: {e}", exc_info=True)
+                # Fallback to in-memory
+                _locked_users_fallback[user_id] = lockout_end
+        else:
+            # Fallback to in-memory storage
+            _locked_users_fallback[user_id] = lockout_end
+
+    async def _get_lockout_end(self, user_id: str) -> datetime | None:
+        """Get lockout end time for a user."""
+        redis_client = get_redis_client()
+
+        if redis_client and is_redis_available():
+            key = f"pin_lockout:{user_id}"
+
+            try:
+                lockout_str = await redis_client.get(key)
+                if lockout_str:
+                    return datetime.fromisoformat(lockout_str)
+                return None
+            except Exception as e:
+                logger.error(f"Failed to get lockout from Redis: {e}", exc_info=True)
+                # Fallback to in-memory
+                return _locked_users_fallback.get(user_id)
+        else:
+            # Fallback to in-memory storage
+            return _locked_users_fallback.get(user_id)
+
+    async def _clear_attempts(self, user_id: str) -> None:
+        """Clear failed attempts and lockout for a user."""
+        redis_client = get_redis_client()
+
+        if redis_client and is_redis_available():
+            try:
+                await redis_client.delete(f"pin_attempts:{user_id}", f"pin_lockout:{user_id}")
+            except Exception as e:
+                logger.error(f"Failed to clear attempts in Redis: {e}", exc_info=True)
+                # Fallback to in-memory
+                if user_id in _pin_attempts_fallback:
+                    _pin_attempts_fallback[user_id].clear()
+                if user_id in _locked_users_fallback:
+                    _locked_users_fallback.pop(user_id, None)
+        else:
+            # Fallback to in-memory storage
+            if user_id in _pin_attempts_fallback:
+                _pin_attempts_fallback[user_id].clear()
+            if user_id in _locked_users_fallback:
+                _locked_users_fallback.pop(user_id, None)
 
     def is_pin_required(self, endpoint: str) -> bool:
         """
@@ -250,7 +361,7 @@ async def verify_dangerous_operation(
         )
 
     # Verify PIN
-    pin_verifier.verify_pin(x_pin, x_user_id)
+    await pin_verifier.verify_pin(x_pin, x_user_id)
 
 
 def get_security_headers() -> dict[str, str]:
@@ -278,6 +389,27 @@ def get_security_headers() -> dict[str, str]:
     }
 
 
+async def store_audit_log(audit_entry: dict) -> None:
+    """
+    Store audit log entry in MongoDB.
+
+    Args:
+        audit_entry: Dictionary containing audit log data
+    """
+    try:
+        db = await get_db()
+        audit_collection = db.security_audit_logs
+
+        # Add created_at timestamp for indexing
+        audit_entry["created_at"] = datetime.utcnow()
+
+        await audit_collection.insert_one(audit_entry)
+        logger.debug(f"Stored audit log entry for user {audit_entry.get('user_id')}")
+    except Exception as e:
+        # Don't fail the request if audit logging fails, but log the error
+        logger.error(f"Failed to store audit log: {e}", exc_info=True)
+
+
 class SecurityAudit:
     """
     Security audit logging for dangerous operations.
@@ -285,7 +417,11 @@ class SecurityAudit:
 
     @staticmethod
     async def log_dangerous_operation(
-        user_id: str, endpoint: str, operation: str, details: dict | None = None
+        user_id: str,
+        endpoint: str,
+        operation: str,
+        details: dict | None = None,
+        request: Request | None = None,
     ) -> None:
         """
         Log a dangerous operation for audit trail.
@@ -295,18 +431,35 @@ class SecurityAudit:
             endpoint: API endpoint accessed
             operation: Description of the operation
             details: Additional details to log
+            request: FastAPI Request object to extract IP and user agent
         """
+        # Extract IP address and user agent from request if available
+        ip_address = "0.0.0.0"
+        user_agent = "Unknown"
+
+        if request:
+            # Get real IP from X-Forwarded-For header (if behind proxy) or direct client
+            forwarded_for = request.headers.get("X-Forwarded-For")
+            if forwarded_for:
+                # X-Forwarded-For can contain multiple IPs, take the first one
+                ip_address = forwarded_for.split(",")[0].strip()
+            elif request.client:
+                ip_address = request.client.host
+
+            # Get user agent
+            user_agent = request.headers.get("User-Agent", "Unknown")
+
         audit_entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "user_id": user_id,
             "endpoint": endpoint,
             "operation": operation,
             "details": details or {},
-            "ip_address": "0.0.0.0",  # Should be extracted from request
-            "user_agent": "Unknown",  # Should be extracted from request
+            "ip_address": ip_address,
+            "user_agent": user_agent,
         }
 
         logger.warning(f"SECURITY_AUDIT: {audit_entry}")
 
-        # In production, store in database
-        # await store_audit_log(audit_entry)
+        # Store in database
+        await store_audit_log(audit_entry)

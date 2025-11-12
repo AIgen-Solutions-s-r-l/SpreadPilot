@@ -33,7 +33,6 @@ class SecretType(str, Enum):
     REDIS_URL = "redis_url"
 
     # External APIs
-    GOOGLE_SHEETS_API_KEY = "google_sheets_api_key"
     SENDGRID_API_KEY = "sendgrid_api_key"
     TELEGRAM_BOT_TOKEN = "telegram_bot_token"
     TELEGRAM_CHAT_ID = "telegram_chat_id"
@@ -98,11 +97,6 @@ SECRET_CONFIGS = {
         required=False,
     ),
     # External APIs
-    SecretType.GOOGLE_SHEETS_API_KEY: SecretConfig(
-        vault_path="secret/spreadpilot/external/google",
-        env_var="GOOGLE_SHEETS_API_KEY",
-        required=True,
-    ),
     SecretType.SENDGRID_API_KEY: SecretConfig(
         vault_path="secret/spreadpilot/external/sendgrid",
         env_var="SENDGRID_API_KEY",

@@ -118,14 +118,18 @@ class VerticalSpreadsStrategyHandler:
                     logger.info("Checking for signals at 9:27 AM NY Time...")
                     self._last_signal_check = ny_time
 
-                    # Fetch signal from Google Sheets
-                    signal = await self.service.sheets_client.fetch_signal()
+                    # Generate signal using internal signal generator
+                    if self.service.signal_generator:
+                        logger.info("Generating signal using internal signal generator...")
+                        signal = await self.service.signal_generator.generate_signal()
 
-                    if signal:
-                        logger.info(f"Signal received: {signal}")
-                        await self._process_signal(signal)
+                        if signal:
+                            logger.info(f"Signal generated: {signal}")
+                            await self._process_signal(signal)
+                        else:
+                            logger.info("No signal generated (market conditions unclear or error).")
                     else:
-                        logger.info("No signal received.")
+                        logger.warning("Signal generator not initialized. No signal generated.")
 
                 # 3. Monitor Time Value of open positions
                 if (

@@ -160,8 +160,8 @@ services:
       - VAULT_TOKEN=test-root-token
       - IB_GATEWAY_HOST=ib-gateway-mock
       - IB_GATEWAY_PORT=7497
-      - GOOGLE_SHEETS_API_KEY=test-api-key
       - APP_ENV=test
+      - SIGNAL_GENERATOR_ENABLED=false  # Disable for E2E tests
     depends_on:
       mongodb:
         condition: service_healthy

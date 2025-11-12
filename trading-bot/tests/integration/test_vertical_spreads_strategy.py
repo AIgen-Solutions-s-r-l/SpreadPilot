@@ -8,21 +8,18 @@ import pytest
 from motor.motor_asyncio import AsyncIOMotorClient
 from trading_bot.app.config import VERTICAL_SPREADS_STRATEGY, Settings
 from trading_bot.app.service.base import TradingService
-from trading_bot.app.sheets import GoogleSheetsClient
 
 
 @pytest.mark.asyncio
 async def test_vertical_spreads_strategy_initialization():
     """Test that the Vertical Spreads Strategy initializes correctly."""
-    # Mock settings and sheets client
+    # Mock settings
     settings = MagicMock(spec=Settings)
     settings.ib_gateway_host = "localhost"
     settings.ib_gateway_port = 4002
     settings.ib_client_id = 1
     settings.ib_trading_mode = "paper"
-
-    sheets_client = MagicMock(spec=GoogleSheetsClient)
-    sheets_client.is_connected.return_value = True
+    settings.signal_generator_enabled = False  # Disable for this test
 
     # Create a mock MongoDB client
     mongo_client = AsyncMock(spec=AsyncIOMotorClient)
@@ -34,7 +31,7 @@ async def test_vertical_spreads_strategy_initialization():
         patch("trading_bot.app.service.base.connect_to_mongo", return_value=mongo_client),
         patch("trading_bot.app.service.base.get_mongo_db", return_value=mongo_db),
     ):
-        service = TradingService(settings, sheets_client)
+        service = TradingService(settings)
         service.mongo_db = mongo_db
 
         # Mock the IBKR client in the vertical spreads strategy handler
@@ -57,15 +54,13 @@ async def test_vertical_spreads_strategy_initialization():
 @pytest.mark.asyncio
 async def test_vertical_spreads_strategy_signal_processing():
     """Test that the Vertical Spreads Strategy processes signals correctly."""
-    # Mock settings and sheets client
+    # Mock settings
     settings = MagicMock(spec=Settings)
     settings.ib_gateway_host = "localhost"
     settings.ib_gateway_port = 4002
     settings.ib_client_id = 1
     settings.ib_trading_mode = "paper"
-
-    sheets_client = MagicMock(spec=GoogleSheetsClient)
-    sheets_client.is_connected.return_value = True
+    settings.signal_generator_enabled = False  # Disable for this test
 
     # Create a mock signal
     signal = {
@@ -75,7 +70,6 @@ async def test_vertical_spreads_strategy_signal_processing():
         "strike_long": 380.0,
         "strike_short": 385.0,
     }
-    sheets_client.fetch_signal = AsyncMock(return_value=signal)
 
     # Create a mock MongoDB client
     mongo_client = AsyncMock(spec=AsyncIOMotorClient)
@@ -90,13 +84,16 @@ async def test_vertical_spreads_strategy_signal_processing():
             "trading_bot.app.service.vertical_spreads_strategy_handler.get_ny_time"
         ) as mock_get_ny_time,
     ):
-
         # Mock NY time to be 9:27 AM
         mock_time = datetime.datetime(2025, 5, 19, 9, 27, 0)
         mock_get_ny_time.return_value = mock_time
 
-        service = TradingService(settings, sheets_client)
+        service = TradingService(settings)
         service.mongo_db = mongo_db
+
+        # Mock signal generator
+        service.signal_generator = AsyncMock()
+        service.signal_generator.generate_signal = AsyncMock(return_value=signal)
 
         # Mock the IBKR client in the vertical spreads strategy handler
         service.vertical_spreads_strategy_handler.ibkr_client = AsyncMock()
@@ -142,7 +139,7 @@ async def test_vertical_spreads_strategy_signal_processing():
         await task
 
         # Verify that the signal was processed correctly
-        sheets_client.fetch_signal.assert_called_once()
+        service.signal_generator.generate_signal.assert_called_once()
         service.vertical_spreads_strategy_handler.ibkr_client.check_margin_for_trade.assert_called_once_with(
             strategy="Long", qty_per_leg=1, strike_long=380.0, strike_short=385.0
         )
@@ -162,16 +159,13 @@ async def test_vertical_spreads_strategy_signal_processing():
 @pytest.mark.asyncio
 async def test_vertical_spreads_strategy_time_value_monitoring():
     """Test that the Vertical Spreads Strategy monitors time value correctly."""
-    # Mock settings and sheets client
+    # Mock settings
     settings = MagicMock(spec=Settings)
     settings.ib_gateway_host = "localhost"
     settings.ib_gateway_port = 4002
     settings.ib_client_id = 1
     settings.ib_trading_mode = "paper"
-
-    sheets_client = MagicMock(spec=GoogleSheetsClient)
-    sheets_client.is_connected.return_value = True
-    sheets_client.fetch_signal = AsyncMock(return_value=None)
+    settings.signal_generator_enabled = False  # Disable for this test
 
     # Create a mock MongoDB client
     mongo_client = AsyncMock(spec=AsyncIOMotorClient)
@@ -186,13 +180,16 @@ async def test_vertical_spreads_strategy_time_value_monitoring():
             "trading_bot.app.service.vertical_spreads_strategy_handler.get_ny_time"
         ) as mock_get_ny_time,
     ):
-
         # Mock NY time to be during trading hours
         mock_time = datetime.datetime(2025, 5, 19, 10, 30, 0)
         mock_get_ny_time.return_value = mock_time
 
-        service = TradingService(settings, sheets_client)
+        service = TradingService(settings)
         service.mongo_db = mongo_db
+
+        # Mock signal generator to return no signal
+        service.signal_generator = AsyncMock()
+        service.signal_generator.generate_signal = AsyncMock(return_value=None)
 
         # Mock the IBKR client in the vertical spreads strategy handler
         service.vertical_spreads_strategy_handler.ibkr_client = AsyncMock()

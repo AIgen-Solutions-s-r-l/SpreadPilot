@@ -49,7 +49,6 @@ sys.path.insert(0, str(project_root / "admin-api"))
 # Import modules using importlib with correct paths
 try:
     trading_bot_service = importlib.import_module("app.service.signals")
-    trading_bot_sheets = importlib.import_module("app.sheets")
     alert_router_service = importlib.import_module("app.service.router")
     admin_api_main = importlib.import_module("app.main")
     admin_api_mongodb_db = importlib.import_module("app.db.mongodb")
@@ -57,18 +56,13 @@ except ImportError as e:
     # Fallback for CI environment where modules might not be available
     print(f"Warning: Could not import modules: {e}")
     trading_bot_service = None
-    trading_bot_sheets = None
     alert_router_service = None
     admin_api_main = None
     admin_api_mongodb_db = None
 
 # Get specific imports
 SignalProcessor = trading_bot_service.SignalProcessor if trading_bot_service else None
-GoogleSheetsClient = (
-    trading_bot_sheets.GoogleSheetsClient if trading_bot_sheets else None
-)
 route_alert = alert_router_service.route_alert if alert_router_service else None
-# calculate_monthly_pnl = report_worker_service.calculate_monthly_pnl # Removed
 admin_app = admin_api_main.app if admin_api_main else None
 get_mongo_db = (
     admin_api_mongodb_db.get_mongo_db if admin_api_mongodb_db else None
@@ -225,75 +219,25 @@ async def patched_ibkr_client(mock_ibkr_client):
 # ---- Mock Google Sheets Client ----
 
 
-class MockGoogleSheetsClient:
-    """Mock Google Sheets client for testing."""
+# ---- Google Sheets Mocks (DEPRECATED) ----
+# These fixtures are no longer used as Google Sheets integration has been removed
+# in favor of the internal signal generator. Kept for backward compatibility with
+# legacy tests that may still reference them.
 
-    def __init__(
-        self, sheet_url: str = "https://example.com/sheet", api_key: str | None = None
-    ):
-        self.sheet_url = sheet_url
-        self.api_key = api_key
-        self.sheet_id = "mock-sheet-id"
-        self.connected = False
-        self.last_fetch_time = None
-        self.last_signal = None
-        self.test_signals = []
+# class MockGoogleSheetsClient:
+#     """Mock Google Sheets client for testing."""
+#     # ... (deprecated)
 
-    async def connect(self) -> bool:
-        """Mock connect method."""
-        self.connected = True
-        return True
+# @pytest.fixture
+# def mock_sheets_client():
+#     """Fixture for mock Google Sheets client (DEPRECATED)."""
+#     # Return None since feature is removed
+#     return None
 
-    def is_connected(self) -> bool:
-        """Mock is_connected method."""
-        return self.connected
-
-    def add_test_signal(self, signal: dict[str, Any]):
-        """Add a test signal for testing."""
-        self.test_signals.append(signal)
-
-    async def fetch_signal(self) -> dict[str, Any] | None:
-        """Mock fetch_signal method."""
-        if not self.test_signals:
-            return None
-
-        signal = self.test_signals.pop(0)
-        self.last_fetch_time = datetime.datetime.now()
-        self.last_signal = signal
-        return signal
-
-    async def wait_for_signal(self, timeout_seconds: int = 1) -> dict[str, Any] | None:
-        """Mock wait_for_signal method."""
-        return await self.fetch_signal()
-
-
-@pytest.fixture
-def mock_sheets_client():
-    """Fixture for mock Google Sheets client."""
-    client = MockGoogleSheetsClient()
-
-    # Add a test signal
-    client.add_test_signal(
-        {
-            "date": datetime.datetime.now().strftime("%Y-%m-%d"),
-            "ticker": "QQQ",
-            "strategy": "Long",  # Bull Put
-            "qty_per_leg": 1,
-            "strike_long": 380.0,
-            "strike_short": 385.0,
-        }
-    )
-
-    return client
-
-
-@pytest_asyncio.fixture
-async def patched_sheets_client(mock_sheets_client):
-    """Fixture to patch the GoogleSheetsClient with the mock."""
-    with patch(
-        "app.sheets.GoogleSheetsClient", return_value=mock_sheets_client
-    ):
-        yield mock_sheets_client
+# @pytest_asyncio.fixture
+# async def patched_sheets_client(mock_sheets_client):
+#     """Fixture to patch the GoogleSheetsClient with the mock (DEPRECATED)."""
+#     yield None
 
 
 # ---- MongoDB Testcontainer Fixture ----

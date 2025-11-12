@@ -24,8 +24,15 @@ services:
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - GOOGLE_SHEET_URL=${GOOGLE_SHEET_URL}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+      # Signal Generator Configuration
+      - SIGNAL_GENERATOR_ENABLED=${SIGNAL_GENERATOR_ENABLED:-true}
+      - SIGNAL_TIME=${SIGNAL_TIME:-09:27:00}
+      - SHORT_LEG_DELTA=${SHORT_LEG_DELTA:-0.30}
+      - LONG_LEG_DELTA=${LONG_LEG_DELTA:-0.15}
+      - SMA_SHORT_PERIOD=${SMA_SHORT_PERIOD:-20}
+      - SMA_LONG_PERIOD=${SMA_LONG_PERIOD:-50}
+      - QTY_PER_LEG=${QTY_PER_LEG:-1}
     volumes:
       - ./credentials:/app/credentials
       - /var/run/docker.sock:/var/run/docker.sock  # For gateway manager

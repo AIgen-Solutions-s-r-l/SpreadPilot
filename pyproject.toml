@@ -47,6 +47,7 @@ ignore = [
     "B008",  # Do not perform function call in argument defaults
     "DTZ001", # datetime without tzinfo
     "DTZ003", # datetime.utcnow()
+    "DTZ004", # datetime.utcfromtimestamp()
     "DTZ005", # datetime.now() without tz
     "S104",  # Possible binding to all interfaces
     "S105",  # Possible hardcoded password

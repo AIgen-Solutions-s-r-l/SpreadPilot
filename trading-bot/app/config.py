@@ -24,16 +24,41 @@ class Settings(BaseSettings):
         description="Google Cloud Project ID",
     )
 
-    # Google Sheets
-    google_sheet_url: str = Field(
-        ...,
-        env="GOOGLE_SHEET_URL",
-        description="Google Sheet URL containing trading signals",
+    # Signal Generator
+    signal_generator_enabled: bool = Field(
+        default=True,
+        env="SIGNAL_GENERATOR_ENABLED",
+        description="Enable internal signal generator",
     )
-    google_sheets_api_key: str | None = Field(
-        None,
-        env="GOOGLE_SHEETS_API_KEY",
-        description="Google Sheets API key",
+    signal_time: str = Field(
+        default="09:27:00",
+        env="SIGNAL_TIME",
+        description="Time to generate signals (HH:MM:SS in NY timezone)",
+    )
+    short_leg_delta: float = Field(
+        default=0.30,
+        env="SHORT_LEG_DELTA",
+        description="Target delta for short leg of spread",
+    )
+    long_leg_delta: float = Field(
+        default=0.15,
+        env="LONG_LEG_DELTA",
+        description="Target delta for long leg of spread",
+    )
+    sma_short_period: int = Field(
+        default=20,
+        env="SMA_SHORT_PERIOD",
+        description="Short-term SMA period for trend analysis (days)",
+    )
+    sma_long_period: int = Field(
+        default=50,
+        env="SMA_LONG_PERIOD",
+        description="Long-term SMA period for trend analysis (days)",
+    )
+    qty_per_leg: int = Field(
+        default=1,
+        env="QTY_PER_LEG",
+        description="Default quantity of contracts per leg",
     )
 
     # IBKR
@@ -156,6 +181,20 @@ class Settings(BaseSettings):
         env="DRY_RUN_MODE",
         description="Enable dry-run mode (simulate operations without executing)",
     )
+
+    # CORS configuration
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080"],
+        env="CORS_ORIGINS",
+        description="Allowed CORS origins (comma-separated in env var)",
+    )
+
+    @validator("cors_origins", pre=True)
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
 
     @validator("ib_trading_mode")
     def validate_trading_mode(cls, v):

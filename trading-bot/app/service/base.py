@@ -23,7 +23,7 @@ from spreadpilot_core.utils.time import (
 )
 
 from ..config import VERTICAL_SPREADS_STRATEGY, Settings
-from ..sheets import GoogleSheetsClient
+from ..signal_generator import QQQSignalGenerator
 from .alerts import AlertManager
 from .ibkr import IBKRManager
 from .pnl_service import PnLService
@@ -54,16 +54,14 @@ class TradingService:
     def __init__(
         self,
         settings: Settings,
-        sheets_client: GoogleSheetsClient,
     ):
         """Initialize the trading service.
 
         Args:
             settings: Application settings
-            sheets_client: Google Sheets client
         """
         self.settings = settings
-        self.sheets_client = sheets_client
+        self.signal_generator: QQQSignalGenerator | None = None  # Initialized after IBKR connection
         self.status = ServiceStatus.STARTING
         self.active_followers: dict[str, Follower] = {}
         self.mongo_db: AsyncIOMotorDatabase | None = None  # Changed db to mongo_db
@@ -138,11 +136,23 @@ class TradingService:
             if self.status == ServiceStatus.ERROR:  # Check if mongo init failed
                 return
 
-            # Connect to Google Sheets
-            if not await self.sheets_client.connect():
-                logger.error("Failed to connect to Google Sheets")
-                self.status = ServiceStatus.ERROR
-                return
+            # Initialize signal generator (if enabled) after IBKR connection
+            if self.settings.signal_generator_enabled:
+                logger.info("Initializing internal signal generator")
+                # Get IBKR client from manager (will connect if not already connected)
+                ib_client = self.ibkr_manager.ib
+
+                self.signal_generator = QQQSignalGenerator(
+                    ib_client=ib_client,
+                    short_leg_delta=self.settings.short_leg_delta,
+                    long_leg_delta=self.settings.long_leg_delta,
+                    sma_short_period=self.settings.sma_short_period,
+                    sma_long_period=self.settings.sma_long_period,
+                    qty_per_leg=self.settings.qty_per_leg,
+                )
+                logger.info("Signal generator initialized successfully")
+            else:
+                logger.info("Signal generator is disabled")
 
             # Load active followers
             await self.load_active_followers()
@@ -208,40 +218,13 @@ class TradingService:
 
                             continue
 
-                    # Market is open, wait for signal
-                    self.status = ServiceStatus.WAITING_FOR_SIGNAL
-
-                    # Fetch signal
-                    signal = await self.sheets_client.fetch_signal()
-
-                    if not signal:
-                        # No signal yet, wait and retry
-                        await asyncio.sleep(self.settings.polling_interval_seconds)
-                        continue
-
-                    # Process signal
-                    self.status = ServiceStatus.TRADING
-
-                    logger.info(
-                        "Processing signal",
-                        signal=signal,
-                    )
-
-                    # Process signal for all active followers
-                    for follower_id, follower in self.active_followers.items():
-                        await self.signal_processor.process_signal(
-                            strategy=signal["strategy"],
-                            qty_per_leg=signal["qty_per_leg"],
-                            strike_long=signal["strike_long"],
-                            strike_short=signal["strike_short"],
-                            follower_id=follower_id,
-                        )
-
-                    # Switch to monitoring mode
+                    # Market is open, monitoring
+                    # Note: Signal generation is now handled by VerticalSpreadsStrategyHandler
+                    # at 9:27 AM daily. This main loop is now primarily for health checks.
                     self.status = ServiceStatus.MONITORING
 
-                    # Wait for next trading day
-                    await asyncio.sleep(60 * 60)  # Check every hour
+                    # Wait before next check
+                    await asyncio.sleep(60)  # Check every minute
 
                 except Exception as e:
                     logger.error(f"Error in trading service main loop: {e}", exc_info=True)
@@ -424,13 +407,13 @@ class TradingService:
         """
         return self.ibkr_manager.is_connected()
 
-    def is_sheets_connected(self) -> bool:
-        """Check if Google Sheets is connected.
+    def is_signal_generator_enabled(self) -> bool:
+        """Check if signal generator is enabled and initialized.
 
         Returns:
-            True if connected, False otherwise
+            True if signal generator is available, False otherwise
         """
-        return self.sheets_client.is_connected()
+        return self.signal_generator is not None
 
     def get_active_follower_count(self) -> int:
         """Get number of active followers.

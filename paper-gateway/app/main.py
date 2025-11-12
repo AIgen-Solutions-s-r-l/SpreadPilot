@@ -1,6 +1,7 @@
 """Main FastAPI application for paper trading gateway."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -67,9 +68,22 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Load CORS origins from environment variable or use secure defaults
+cors_origins_env = os.getenv("CORS_ORIGINS")
+if cors_origins_env:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    # Default to localhost for development only
+    # In production, MUST set CORS_ORIGINS environment variable
+    cors_origins = ["http://localhost:3000", "http://localhost:8080"]
+    logger.warning(
+        "CORS_ORIGINS not set - using development defaults. "
+        "Set CORS_ORIGINS environment variable in production!"
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

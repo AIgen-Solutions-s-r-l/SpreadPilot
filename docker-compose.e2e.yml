@@ -87,9 +87,9 @@ services:
       MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
       IBKR_GATEWAY_URL: http://ibkr-gateway-mock:5001
       ADMIN_API_URL: http://admin-api-test:8000
-      GOOGLE_SHEET_ID: test_sheet_12345
       POLLING_INTERVAL: 5
       LOG_LEVEL: DEBUG
+      SIGNAL_GENERATOR_ENABLED: "false"
     depends_on:
       mongodb-test:
         condition: service_healthy
