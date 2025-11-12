@@ -26,9 +26,7 @@ logger = setup_logger(__name__)
 
 # Test configuration
 TEST_COMPOSE_FILE = "docker-compose.test.yml"
-TEST_MONGODB_URI = (
-    "mongodb://admin:password@localhost:27017/spreadpilot_test?authSource=admin"
-)
+TEST_MONGODB_URI = "mongodb://admin:password@localhost:27017/spreadpilot_test?authSource=admin"
 TEST_GOOGLE_SHEET_ID = "test_sheet_12345"
 TEST_IBKR_GATEWAY_URL = "http://localhost:5001"
 TEST_ADMIN_API_URL = "http://localhost:8000"
@@ -191,9 +189,7 @@ class MockIBKRGateway:
         self.orders.append(order)
 
         # Update positions
-        existing = next(
-            (p for p in self.positions if p["symbol"] == order_data["symbol"]), None
-        )
+        existing = next((p for p in self.positions if p["symbol"] == order_data["symbol"]), None)
         if existing:
             if order_data["action"] == "BUY":
                 existing["quantity"] += order_data["quantity"]
@@ -289,9 +285,7 @@ async def test_complete_trading_workflow(
     # Insert signal into database (simulating trading-bot's signal listener)
     db = mongo_client.spreadpilot_test
     await db.signals.insert_one(signal)
-    logger.info(
-        f"✓ Signal ingested: {signal['action']} {signal['quantity']} {signal['symbol']}"
-    )
+    logger.info(f"✓ Signal ingested: {signal['action']} {signal['quantity']} {signal['symbol']}")
 
     # Step 3: Verify trading-bot processes the signal
     # In real test, trading-bot would pick this up automatically
@@ -501,14 +495,10 @@ async def test_performance_monitoring(test_environment, mongo_client, test_follo
 
     await db.performance_metrics.insert_one(metrics)
 
-    logger.info(
-        f"✓ Performance metrics calculated: Win rate={win_rate:.2%}, PnL=${total_pnl}"
-    )
+    logger.info(f"✓ Performance metrics calculated: Win rate={win_rate:.2%}, PnL=${total_pnl}")
 
     # Verify metrics are accessible via API
-    stored_metrics = await db.performance_metrics.find_one(
-        {"follower_id": test_follower["_id"]}
-    )
+    stored_metrics = await db.performance_metrics.find_one({"follower_id": test_follower["_id"]})
 
     assert stored_metrics is not None
     assert stored_metrics["total_trades"] == len(trades)

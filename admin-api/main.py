@@ -19,6 +19,7 @@ except ImportError:
         def enable():
             pass
 
+
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 
 # Setup logging from the core library

@@ -148,6 +148,9 @@ def validate_trading_hours(dt: datetime = None) -> tuple[bool, str]:
         elif status["is_holiday"]:
             return False, "Market closed: Holiday"
         else:
-            return False, f"Market closed: Outside trading hours ({status['market_open_time']}-{status['market_close_time']} ET)"
+            return (
+                False,
+                f"Market closed: Outside trading hours ({status['market_open_time']}-{status['market_close_time']} ET)",
+            )
 
     return True, ""

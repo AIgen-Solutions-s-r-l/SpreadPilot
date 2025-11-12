@@ -260,9 +260,7 @@ def main():
 
     # Generate PIN command
     pin_parser = subparsers.add_parser("generate-pin", help="Generate a secure PIN")
-    pin_parser.add_argument(
-        "--length", type=int, default=6, help="PIN length (default: 6)"
-    )
+    pin_parser.add_argument("--length", type=int, default=6, help="PIN length (default: 6)")
 
     # Hash PIN command
     hash_parser = subparsers.add_parser("hash-pin", help="Hash a PIN")
@@ -270,14 +268,10 @@ def main():
 
     # Generate JWT secret command
     jwt_parser = subparsers.add_parser("generate-jwt", help="Generate JWT secret")
-    jwt_parser.add_argument(
-        "--length", type=int, default=32, help="Secret length in bytes"
-    )
+    jwt_parser.add_argument("--length", type=int, default=32, help="Secret length in bytes")
 
     # Generate password command
-    pass_parser = subparsers.add_parser(
-        "generate-password", help="Generate secure password"
-    )
+    pass_parser = subparsers.add_parser("generate-password", help="Generate secure password")
     pass_parser.add_argument("--length", type=int, default=16, help="Password length")
 
     # Check password command

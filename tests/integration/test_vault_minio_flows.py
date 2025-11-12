@@ -41,9 +41,7 @@ async def test_vault_secret_retrieval(test_mongo_db: AsyncIOMotorDatabase):
 
     try:
         # Verify follower was inserted
-        retrieved_follower = await test_mongo_db.followers.find_one(
-            {"_id": follower_id}
-        )
+        retrieved_follower = await test_mongo_db.followers.find_one({"_id": follower_id})
         assert retrieved_follower is not None
         assert retrieved_follower["vault_secret_ref"] == vault_secret_ref
 
@@ -71,9 +69,7 @@ async def test_vault_secret_retrieval(test_mongo_db: AsyncIOMotorDatabase):
             assert credentials["IB_PASS"] == f"vault_pass_{follower_id}_secure"
 
             # Verify the mock was called with correct parameters
-            mock_vault_client.get_ibkr_credentials.assert_called_once_with(
-                vault_secret_ref
-            )
+            mock_vault_client.get_ibkr_credentials.assert_called_once_with(vault_secret_ref)
 
     finally:
         # Cleanup
@@ -200,7 +196,9 @@ async def test_minio_report_storage(test_mongo_db: AsyncIOMotorDatabase):
 
     # Mock PDF content
     pdf_content = b"Mock PDF report content"
-    report_filename = f"monthly_report_{follower_id}_{report_data['year']}_{report_data['month']:02d}.pdf"
+    report_filename = (
+        f"monthly_report_{follower_id}_{report_data['year']}_{report_data['month']:02d}.pdf"
+    )
 
     try:
         # Upload report to MinIO
@@ -225,9 +223,7 @@ async def test_minio_report_storage(test_mongo_db: AsyncIOMotorDatabase):
         mock_minio_client.stat_object.assert_called_with("test-reports", object_name)
 
         # Generate pre-signed URL
-        presigned_url = await minio_service.get_presigned_url(
-            object_name, expires_days=30
-        )
+        presigned_url = await minio_service.get_presigned_url(object_name, expires_days=30)
         assert presigned_url is not None
         assert "signature=" in presigned_url
         mock_minio_client.presigned_get_object.assert_called_once()
@@ -244,9 +240,7 @@ async def test_minio_report_storage(test_mongo_db: AsyncIOMotorDatabase):
         await test_mongo_db.monthly_reports.insert_one(report_doc)
 
         # Verify report was stored in MongoDB
-        stored_report = await test_mongo_db.monthly_reports.find_one(
-            {"report_id": report_id}
-        )
+        stored_report = await test_mongo_db.monthly_reports.find_one({"report_id": report_id})
         assert stored_report is not None
         assert stored_report["minio_object_name"] == object_name
         assert stored_report["presigned_url"] == presigned_url
@@ -331,9 +325,7 @@ async def test_vault_secret_rotation():
     mock_hvac_client.is_authenticated.return_value = True
 
     # Initial secret values
-    initial_secret = {
-        "data": {"data": {"IB_USER": "original_user", "IB_PASS": "original_pass"}}
-    }
+    initial_secret = {"data": {"data": {"IB_USER": "original_user", "IB_PASS": "original_pass"}}}
 
     # Rotated secret values
     rotated_secret = {

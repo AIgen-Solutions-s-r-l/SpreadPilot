@@ -74,9 +74,7 @@ class MockIBClient:
         self._connected = False
         self._managed_accounts = ["U1234567"] if should_connect else []
 
-    async def connectAsync(
-        self, host: str, port: int, clientId: int, timeout: int = 10
-    ):
+    async def connectAsync(self, host: str, port: int, clientId: int, timeout: int = 10):
         """Mock connection to gateway."""
         if self.should_connect:
             self._connected = True
@@ -217,12 +215,8 @@ async def gateway_manager(mock_docker_client):
 async def test_gateway_manager_start_with_enabled_followers(gateway_manager, mock_db):
     """Test that the gateway manager starts containers for enabled followers."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             # Should have started 2 gateways (follower-1 and follower-2)
@@ -245,14 +239,10 @@ async def test_gateway_manager_start_with_enabled_followers(gateway_manager, moc
 
 
 @pytest.mark.asyncio
-async def test_get_client_returns_connected_ib_instance(
-    gateway_manager, mock_db, capsys
-):
+async def test_get_client_returns_connected_ib_instance(gateway_manager, mock_db, capsys):
     """Test that get_client returns a connected IB instance with echo message."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
         with patch(
             "spreadpilot_core.ibkr.gateway_manager.IB",
             return_value=MockIBClient(should_echo=True),
@@ -277,17 +267,11 @@ async def test_get_client_returns_connected_ib_instance(
 
 
 @pytest.mark.asyncio
-async def test_get_client_returns_none_for_non_existent_follower(
-    gateway_manager, mock_db
-):
+async def test_get_client_returns_none_for_non_existent_follower(gateway_manager, mock_db):
     """Test that get_client returns None for non-existent follower."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             client = await gateway_manager.get_client("non-existent-follower")
@@ -298,12 +282,8 @@ async def test_get_client_returns_none_for_non_existent_follower(
 async def test_get_client_returns_none_for_stopped_gateway(gateway_manager, mock_db):
     """Test that get_client returns None when gateway is not running."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             # Set gateway status to stopped
@@ -325,12 +305,8 @@ async def test_connection_retry_with_exponential_backoff(gateway_manager, mock_d
         call_count += 1
         return MockIBClient(should_connect=call_count >= 3)  # Fail first 2 attempts
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", side_effect=create_mock_client
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", side_effect=create_mock_client):
             await gateway_manager.start()
 
             # Set gateway status to running
@@ -348,12 +324,8 @@ async def test_connection_retry_with_exponential_backoff(gateway_manager, mock_d
 async def test_reload_followers_adds_new_enabled_follower(gateway_manager, mock_db):
     """Test that reload_followers starts gateway for newly enabled follower."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             # Initially should have 2 gateways
@@ -422,12 +394,8 @@ async def test_reload_followers_adds_new_enabled_follower(gateway_manager, mock_
 async def test_gateway_status_and_listing(gateway_manager, mock_db):
     """Test gateway status reporting and listing functionality."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             # Test status reporting
@@ -461,20 +429,14 @@ async def test_gateway_status_and_listing(gateway_manager, mock_db):
 async def test_manager_stop_cleans_up_resources(gateway_manager, mock_db):
     """Test that stopping the manager cleans up all resources."""
 
-    with patch(
-        "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-    ):
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()
-        ):
+    with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
+        with patch("spreadpilot_core.ibkr.gateway_manager.IB", return_value=MockIBClient()):
             await gateway_manager.start()
 
             # Verify gateways are running
             assert len(gateway_manager.gateways) == 2
             initial_ports = {gw.host_port for gw in gateway_manager.gateways.values()}
-            initial_client_ids = {
-                gw.client_id for gw in gateway_manager.gateways.values()
-            }
+            initial_client_ids = {gw.client_id for gw in gateway_manager.gateways.values()}
 
             # Stop the manager
             await gateway_manager.stop()

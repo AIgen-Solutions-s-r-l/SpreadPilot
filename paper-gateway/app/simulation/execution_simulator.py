@@ -193,7 +193,10 @@ class ExecutionSimulator:
         required_funds = trade_value + estimated_commission + estimated_slippage
 
         if cash_balance < required_funds:
-            return False, f"Insufficient funds: need ${required_funds:.2f}, have ${cash_balance:.2f}"
+            return (
+                False,
+                f"Insufficient funds: need ${required_funds:.2f}, have ${cash_balance:.2f}",
+            )
 
         return True, None
 

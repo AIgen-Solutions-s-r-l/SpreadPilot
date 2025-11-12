@@ -72,7 +72,9 @@ async def test_monthly_report_minio_storage(test_mongo_db: AsyncIOMotorDatabase)
         return_value=io.BytesIO(pdf_content),
     ):
         # Upload report to MinIO
-        object_name = f"reports/{follower_id}/monthly_{report_data['year']}_{report_data['month']:02d}.pdf"
+        object_name = (
+            f"reports/{follower_id}/monthly_{report_data['year']}_{report_data['month']:02d}.pdf"
+        )
 
         # Upload to MinIO
         await minio_service.upload_report(
@@ -82,9 +84,7 @@ async def test_monthly_report_minio_storage(test_mongo_db: AsyncIOMotorDatabase)
         )
 
         # Generate pre-signed URL
-        presigned_url = await minio_service.get_presigned_url(
-            object_name, expires_days=30
-        )
+        presigned_url = await minio_service.get_presigned_url(object_name, expires_days=30)
 
         # Store report metadata in MongoDB
         report_doc = {
@@ -120,9 +120,7 @@ async def test_monthly_report_minio_storage(test_mongo_db: AsyncIOMotorDatabase)
         assert stored_report["file_size"] == len(pdf_content)
 
     # Cleanup
-    await test_mongo_db.monthly_reports.delete_one(
-        {"report_id": report_data["report_id"]}
-    )
+    await test_mongo_db.monthly_reports.delete_one({"report_id": report_data["report_id"]})
 
 
 @pytest.mark.asyncio
@@ -222,9 +220,7 @@ async def test_bulk_report_generation_with_minio(test_mongo_db: AsyncIOMotorData
     mock_minio_client = MagicMock()
     mock_minio_client.bucket_exists.return_value = True
     mock_minio_client.put_object.return_value = None
-    mock_minio_client.presigned_get_object.return_value = (
-        "https://minio.example.com/test-url"
-    )
+    mock_minio_client.presigned_get_object.return_value = "https://minio.example.com/test-url"
 
     # Create MinIO service
     minio_service = MinIOService(
@@ -399,9 +395,7 @@ async def test_report_expiration_and_cleanup(test_mongo_db: AsyncIOMotorDatabase
         )
 
     # Verify URL was refreshed
-    updated_report = await test_mongo_db.monthly_reports.find_one(
-        {"_id": expired_report["_id"]}
-    )
+    updated_report = await test_mongo_db.monthly_reports.find_one({"_id": expired_report["_id"]})
     assert updated_report["presigned_url"] == new_presigned_url
     assert updated_report["url_expires_at"] > current_time
 

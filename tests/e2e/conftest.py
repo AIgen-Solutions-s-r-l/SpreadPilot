@@ -33,9 +33,7 @@ def setup_test_env():
             "LOG_LEVEL": "DEBUG",
             "MONGO_URI": "mongodb://admin:password@localhost:27017/spreadpilot_test?authSource=admin",
             "IBKR_GATEWAY_URL": "http://localhost:5001",
-            "GOOGLE_APPLICATION_CREDENTIALS": str(
-                Path(__file__).parent / "test_credentials.json"
-            ),
+            "GOOGLE_APPLICATION_CREDENTIALS": str(Path(__file__).parent / "test_credentials.json"),
             "SMTP_SERVER": "localhost",
             "SMTP_PORT": "1025",  # MailHog port
             "GCS_BUCKET": "test-reports",
@@ -49,9 +47,7 @@ def setup_test_env():
 # Skip E2E tests by default unless explicitly requested
 def pytest_collection_modifyitems(config, items):
     if not config.option.markexpr:
-        skip_e2e = pytest.mark.skip(
-            reason="E2E tests skipped by default. Use -m e2e to run."
-        )
+        skip_e2e = pytest.mark.skip(reason="E2E tests skipped by default. Use -m e2e to run.")
         for item in items:
             if "e2e" in item.keywords:
                 item.add_marker(skip_e2e)

@@ -28,12 +28,15 @@ except ImportError:
     def dry_run(operation_type: str, return_value=None, log_args: bool = True):
         def decorator(func):
             return func
+
         return decorator
 
     def dry_run_async(operation_type: str, return_value=None, log_args: bool = True):
         def decorator(func):
             return func
+
         return decorator
+
 
 from ..logging import get_logger
 

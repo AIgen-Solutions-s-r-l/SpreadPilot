@@ -44,9 +44,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_trades_follower_time", "trades", ["follower_id", "trade_time"], unique=False
     )
-    op.create_index(
-        "ix_trades_symbol_exp", "trades", ["symbol", "expiration"], unique=False
-    )
+    op.create_index("ix_trades_symbol_exp", "trades", ["symbol", "expiration"], unique=False)
 
     # Create quotes table
     op.create_table(
@@ -83,27 +81,19 @@ def upgrade() -> None:
         sa.Column("unrealized_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("total_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("position_count", sa.Integer(), nullable=False),
-        sa.Column(
-            "total_market_value", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
-        sa.Column(
-            "total_commission", sa.Numeric(precision=10, scale=4), nullable=False
-        ),
+        sa.Column("total_market_value", sa.Numeric(precision=12, scale=4), nullable=False),
+        sa.Column("total_commission", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_pnl_intraday_follower_id", "pnl_intraday", ["follower_id"], unique=False
-    )
+    op.create_index("ix_pnl_intraday_follower_id", "pnl_intraday", ["follower_id"], unique=False)
     op.create_index(
         "ix_pnl_intraday_follower_time",
         "pnl_intraday",
         ["follower_id", "snapshot_time"],
         unique=False,
     )
-    op.create_index(
-        "ix_pnl_intraday_date", "pnl_intraday", ["trading_date"], unique=False
-    )
+    op.create_index("ix_pnl_intraday_date", "pnl_intraday", ["trading_date"], unique=False)
 
     # Create pnl_daily table
     op.create_table(
@@ -114,18 +104,12 @@ def upgrade() -> None:
         sa.Column("opening_balance", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("opening_positions", sa.Integer(), nullable=False),
         sa.Column("realized_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
-        sa.Column(
-            "unrealized_pnl_start", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
-        sa.Column(
-            "unrealized_pnl_end", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
+        sa.Column("unrealized_pnl_start", sa.Numeric(precision=12, scale=4), nullable=False),
+        sa.Column("unrealized_pnl_end", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("total_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("trades_count", sa.Integer(), nullable=False),
         sa.Column("total_volume", sa.Integer(), nullable=False),
-        sa.Column(
-            "total_commission", sa.Numeric(precision=10, scale=4), nullable=False
-        ),
+        sa.Column("total_commission", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column("closing_balance", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("closing_positions", sa.Integer(), nullable=False),
         sa.Column("max_drawdown", sa.Numeric(precision=12, scale=4), nullable=True),
@@ -135,9 +119,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_pnl_daily_follower_id", "pnl_daily", ["follower_id"], unique=False
-    )
+    op.create_index("ix_pnl_daily_follower_id", "pnl_daily", ["follower_id"], unique=False)
     op.create_index(
         "ix_pnl_daily_follower_date",
         "pnl_daily",
@@ -154,19 +136,13 @@ def upgrade() -> None:
         sa.Column("year", sa.Integer(), nullable=False),
         sa.Column("month", sa.Integer(), nullable=False),
         sa.Column("realized_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
-        sa.Column(
-            "unrealized_pnl_start", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
-        sa.Column(
-            "unrealized_pnl_end", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
+        sa.Column("unrealized_pnl_start", sa.Numeric(precision=12, scale=4), nullable=False),
+        sa.Column("unrealized_pnl_end", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("total_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("trading_days", sa.Integer(), nullable=False),
         sa.Column("total_trades", sa.Integer(), nullable=False),
         sa.Column("total_volume", sa.Integer(), nullable=False),
-        sa.Column(
-            "total_commission", sa.Numeric(precision=10, scale=4), nullable=False
-        ),
+        sa.Column("total_commission", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column("best_day_pnl", sa.Numeric(precision=12, scale=4), nullable=True),
         sa.Column("worst_day_pnl", sa.Numeric(precision=12, scale=4), nullable=True),
         sa.Column("max_drawdown", sa.Numeric(precision=12, scale=4), nullable=True),
@@ -180,18 +156,14 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_pnl_monthly_follower_id", "pnl_monthly", ["follower_id"], unique=False
-    )
+    op.create_index("ix_pnl_monthly_follower_id", "pnl_monthly", ["follower_id"], unique=False)
     op.create_index(
         "ix_pnl_monthly_follower_period",
         "pnl_monthly",
         ["follower_id", "year", "month"],
         unique=False,
     )
-    op.create_index(
-        "ix_pnl_monthly_period", "pnl_monthly", ["year", "month"], unique=False
-    )
+    op.create_index("ix_pnl_monthly_period", "pnl_monthly", ["year", "month"], unique=False)
 
 
 def downgrade() -> None:

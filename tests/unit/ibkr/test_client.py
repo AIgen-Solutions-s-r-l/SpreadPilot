@@ -37,9 +37,7 @@ MOCK_ORDER = Order(orderId=1, action="BUY", totalQuantity=100, orderType="MKT")
 MOCK_TRADE = IBTrade(
     contract=MOCK_STOCK_CONTRACT,
     order=MOCK_ORDER,
-    orderStatus=IBOrderStatus(
-        status="Filled", filled=100, remaining=0, avgFillPrice=150.5
-    ),
+    orderStatus=IBOrderStatus(status="Filled", filled=100, remaining=0, avgFillPrice=150.5),
     fills=[
         Fill(
             contract=MOCK_STOCK_CONTRACT,
@@ -55,9 +53,7 @@ MOCK_TRADE = IBTrade(
 MOCK_POSITIONS_RAW = [
     MagicMock(contract=Stock(symbol="AAPL", conId=123), position=100.0),
     MagicMock(contract=Stock(symbol="MSFT", conId=456), position=-50.0),
-    MagicMock(
-        contract=Stock(symbol="GOOG", conId=789), position=0.0
-    ),  # Test zero position
+    MagicMock(contract=Stock(symbol="GOOG", conId=789), position=0.0),  # Test zero position
 ]
 
 
@@ -78,9 +74,7 @@ def mock_ib_insync():
 @pytest.fixture
 async def ibkr_client(mock_ib_insync):
     """Fixture to create an IBKRClient instance with a mocked IB connection."""
-    with patch(
-        "spreadpilot_core.ibkr.client.ib_insync.IB", return_value=mock_ib_insync
-    ):
+    with patch("spreadpilot_core.ibkr.client.ib_insync.IB", return_value=mock_ib_insync):
         client = IBKRClient(username="testuser", password="testpassword")
         # Mock the internal _connected flag and ib instance directly after init
         client.ib = mock_ib_insync
@@ -133,9 +127,7 @@ async def test_get_stock_contract_error(ibkr_client: IBKRClient):
     # ibkr_client.ib.qualifyContractsAsync = AsyncMock(return_value=[])
 
     # For now, just test basic instantiation error (less likely but good practice)
-    with patch(
-        "spreadpilot_core.ibkr.client.Stock", side_effect=ValueError("Test Error")
-    ):
+    with patch("spreadpilot_core.ibkr.client.Stock", side_effect=ValueError("Test Error")):
         with pytest.raises(ValueError, match="Test Error"):
             await ibkr_client.get_stock_contract(symbol)
 
@@ -144,9 +136,7 @@ async def test_get_stock_contract_error(ibkr_client: IBKRClient):
 
 
 @pytest.mark.asyncio
-async def test_request_historical_data_success(
-    ibkr_client: IBKRClient, mock_ib_insync: MagicMock
-):
+async def test_request_historical_data_success(ibkr_client: IBKRClient, mock_ib_insync: MagicMock):
     """Test successful historical data request."""
     bars = await ibkr_client.request_historical_data(
         MOCK_STOCK_CONTRACT, durationStr="5 D", barSizeSetting="1 hour"
@@ -207,9 +197,7 @@ async def test_place_order_success(ibkr_client: IBKRClient, mock_ib_insync: Magi
 
 
 @pytest.mark.asyncio
-async def test_place_order_not_connected(
-    ibkr_client: IBKRClient, mock_ib_insync: MagicMock
-):
+async def test_place_order_not_connected(ibkr_client: IBKRClient, mock_ib_insync: MagicMock):
     """Test order placement when not connected."""
     ibkr_client.ensure_connected = AsyncMock(return_value=False)  # Override fixture
 
@@ -221,9 +209,7 @@ async def test_place_order_not_connected(
 
 
 @pytest.mark.asyncio
-async def test_place_order_api_error(
-    ibkr_client: IBKRClient, mock_ib_insync: MagicMock
-):
+async def test_place_order_api_error(ibkr_client: IBKRClient, mock_ib_insync: MagicMock):
     """Test order placement when API call fails."""
     mock_ib_insync.placeOrder.side_effect = ValueError("Order Rejected")
 
@@ -238,9 +224,7 @@ async def test_place_order_api_error(
 
 
 @pytest.mark.asyncio
-async def test_request_stock_positions_success(
-    ibkr_client: IBKRClient, mock_ib_insync: MagicMock
-):
+async def test_request_stock_positions_success(ibkr_client: IBKRClient, mock_ib_insync: MagicMock):
     """Test successful stock position retrieval."""
     symbols = ["AAPL", "MSFT", "GOOG", "AMZN"]  # AMZN not in mock data
     expected_positions = {"AAPL": 100.0, "MSFT": -50.0, "GOOG": 0.0, "AMZN": 0.0}

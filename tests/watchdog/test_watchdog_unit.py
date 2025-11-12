@@ -21,9 +21,7 @@ class MockContainer:
     def __init__(self, name, status="running"):
         self.name = name
         self.status = status
-        self.attrs = {
-            "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}
-        }
+        self.attrs = {"NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}}
 
     def reload(self):
         pass
@@ -104,9 +102,7 @@ class TestContainerWatchdog:
         result = await watchdog.check_container_health(container)
 
         assert result is True
-        watchdog.http_client.get.assert_called_once_with(
-            "http://test-service:8080/health"
-        )
+        watchdog.http_client.get.assert_called_once_with("http://test-service:8080/health")
 
     @pytest.mark.asyncio
     async def test_check_container_health_failure(self, watchdog):
@@ -206,9 +202,7 @@ class TestContainerWatchdog:
         """Test monitoring unhealthy container that exceeds failure threshold"""
         container = Mock()
         container.name = "test-service"
-        container.attrs = {
-            "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}
-        }
+        container.attrs = {"NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}}
         container.reload = Mock()
         container.restart = Mock()
 

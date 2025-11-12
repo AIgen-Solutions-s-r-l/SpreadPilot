@@ -60,9 +60,7 @@ async def validate_ws_token(token: str | None) -> str:
         raise Exception("Missing authentication token")
 
     try:
-        payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         username: str = payload.get("sub")
         if not username:
             raise Exception("Invalid token payload")

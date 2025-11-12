@@ -34,9 +34,7 @@ async def test_list_followers(  # Add back async def
     follower_ids_to_cleanup = []
     for i in range(3):
         follower = Follower(
-            id=str(
-                ObjectId()
-            ),  # Simulate ID generation if needed by model, though DB uses _id
+            id=str(ObjectId()),  # Simulate ID generation if needed by model, though DB uses _id
             email=f"list-test{i}@example.com",
             iban=f"NL91ABNA0417164{i}00",
             ibkr_username=f"list-testuser{i}",
@@ -68,9 +66,7 @@ async def test_list_followers(  # Add back async def
     assert inserted_id_strs.issubset(response_follower_ids)
 
     for i, inserted_id in enumerate(inserted_ids):
-        follower_in_response = next(
-            (f for f in data if f["id"] == str(inserted_id)), None
-        )
+        follower_in_response = next((f for f in data if f["id"] == str(inserted_id)), None)
         assert follower_in_response is not None
         assert follower_in_response["email"] == f"list-test{i}@example.com"
         assert follower_in_response["enabled"] == (i % 2 == 0)
@@ -98,9 +94,7 @@ async def test_create_follower(
             "admin_api.app.api.v1.endpoints.followers.get_settings",
             return_value=MagicMock(),
         ):
-            response = await admin_api_client.post(
-                "/api/v1/followers", json=follower_payload
-            )
+            response = await admin_api_client.post("/api/v1/followers", json=follower_payload)
 
         assert response.status_code == 201
         data = response.json()
@@ -113,9 +107,7 @@ async def test_create_follower(
         assert "id" in data
         follower_id_str = data["id"]
         follower_id_to_cleanup = follower_id_str
-        follower_doc = await test_mongo_db.followers.find_one(
-            {"_id": follower_id_to_cleanup}
-        )
+        follower_doc = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert follower_doc is not None
         assert follower_doc["email"] == follower_payload["email"]
         assert follower_doc["enabled"] is False
@@ -151,9 +143,7 @@ async def test_toggle_follower(
             "admin_api.app.api.v1.endpoints.followers.get_settings",
             return_value=MagicMock(),
         ):
-            response = await admin_api_client.post(
-                f"/api/v1/followers/{follower_id_str}/toggle"
-            )
+            response = await admin_api_client.post(f"/api/v1/followers/{follower_id_str}/toggle")
 
         assert response.status_code == 200
         data = response.json()
@@ -194,9 +184,7 @@ async def test_toggle_nonexistent_follower(
         "admin_api.app.api.v1.endpoints.followers.get_settings",
         return_value=MagicMock(),
     ):
-        response = await admin_api_client.post(
-            f"/api/v1/followers/{nonexistent_id}/toggle"
-        )
+        response = await admin_api_client.post(f"/api/v1/followers/{nonexistent_id}/toggle")
     assert response.status_code == 404
     data = response.json()
     assert "not found" in data["detail"].lower()
@@ -233,9 +221,7 @@ async def test_trigger_close_positions(
                 "admin_api.app.api.v1.endpoints.followers.get_settings",
                 return_value=MagicMock(),
             ):
-                response = await admin_api_client.post(
-                    f"/api/v1/close/{follower_id_str}"
-                )
+                response = await admin_api_client.post(f"/api/v1/close/{follower_id_str}")
 
         assert response.status_code == 202
         data = response.json()
@@ -273,9 +259,7 @@ def test_create_follower_validation_error(admin_api_test_client_sync: TestClient
         "ibkr_secret_ref": "secret",
         "commission_pct": 10,
     }
-    response = admin_api_test_client_sync.post(
-        "/api/v1/followers", json=invalid_follower_data
-    )
+    response = admin_api_test_client_sync.post("/api/v1/followers", json=invalid_follower_data)
     assert response.status_code == 422
     assert "value is not a valid email address" in response.text
 
@@ -285,9 +269,7 @@ def test_create_follower_validation_error(admin_api_test_client_sync: TestClient
         "ibkr_secret_ref": "secret2",
         "commission_pct": 12,
     }
-    response = admin_api_test_client_sync.post(
-        "/api/v1/followers", json=missing_field_data
-    )
+    response = admin_api_test_client_sync.post("/api/v1/followers", json=missing_field_data)
     assert response.status_code == 422
     assert "Field required" in response.text and "iban" in response.text
 
@@ -298,9 +280,7 @@ def test_create_follower_validation_error(admin_api_test_client_sync: TestClient
         "ibkr_secret_ref": "secret3",
         "commission_pct": 110,
     }
-    response = admin_api_test_client_sync.post(
-        "/api/v1/followers", json=invalid_commission_data
-    )
+    response = admin_api_test_client_sync.post("/api/v1/followers", json=invalid_commission_data)
     assert response.status_code == 422
     # Check specific Pydantic v2 error message structure if possible, otherwise generic check
     assert (
@@ -342,9 +322,7 @@ async def test_followers_api_error_handling(
             "ibkr_secret_ref": "secretdup2",
             "commission_pct": 15,
         }
-        response_dup = await admin_api_client.post(
-            "/api/v1/followers", json=follower_data_dup
-        )
+        response_dup = await admin_api_client.post("/api/v1/followers", json=follower_data_dup)
         assert response_dup.status_code == 400
         assert "already exists" in response_dup.json()["detail"].lower()
 
@@ -365,9 +343,7 @@ async def test_followers_api_error_handling(
             new_callable=AsyncMock,
         ) as mock_trigger_err:
             mock_trigger_err.side_effect = Exception("Trigger Close Service Error")
-            response_close_err = await admin_api_client.post(
-                f"/api/v1/close/{created_id}"
-            )
+            response_close_err = await admin_api_client.post(f"/api/v1/close/{created_id}")
             assert response_close_err.status_code == 500
             # Check for generic 500 message from API layer
             assert "Failed to trigger close positions" in response_close_err.text
@@ -425,9 +401,7 @@ async def test_create_follower_service_error(
             "admin_api.app.api.v1.endpoints.followers.get_settings",
             return_value=MagicMock(),
         ):
-            response = await admin_api_client.post(
-                "/api/v1/followers", json=follower_data
-            )
+            response = await admin_api_client.post("/api/v1/followers", json=follower_data)
     assert response.status_code == 500
     # Check for generic 500 message from API layer
     assert "Failed to create follower" in response.text
@@ -460,9 +434,7 @@ async def test_toggle_follower_service_error(
                 "admin_api.app.api.v1.endpoints.followers.get_settings",
                 return_value=MagicMock(),
             ):
-                response = await admin_api_client.post(
-                    f"/api/v1/followers/{follower_id}/toggle"
-                )
+                response = await admin_api_client.post(f"/api/v1/followers/{follower_id}/toggle")
         assert response.status_code == 500
         # Check for generic 500 message from API layer
         assert "An unexpected server error occurred" in response.text

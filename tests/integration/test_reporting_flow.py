@@ -152,17 +152,17 @@ async def test_monthly_pnl_calculation(
         def __init__(self, data):
             self.data = data
             self.index = 0
-            
+
         def __aiter__(self):
             return self
-            
+
         async def __anext__(self):
             if self.index >= len(self.data):
                 raise StopAsyncIteration
             item = self.data[self.index]
             self.index += 1
             return item
-    
+
     mock_cursor = MockAsyncCursor(daily_pnl_mock_data)
     mock_daily_pnl_collection = AsyncMock()
     mock_daily_pnl_collection.find.return_value = mock_cursor
@@ -272,9 +272,7 @@ async def test_monthly_report_generation(
     assert "report_id" in report
 
     # Verify report was stored in MongoDB
-    report_doc = await test_mongo_db["monthly_reports"].find_one(
-        {"report_id": report["report_id"]}
-    )
+    report_doc = await test_mongo_db["monthly_reports"].find_one({"report_id": report["report_id"]})
     assert report_doc is not None
     assert report_doc["follower_id"] == test_follower.id
     assert report_doc["year"] == year
@@ -320,7 +318,6 @@ async def test_monthly_report_email_sending(
         ) as mock_gen_pdf,
         patch("os.path.exists", return_value=True) as mock_exists,
     ):
-
         # Send report (assuming send_monthly_report is async)
         result = await send_monthly_report(report, test_follower)
 

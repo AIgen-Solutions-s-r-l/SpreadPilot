@@ -77,9 +77,7 @@ async def test_load_secrets_into_env_integration(test_mongo_db: AsyncIOMotorData
     with (
         patch.dict(os.environ, {"APP_ENV": test_env_name}, clear=False),
         patch("admin_api.app.main.SECRETS_TO_FETCH", TEST_SECRETS_CONFIG),
-        patch(
-            "admin_api.app.db.mongodb.connect_to_mongo", new_callable=AsyncMock
-        ) as mock_connect,
+        patch("admin_api.app.db.mongodb.connect_to_mongo", new_callable=AsyncMock) as mock_connect,
         patch(
             "admin_api.app.db.mongodb.close_mongo_connection", new_callable=AsyncMock
         ) as mock_close,
@@ -88,7 +86,6 @@ async def test_load_secrets_into_env_integration(test_mongo_db: AsyncIOMotorData
             AsyncMock(return_value=test_mongo_db),
         ) as mock_get_db,
     ):
-
         # --- Act ---
         await load_secrets_into_env()
 

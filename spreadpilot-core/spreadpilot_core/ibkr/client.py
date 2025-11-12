@@ -20,7 +20,9 @@ except ImportError:
     def dry_run_async(operation_type: str, return_value: Any = None, log_args: bool = True):
         def decorator(func):
             return func
+
         return decorator
+
 
 logger = get_logger(__name__)
 

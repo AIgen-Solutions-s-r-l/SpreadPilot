@@ -30,7 +30,9 @@ except ImportError:
     def dry_run(operation_type: str, return_value=None, log_args: bool = True):
         def decorator(func):
             return func
+
         return decorator
+
 
 from spreadpilot_core.models.pnl import CommissionMonthly
 from spreadpilot_core.utils.gcs import get_signed_url

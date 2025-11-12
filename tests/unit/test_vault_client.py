@@ -43,9 +43,7 @@ class TestVaultClient:
         assert client == mock_client_instance
 
     @patch("spreadpilot_core.utils.vault.hvac.Client")
-    def test_client_property_raises_error_when_not_authenticated(
-        self, mock_hvac_client
-    ):
+    def test_client_property_raises_error_when_not_authenticated(self, mock_hvac_client):
         """Test that client property raises error when not authenticated."""
         # Arrange
         mock_client_instance = Mock()
@@ -186,8 +184,8 @@ class TestVaultClient:
         # Arrange
         mock_client_instance = Mock()
         mock_client_instance.is_authenticated.return_value = True
-        mock_client_instance.secrets.kv.v2.create_or_update_secret.side_effect = (
-            Exception("Vault error")
+        mock_client_instance.secrets.kv.v2.create_or_update_secret.side_effect = Exception(
+            "Vault error"
         )
         mock_hvac_client.return_value = mock_client_instance
 
@@ -241,9 +239,7 @@ class TestVaultClient:
         # Arrange
         mock_client_instance = Mock()
         mock_client_instance.is_authenticated.return_value = True
-        mock_client_instance.sys.read_health_status.side_effect = Exception(
-            "Connection error"
-        )
+        mock_client_instance.sys.read_health_status.side_effect = Exception("Connection error")
         mock_hvac_client.return_value = mock_client_instance
 
         # Act

@@ -14,7 +14,9 @@ except ImportError:
     def dry_run_async(operation_type: str, return_value=None, log_args: bool = True):
         def decorator(func):
             return func
+
         return decorator
+
 
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger

@@ -94,24 +94,15 @@ async def test_assignment_detection(
 
     # Verify position was updated in MongoDB mock
     mock_positions_collection.update_one.assert_called_once()
-    update_call_args, update_call_kwargs = (
-        mock_positions_collection.update_one.call_args
-    )
+    update_call_args, update_call_kwargs = mock_positions_collection.update_one.call_args
     assert update_call_args[0] == {
         "follower_id": test_follower.id,
         "date": trading_date,
     }  # Check filter
     assert "$set" in update_call_args[1]
-    assert (
-        update_call_args[1]["$set"]["assignment_state"]
-        == AssignmentState.ASSIGNED.value
-    )
-    assert (
-        update_call_args[1]["$set"]["short_qty"] == 1
-    )  # Should reflect IBKR check result
-    assert (
-        update_call_args[1]["$set"]["long_qty"] == 0
-    )  # Should reflect IBKR check result
+    assert update_call_args[1]["$set"]["assignment_state"] == AssignmentState.ASSIGNED.value
+    assert update_call_args[1]["$set"]["short_qty"] == 1  # Should reflect IBKR check result
+    assert update_call_args[1]["$set"]["long_qty"] == 0  # Should reflect IBKR check result
 
 
 @pytest.mark.asyncio
@@ -163,9 +154,7 @@ async def test_assignment_compensation(
     )  # short=0, long=1
 
     # 2. Return a long position from get_positions (needed for exercise logic)
-    mock_ibkr_client.get_positions = AsyncMock(
-        return_value={"400-C": 1}
-    )  # Example long position
+    mock_ibkr_client.get_positions = AsyncMock(return_value={"400-C": 1})  # Example long position
 
     # 3. Mock exercise_options
     mock_ibkr_client.exercise_options = AsyncMock(
@@ -173,9 +162,7 @@ async def test_assignment_compensation(
     )
 
     # 4. Mock get_pnl
-    mock_ibkr_client.get_pnl = AsyncMock(
-        return_value={"realized_pnl": 0.0, "unrealized_pnl": 0.0}
-    )
+    mock_ibkr_client.get_pnl = AsyncMock(return_value={"realized_pnl": 0.0, "unrealized_pnl": 0.0})
 
     # Create position manager with mocked dependencies
     mock_service.ibkr_manager.get_client = AsyncMock(return_value=mock_ibkr_client)
@@ -196,18 +183,13 @@ async def test_assignment_compensation(
     # Verify position update mock was called twice (once for ASSIGNED state, once for COMPENSATED)
     assert mock_positions_collection.update_one.call_count == 2
     # Check the *last* call to verify the COMPENSATED state
-    last_call_args, last_call_kwargs = (
-        mock_positions_collection.update_one.call_args_list[-1]
-    )
+    last_call_args, last_call_kwargs = mock_positions_collection.update_one.call_args_list[-1]
     assert last_call_args[0] == {
         "follower_id": test_follower.id,
         "date": trading_date,
     }  # Check filter
     assert "$set" in last_call_args[1]
-    assert (
-        last_call_args[1]["$set"]["assignment_state"]
-        == AssignmentState.COMPENSATED.value
-    )
+    assert last_call_args[1]["$set"]["assignment_state"] == AssignmentState.COMPENSATED.value
 
     # Verify alerts were created (detection AND compensation)
     assert mock_service.alert_manager.create_alert.call_count == 2
@@ -256,17 +238,12 @@ async def test_alert_routing_for_assignment(
     with (
         patch("alert_router.app.service.router.settings") as mock_settings,
         patch("alert_router.app.service.router.send_email") as mock_send_email,
-        patch(
-            "alert_router.app.service.router.send_telegram_message"
-        ) as mock_send_telegram,
+        patch("alert_router.app.service.router.send_telegram_message") as mock_send_telegram,
     ):
-
         # Configure mock settings to appear valid
         mock_settings.EMAIL_SENDER = "test-sender@example.com"
         mock_settings.EMAIL_ADMIN_RECIPIENTS = ["test-admin@example.com"]
-        mock_settings.SMTP_HOST = (
-            "smtp.example.com"  # Still needed if checked by router logic
-        )
+        mock_settings.SMTP_HOST = "smtp.example.com"  # Still needed if checked by router logic
         mock_settings.TELEGRAM_BOT_TOKEN = "dummy_token_123"
         mock_settings.TELEGRAM_ADMIN_IDS = ["98765"]
 
@@ -393,7 +370,7 @@ async def test_position_update_existing(
     # Create position manager with mocked dependencies
     mock_service = MagicMock()
     mock_positions_collection = AsyncMock()
-    
+
     # Mock existing position data
     existing_position = {
         "_id": str(uuid.uuid4()),
@@ -403,24 +380,22 @@ async def test_position_update_existing(
         "short_qty": 2,
         "long_strikes": [380.0, 380.0, 380.0, 380.0, 380.0],
         "short_strikes": [385.0, 385.0],
-        "updated_at": datetime.datetime.now()
+        "updated_at": datetime.datetime.now(),
     }
-    
+
     # Mock find_one to return existing position
     mock_positions_collection.find_one.return_value = existing_position
-    mock_positions_collection.update_one.return_value = MagicMock(
-        modified_count=1
-    )
-    
+    mock_positions_collection.update_one.return_value = MagicMock(modified_count=1)
+
     mock_db_handle = MagicMock()
     mock_db_handle.__getitem__.return_value = mock_positions_collection
     mock_service.mongo_db = mock_db_handle
-    
+
     position_manager = PositionManager(mock_service)
-    
+
     # Create test trade to add to existing position (long side)
     from spreadpilot_core.models.trade import Trade, TradeSide, TradeStatus
-    
+
     trade_long = Trade(
         id=str(uuid.uuid4()),
         follower_id=test_follower.id,
@@ -434,31 +409,31 @@ async def test_position_update_existing(
             "filled": datetime.datetime.now(),
         },
     )
-    
+
     # Update position with new long trade
     await position_manager.update_position(test_follower.id, trade_long)
-    
+
     # Verify position was updated correctly
     mock_positions_collection.update_one.assert_called_once()
     call_args, call_kwargs = mock_positions_collection.update_one.call_args
     trading_date = get_current_trading_date()
-    
+
     # Check filter
     assert call_args[0] == {
         "follower_id": test_follower.id,
         "date": trading_date,
     }
-    
+
     # Check update - should add to existing quantities
     assert "$set" in call_args[1]
     assert call_args[1]["$set"]["long_qty"] == 8  # 5 existing + 3 new
     assert call_args[1]["$set"]["short_qty"] == 2  # unchanged
     assert len(call_args[1]["$set"]["long_strikes"]) == 8
     assert call_kwargs.get("upsert") is True
-    
+
     # Reset mock for second trade
     mock_positions_collection.update_one.reset_mock()
-    
+
     # Add a short side trade
     trade_short = Trade(
         id=str(uuid.uuid4()),
@@ -473,14 +448,14 @@ async def test_position_update_existing(
             "filled": datetime.datetime.now(),
         },
     )
-    
+
     # Update position with short trade
     await position_manager.update_position(test_follower.id, trade_short)
-    
+
     # Verify short side was updated
     mock_positions_collection.update_one.assert_called_once()
     call_args, call_kwargs = mock_positions_collection.update_one.call_args
-    
+
     assert "$set" in call_args[1]
     assert call_args[1]["$set"]["long_qty"] == 8  # unchanged from previous
     assert call_args[1]["$set"]["short_qty"] == 3  # 2 existing + 1 new
@@ -545,13 +520,9 @@ async def test_daily_position_check(
         }
     )
     # Add mock for get_positions needed for compensation logic
-    mock_ibkr_client.get_positions = AsyncMock(
-        return_value={"400-C": 1}
-    )  # Example long position
+    mock_ibkr_client.get_positions = AsyncMock(return_value={"400-C": 1})  # Example long position
     # Mock get_pnl
-    mock_ibkr_client.get_pnl = AsyncMock(
-        return_value={"realized_pnl": 0.0, "unrealized_pnl": 0.0}
-    )
+    mock_ibkr_client.get_pnl = AsyncMock(return_value={"realized_pnl": 0.0, "unrealized_pnl": 0.0})
 
     # Create position manager with mocked dependencies
     mock_service = MagicMock()
@@ -572,9 +543,7 @@ async def test_daily_position_check(
 
     mock_positions_collection_daily = AsyncMock()
     mock_positions_collection_daily.find_one.return_value = initial_pos_data_daily
-    mock_positions_collection_daily.update_one.return_value = MagicMock(
-        modified_count=1
-    )
+    mock_positions_collection_daily.update_one.return_value = MagicMock(modified_count=1)
 
     mock_db_handle_daily = MagicMock()
     mock_db_handle_daily.__getitem__.return_value = mock_positions_collection_daily

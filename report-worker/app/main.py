@@ -17,6 +17,7 @@ except ImportError:
         def enable():
             pass
 
+
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 from spreadpilot_core.utils.vault import get_secret
 

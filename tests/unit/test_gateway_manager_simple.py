@@ -121,9 +121,7 @@ class TestGatewayManagerCore:
         manager = GatewayManager(client_id_range_start=1000, client_id_range_end=1002)
 
         # Mock random to return predictable values
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.random.randint"
-        ) as mock_randint:
+        with patch("spreadpilot_core.ibkr.gateway_manager.random.randint") as mock_randint:
             mock_randint.side_effect = [1000, 1001, 1002, 1000, 1001, 1002] * 20
 
             # Allocate IDs

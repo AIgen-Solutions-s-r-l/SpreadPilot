@@ -124,9 +124,7 @@ class TestWatchdogIntegration:
         # Check no alerts for healthy service
         alerts = get_alerts_from_redis(redis_client)
         healthy_alerts = [
-            a
-            for a in alerts
-            if a.get("params", {}).get("container_name") == "test-healthy-service"
+            a for a in alerts if a.get("params", {}).get("container_name") == "test-healthy-service"
         ]
 
         # Should have no alerts for healthy service
@@ -141,9 +139,7 @@ class TestWatchdogIntegration:
         print("Waiting for service to be detected as unhealthy and restarted...")
 
         # Look for restart alert
-        alert = wait_for_alert(
-            redis_client, UNHEALTHY_SERVICE, "COMPONENT_DOWN", timeout=30
-        )
+        alert = wait_for_alert(redis_client, UNHEALTHY_SERVICE, "COMPONENT_DOWN", timeout=30)
         assert alert is not None, "Expected COMPONENT_DOWN alert not found"
 
         # Verify restart was attempted
@@ -169,9 +165,7 @@ class TestWatchdogIntegration:
 
         # Wait for recovery
         print("Waiting for service recovery...")
-        alert = wait_for_alert(
-            redis_client, UNHEALTHY_SERVICE, "COMPONENT_RECOVERED", timeout=30
-        )
+        alert = wait_for_alert(redis_client, UNHEALTHY_SERVICE, "COMPONENT_RECOVERED", timeout=30)
         assert alert is not None, "Expected COMPONENT_RECOVERED alert not found"
 
         # Verify recovery alert
@@ -204,9 +198,7 @@ class TestWatchdogIntegration:
         time.sleep(20)
 
         alerts = get_alerts_from_redis(redis_client)
-        critical_alerts = [
-            a for a in alerts if a.get("params", {}).get("severity") == "CRITICAL"
-        ]
+        critical_alerts = [a for a in alerts if a.get("params", {}).get("severity") == "CRITICAL"]
 
         assert len(critical_alerts) > 0, "No critical alerts found"
 

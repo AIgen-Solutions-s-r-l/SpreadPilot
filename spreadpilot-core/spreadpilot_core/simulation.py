@@ -95,11 +95,13 @@ class SimulationEngine:
 
         # Track equity
         equity = self._calculate_equity(current)
-        self.equity_curve.append({
-            "timestamp": self.current_time,
-            "equity": equity,
-            "cash": self.cash_balance,
-        })
+        self.equity_curve.append(
+            {
+                "timestamp": self.current_time,
+                "equity": equity,
+                "cash": self.cash_balance,
+            }
+        )
 
         # Update drawdown
         self.max_equity = max(self.max_equity, equity)
@@ -143,7 +145,9 @@ class SimulationEngine:
 
                     # Sleep based on speed
                     if self.current_index < len(self.data) - 1:
-                        next_time = datetime.fromisoformat(self.data[self.current_index]["timestamp"])
+                        next_time = datetime.fromisoformat(
+                            self.data[self.current_index]["timestamp"]
+                        )
                         curr_time = datetime.fromisoformat(current["timestamp"])
                         time_diff = (next_time - curr_time).total_seconds()
                         sleep_time = time_diff / speed
@@ -216,9 +220,9 @@ class SimulationEngine:
                 filled = True
                 # Apply slippage
                 if order["action"] == "BUY":
-                    fill_price *= (1 + self.slippage_pct)
+                    fill_price *= 1 + self.slippage_pct
                 else:
-                    fill_price *= (1 - self.slippage_pct)
+                    fill_price *= 1 - self.slippage_pct
 
             elif order["order_type"] == "LIMIT":
                 if order["action"] == "BUY" and price <= order["limit_price"]:
@@ -245,9 +249,9 @@ class SimulationEngine:
         # Update cash
         trade_value = fill_price * order["quantity"]
         if order["action"] == "BUY":
-            self.cash_balance -= (trade_value + self.commission)
+            self.cash_balance -= trade_value + self.commission
         else:
-            self.cash_balance += (trade_value - self.commission)
+            self.cash_balance += trade_value - self.commission
 
         # Update positions
         symbol = order["symbol"]
@@ -264,14 +268,16 @@ class SimulationEngine:
             del self.positions[symbol]
 
         # Record trade
-        self.trades.append({
-            "timestamp": self.current_time,
-            "symbol": symbol,
-            "action": order["action"],
-            "quantity": order["quantity"],
-            "price": fill_price,
-            "commission": self.commission,
-        })
+        self.trades.append(
+            {
+                "timestamp": self.current_time,
+                "symbol": symbol,
+                "action": order["action"],
+                "quantity": order["quantity"],
+                "price": fill_price,
+                "commission": self.commission,
+            }
+        )
 
     def _update_positions(self, current_data: Dict[str, Any]):
         """Update position values with current prices.
@@ -312,7 +318,9 @@ class SimulationEngine:
         losing_trades = total_trades - winning_trades
         win_rate = winning_trades / total_trades if total_trades > 0 else 0.0
 
-        final_equity = self.equity_curve[-1]["equity"] if self.equity_curve else self.initial_capital
+        final_equity = (
+            self.equity_curve[-1]["equity"] if self.equity_curve else self.initial_capital
+        )
         total_return = (final_equity - self.initial_capital) / self.initial_capital
 
         total_commission = sum(t["commission"] for t in self.trades)
@@ -357,6 +365,7 @@ class SimulationEngine:
 
 
 # Convenience functions
+
 
 def run_backtest(
     historical_data: List[Dict],

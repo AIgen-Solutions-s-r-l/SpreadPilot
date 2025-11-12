@@ -87,7 +87,7 @@ class TestDataGenerator:
                 dt = interval_minutes / (252 * 6.5 * 60)  # Fraction of trading year
                 drift = 0.0  # Assume zero drift
                 noise = random.gauss(0, 1)
-                price_change = current_price * (drift * dt + volatility * (dt ** 0.5) * noise)
+                price_change = current_price * (drift * dt + volatility * (dt**0.5) * noise)
 
                 open_price = current_price
                 high_price = max(current_price, current_price + abs(price_change))
@@ -98,15 +98,17 @@ class TestDataGenerator:
                 # Volume (random but realistic)
                 volume = int(random.gauss(1000000, 200000))
 
-                data.append({
-                    "timestamp": timestamp.isoformat(),
-                    "symbol": symbol,
-                    "open": round(open_price, 2),
-                    "high": round(high_price, 2),
-                    "low": round(low_price, 2),
-                    "close": round(close_price, 2),
-                    "volume": max(volume, 100),
-                })
+                data.append(
+                    {
+                        "timestamp": timestamp.isoformat(),
+                        "symbol": symbol,
+                        "open": round(open_price, 2),
+                        "high": round(high_price, 2),
+                        "low": round(low_price, 2),
+                        "close": round(close_price, 2),
+                        "volume": max(volume, 100),
+                    }
+                )
 
         return data
 
@@ -291,9 +293,7 @@ class TestDataGenerator:
         return {
             "scenario_type": "high_volatility",
             "symbol": symbol,
-            "price_range_pct": round(
-                (max(prices) - min(prices)) / price * 100, 2
-            ),
+            "price_range_pct": round((max(prices) - min(prices)) / price * 100, 2),
             "volatility_estimate": 0.05,  # 5% volatility (high)
             "price_path": [round(p, 2) for p in prices],
         }
@@ -312,9 +312,7 @@ class TestDataGenerator:
             "scenario_type": "sideways_market",
             "symbol": symbol,
             "mean_price": round(price, 2),
-            "price_range_pct": round(
-                (max(prices) - min(prices)) / price * 100, 2
-            ),
+            "price_range_pct": round((max(prices) - min(prices)) / price * 100, 2),
             "trend": "SIDEWAYS",
             "price_path": [round(p, 2) for p in prices[::10]],  # Sample every 10 minutes
         }
@@ -373,6 +371,7 @@ class TestDataGenerator:
 
 # Convenience functions
 
+
 def generate_test_prices(symbol: str = "QQQ", days: int = 30) -> List[Dict]:
     """Generate test price history.
 
@@ -408,6 +407,7 @@ def generate_all_fixtures(output_dir: str = "tests/fixtures"):
         output_dir: Output directory for fixture files
     """
     import os
+
     os.makedirs(output_dir, exist_ok=True)
 
     generator = TestDataGenerator(seed=42)  # Reproducible

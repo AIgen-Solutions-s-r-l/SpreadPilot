@@ -37,12 +37,15 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "spreadpilot-core"))
 
 from spreadpilot_core.dry_run import DryRunConfig
-from spreadpilot_core.test_data_generator import generate_test_prices, ScenarioType, generate_scenario
+from spreadpilot_core.test_data_generator import (
+    generate_test_prices,
+    ScenarioType,
+    generate_scenario,
+)
 
 # Setup basic logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -129,7 +132,7 @@ class FullCycleSimulator:
             "timestamp": datetime.now().isoformat(),
             "steps": {},
             "success": True,
-            "errors": []
+            "errors": [],
         }
 
         # Step 1: Generate Market Data
@@ -140,7 +143,7 @@ class FullCycleSimulator:
             cycle_result["steps"]["market_data"] = {
                 "success": True,
                 "data_points": len(market_data),
-                "price_range": f"${market_data[0]['close']:.2f} - ${market_data[-1]['close']:.2f}"
+                "price_range": f"${market_data[0]['close']:.2f} - ${market_data[-1]['close']:.2f}",
             }
             logger.info(f"✅ Generated {len(market_data)} data points")
         except Exception as e:
@@ -155,10 +158,7 @@ class FullCycleSimulator:
         logger.info("\nStep 2: Checking paper gateway availability...")
         try:
             gateway_status = await self._step2_check_paper_gateway()
-            cycle_result["steps"]["paper_gateway"] = {
-                "success": True,
-                "status": gateway_status
-            }
+            cycle_result["steps"]["paper_gateway"] = {"success": True, "status": gateway_status}
             logger.info(f"✅ Paper gateway is {gateway_status}")
         except Exception as e:
             logger.error(f"❌ Paper gateway check failed: {e}")
@@ -170,11 +170,10 @@ class FullCycleSimulator:
         logger.info("\nStep 3: Processing trading signal...")
         try:
             trade_result = await self._step3_process_trading_signal(market_data)
-            cycle_result["steps"]["trading_signal"] = {
-                "success": True,
-                "signal": trade_result
-            }
-            logger.info(f"✅ Trading signal processed: {trade_result['action']} {trade_result['quantity']} {trade_result['symbol']}")
+            cycle_result["steps"]["trading_signal"] = {"success": True, "signal": trade_result}
+            logger.info(
+                f"✅ Trading signal processed: {trade_result['action']} {trade_result['quantity']} {trade_result['symbol']}"
+            )
         except Exception as e:
             logger.error(f"❌ Trading signal failed: {e}")
             cycle_result["steps"]["trading_signal"] = {"success": False, "error": str(e)}
@@ -185,10 +184,7 @@ class FullCycleSimulator:
         logger.info("\nStep 4: Sending alert notification...")
         try:
             alert_result = await self._step4_send_alert()
-            cycle_result["steps"]["alert"] = {
-                "success": True,
-                "channels": alert_result
-            }
+            cycle_result["steps"]["alert"] = {"success": True, "channels": alert_result}
             logger.info(f"✅ Alert sent via {', '.join(alert_result)}")
         except Exception as e:
             logger.error(f"❌ Alert notification failed: {e}")
@@ -200,10 +196,7 @@ class FullCycleSimulator:
         logger.info("\nStep 5: Checking MailHog for captured emails...")
         try:
             email_count = await self._step5_check_mailhog()
-            cycle_result["steps"]["mailhog"] = {
-                "success": True,
-                "emails_captured": email_count
-            }
+            cycle_result["steps"]["mailhog"] = {"success": True, "emails_captured": email_count}
             logger.info(f"✅ MailHog captured {email_count} emails")
         except Exception as e:
             logger.error(f"❌ MailHog check failed: {e}")
@@ -215,10 +208,7 @@ class FullCycleSimulator:
         logger.info("\nStep 6: Generating daily report...")
         try:
             report_result = await self._step6_generate_report()
-            cycle_result["steps"]["report"] = {
-                "success": True,
-                "report": report_result
-            }
+            cycle_result["steps"]["report"] = {"success": True, "report": report_result}
             logger.info(f"✅ Report generated: {report_result['type']}")
         except Exception as e:
             logger.error(f"❌ Report generation failed: {e}")
@@ -230,10 +220,7 @@ class FullCycleSimulator:
         logger.info("\nStep 7: Executing manual close operation...")
         try:
             close_result = await self._step7_manual_close()
-            cycle_result["steps"]["manual_close"] = {
-                "success": True,
-                "result": close_result
-            }
+            cycle_result["steps"]["manual_close"] = {"success": True, "result": close_result}
             logger.info(f"✅ Manual close executed: {close_result['message']}")
         except Exception as e:
             logger.error(f"❌ Manual close failed: {e}")
@@ -247,7 +234,7 @@ class FullCycleSimulator:
             log_verification = await self._step8_verify_logs()
             cycle_result["steps"]["log_verification"] = {
                 "success": True,
-                "verified": log_verification
+                "verified": log_verification,
             }
             logger.info(f"✅ Verified {log_verification['operations_logged']} logged operations")
         except Exception as e:
@@ -295,7 +282,7 @@ class FullCycleSimulator:
             "quantity": 100,
             "current_price": current_price,
             "avg_price": avg_price,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         # In dry-run mode, this would be logged but not executed
@@ -336,7 +323,7 @@ class FullCycleSimulator:
             "date": datetime.now().date().isoformat(),
             "pnl": 1250.50,
             "trades": 3,
-            "win_rate": 66.7
+            "win_rate": 66.7,
         }
 
         logger.info(f"Report: Daily P&L = ${report['pnl']:.2f}")
@@ -349,9 +336,11 @@ class FullCycleSimulator:
         # In dry-run mode, this would return simulated response
         result = {
             "success": True,
-            "message": "[DRY-RUN] Manual close operation simulated" if self.mode == "dry-run" else "Manual close executed",
+            "message": "[DRY-RUN] Manual close operation simulated"
+            if self.mode == "dry-run"
+            else "Manual close executed",
             "closed_positions": 0 if self.mode == "dry-run" else 2,
-            "follower_id": "DRY_RUN" if self.mode == "dry-run" else "FOLLOWER_001"
+            "follower_id": "DRY_RUN" if self.mode == "dry-run" else "FOLLOWER_001",
         }
 
         return result
@@ -362,7 +351,7 @@ class FullCycleSimulator:
         verification = {
             "operations_logged": 7,  # All 7 operations
             "dry_run_prefix_present": self.mode == "dry-run",
-            "errors": 0
+            "errors": 0,
         }
 
         return verification
@@ -393,20 +382,20 @@ class FullCycleSimulator:
                 "failed_cycles": failed_cycles,
                 "success_rate": (successful_cycles / total_cycles * 100) if total_cycles > 0 else 0,
                 "duration_seconds": duration,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             },
             "steps": step_stats,
             "errors": self.errors,
-            "results": self.results
+            "results": self.results,
         }
 
         return report
 
     def _print_report(self, report: Dict):
         """Print simulation report to console."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("SIMULATION REPORT")
-        print("="*60)
+        print("=" * 60)
 
         sim = report["simulation"]
         print(f"\nMode: {sim['mode'].upper()}")
@@ -430,7 +419,7 @@ class FullCycleSimulator:
             for error in report["errors"]:
                 print(f"  ❌ {error}")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
 
 
 async def main():
@@ -442,27 +431,17 @@ async def main():
         "--mode",
         choices=["dry-run", "live"],
         default="dry-run",
-        help="Simulation mode (default: dry-run)"
+        help="Simulation mode (default: dry-run)",
     )
     parser.add_argument(
-        "--cycles",
-        type=int,
-        default=1,
-        help="Number of cycles to run (default: 1)"
+        "--cycles", type=int, default=1, help="Number of cycles to run (default: 1)"
     )
-    parser.add_argument(
-        "--output",
-        type=str,
-        help="Output file for JSON report"
-    )
+    parser.add_argument("--output", type=str, help="Output file for JSON report")
 
     args = parser.parse_args()
 
     # Create simulator
-    simulator = FullCycleSimulator(
-        mode=args.mode,
-        cycles=args.cycles
-    )
+    simulator = FullCycleSimulator(mode=args.mode, cycles=args.cycles)
 
     # Run simulation
     report = await simulator.run()

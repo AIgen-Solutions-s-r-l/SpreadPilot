@@ -367,7 +367,6 @@ class PnLService:
                     if now_et.time() >= target_time and now_et.time() <= time(
                         16, 35
                     ):  # 5-minute window
-
                         # Check if we already ran today
                         if not await self._daily_rollup_completed_today():
                             logger.info("Starting daily P&L rollup at 16:30 ET")
@@ -397,7 +396,6 @@ class PnLService:
                         and now_et.time() >= time(0, 10)
                         and now_et.time() <= time(0, 15)
                     ):  # 5-minute window
-
                         # Check if we already ran this month
                         if not await self._monthly_rollup_completed():
                             logger.info("Starting monthly P&L rollup at 00:10 ET")

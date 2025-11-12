@@ -62,9 +62,7 @@ async def test_follower_service_integration(
 
         # 3. Update Follower
         update_data = FollowerUpdate(commission_pct=18.0, enabled=True)
-        updated_follower = await service.update_follower(
-            follower_id_to_cleanup, update_data
-        )
+        updated_follower = await service.update_follower(follower_id_to_cleanup, update_data)
         assert updated_follower is not None
         assert updated_follower.id == follower_id_to_cleanup
         assert updated_follower.commission_pct == 18.0
@@ -81,9 +79,7 @@ async def test_follower_service_integration(
         assert deleted is True
 
         # Verify deletion
-        deleted_doc = await test_mongo_db.followers.find_one(
-            {"_id": follower_id_to_cleanup}
-        )
+        deleted_doc = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert deleted_doc is None
         follower_id_to_cleanup = None  # Prevent double deletion in finally
 
@@ -161,9 +157,7 @@ async def test_trigger_close_positions_service(
         finally:
             # Clean up
             if follower_id_to_cleanup:
-                await test_mongo_db.followers.delete_one(
-                    {"_id": follower_id_to_cleanup}
-                )
+                await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup})
 
 
 @pytest.mark.asyncio
@@ -192,9 +186,7 @@ async def test_update_follower_state(test_mongo_db: AsyncIOMotorDatabase):
         )
         assert updated_active is not None
         assert updated_active.state == FollowerState.ACTIVE
-        db_doc_active = await test_mongo_db.followers.find_one(
-            {"_id": follower_id_to_cleanup}
-        )
+        db_doc_active = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert db_doc_active["state"] == FollowerState.ACTIVE.value
 
         # Update state back to DISABLED
@@ -204,9 +196,7 @@ async def test_update_follower_state(test_mongo_db: AsyncIOMotorDatabase):
         assert updated_disabled is not None
         assert updated_disabled.state == FollowerState.DISABLED
         # Verify last_error is cleared in the database directly
-        db_doc_disabled = await test_mongo_db.followers.find_one(
-            {"_id": follower_id_to_cleanup}
-        )
+        db_doc_disabled = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
         assert db_doc_disabled["state"] == FollowerState.DISABLED.value
         assert db_doc_disabled.get("last_error") is None  # Check DB directly
 
@@ -229,9 +219,7 @@ async def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
     service = FollowerService(db=test_mongo_db, settings=settings)
 
     # Test create error (mock insert_one to raise exception)
-    with patch.object(
-        service.collection, "insert_one", new_callable=AsyncMock
-    ) as mock_insert:
+    with patch.object(service.collection, "insert_one", new_callable=AsyncMock) as mock_insert:
         mock_insert.side_effect = Exception("Insert error")
         follower_create = FollowerCreate(
             email="error-test@example.com",
@@ -244,9 +232,7 @@ async def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
             await service.create_follower(follower_create)
 
     # Test get error (mock find_one to raise exception)
-    with patch.object(
-        service.collection, "find_one", new_callable=AsyncMock
-    ) as mock_find:
+    with patch.object(service.collection, "find_one", new_callable=AsyncMock) as mock_find:
         mock_find.side_effect = Exception("Find error")
         with pytest.raises(Exception, match="Find error"):
             await service.get_follower_by_id(str(ObjectId()))
@@ -257,9 +243,7 @@ async def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
         patch.object(
             service.collection, "find_one", new_callable=AsyncMock
         ) as mock_find_for_update,
-        patch.object(
-            service.collection, "update_one", new_callable=AsyncMock
-        ) as mock_update_one,
+        patch.object(service.collection, "update_one", new_callable=AsyncMock) as mock_update_one,
     ):  # Patch update_one
         mock_find_for_update.return_value = {
             "_id": "dummy_id",
@@ -273,9 +257,7 @@ async def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
             await service.update_follower("dummy_id", update_data)  # Use the dummy ID
 
     # Test delete error (mock delete_one to raise exception)
-    with patch.object(
-        service.collection, "delete_one", new_callable=AsyncMock
-    ) as mock_delete:
+    with patch.object(service.collection, "delete_one", new_callable=AsyncMock) as mock_delete:
         mock_delete.side_effect = Exception("Delete error")
         with pytest.raises(Exception, match="Delete error"):
             await service.delete_follower(str(ObjectId()))
@@ -298,9 +280,7 @@ async def test_service_error_handling(test_mongo_db: AsyncIOMotorDatabase):
         # Expect the service method to catch and log, returning False
         result = await service.trigger_close_positions(follower_id_pubsub_error)
         assert result is False  # Service should return False on publish error
-    await service.collection.delete_one(
-        {"_id": follower_id_pubsub_error}
-    )  # Cleanup dummy
+    await service.collection.delete_one({"_id": follower_id_pubsub_error})  # Cleanup dummy
 
 
 @pytest.mark.asyncio
@@ -334,9 +314,7 @@ async def test_follower_service_additional_methods(
         assert retrieved_by_email.id == follower_id_to_cleanup
         assert retrieved_by_email.email == email_to_test
 
-        retrieved_nonexistent = await service.get_follower_by_email(
-            "nonexistent@example.com"
-        )
+        retrieved_nonexistent = await service.get_follower_by_email("nonexistent@example.com")
         assert retrieved_nonexistent is None
 
         # Test update_follower_pnl (assuming method exists)
@@ -352,16 +330,12 @@ async def test_follower_service_additional_methods(
             assert updated_pnl.monthly_pnl == monthly_pnl
 
             # Verify in DB
-            db_doc = await test_mongo_db.followers.find_one(
-                {"_id": follower_id_to_cleanup}
-            )
+            db_doc = await test_mongo_db.followers.find_one({"_id": follower_id_to_cleanup})
             assert db_doc["daily_pnl"] == daily_pnl
             assert db_doc["monthly_pnl"] == monthly_pnl
 
             # Test update_pnl for non-existent follower
-            updated_pnl_nonexistent = await service.update_follower_pnl(
-                str(ObjectId()), 10, 20
-            )
+            updated_pnl_nonexistent = await service.update_follower_pnl(str(ObjectId()), 10, 20)
             assert updated_pnl_nonexistent is None
         else:
             # Method not implemented yet - add basic test for when it's added
@@ -419,9 +393,7 @@ async def test_follower_service_batch_operations(
             follower_ids_to_cleanup.extend(created_ids)  # Store string IDs
 
             # Verify creation in DB
-            count = await test_mongo_db.followers.count_documents(
-                {"_id": {"$in": created_ids}}
-            )
+            count = await test_mongo_db.followers.count_documents({"_id": {"$in": created_ids}})
             assert count == len(created_ids)
 
             # Test batch retrieval
@@ -450,14 +422,14 @@ async def test_follower_service_batch_operations(
                 created_ids.append(created.id)
             follower_ids_to_cleanup.extend(created_ids)
             # Batch method not implemented yet - test individual creation instead
-            logger.info("FollowerService.create_followers_batch method not found - using individual creation")
+            logger.info(
+                "FollowerService.create_followers_batch method not found - using individual creation"
+            )
 
     finally:
         # Clean up
         if follower_ids_to_cleanup:
-            await test_mongo_db.followers.delete_many(
-                {"_id": {"$in": follower_ids_to_cleanup}}
-            )
+            await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids_to_cleanup}})
 
 
 @pytest.mark.asyncio
@@ -502,9 +474,7 @@ async def test_follower_service_trading_operations(
             "strike": 450.0,  # Add missing strike
             "limit_price_requested": 450.50,  # Add missing limit_price_requested
             "price": 450.50,  # Actual fill price
-            "status": (
-                TradeStatus.FILLED.value if hasattr(TradeStatus, "FILLED") else "FILLED"
-            ),
+            "status": (TradeStatus.FILLED.value if hasattr(TradeStatus, "FILLED") else "FILLED"),
             "trade_time": datetime.datetime.now(datetime.UTC),
             "ibkr_order_id": "IBKR123",
         }
@@ -531,9 +501,7 @@ async def test_follower_service_trading_operations(
             "average_cost": 175.25,
             "last_update_time": datetime.datetime.now(datetime.UTC),
             "assignment_state": (
-                AssignmentState.NONE.value
-                if hasattr(AssignmentState, "NONE")
-                else "NONE"
+                AssignmentState.NONE.value if hasattr(AssignmentState, "NONE") else "NONE"
             ),  # Handle potential enum issue
             "assigned_quantity": 0,
         }
@@ -541,9 +509,7 @@ async def test_follower_service_trading_operations(
         # Need Position model to have an 'id' field or generate one
         position_data["id"] = str(uuid.uuid4())  # Add ID if missing in model
         position = Position(**position_data)
-        recorded_position = await service.record_position(
-            position
-        )  # Pass the Position object
+        recorded_position = await service.record_position(position)  # Pass the Position object
         assert recorded_position is not None  # Assuming it returns the object or ID
         # Adjust assertion based on return type
         # If object:
@@ -578,9 +544,7 @@ async def test_follower_service_trading_operations(
         assert updated_position.assigned_quantity == 50
 
         # Verify update in DB
-        db_position_updated = await test_mongo_db.positions.find_one(
-            {"_id": pos_id_to_check}
-        )
+        db_position_updated = await test_mongo_db.positions.find_one({"_id": pos_id_to_check})
         assert db_position_updated["assignment_state"] == assign_state
         assert db_position_updated["assigned_quantity"] == 50
 
@@ -600,10 +564,6 @@ async def test_follower_service_trading_operations(
         if follower_id_to_cleanup:
             await test_mongo_db.followers.delete_one({"_id": follower_id_to_cleanup})
         if trade_ids_to_cleanup:
-            await test_mongo_db.trades.delete_many(
-                {"_id": {"$in": trade_ids_to_cleanup}}
-            )
+            await test_mongo_db.trades.delete_many({"_id": {"$in": trade_ids_to_cleanup}})
         if position_ids_to_cleanup:
-            await test_mongo_db.positions.delete_many(
-                {"_id": {"$in": position_ids_to_cleanup}}
-            )
+            await test_mongo_db.positions.delete_many({"_id": {"$in": position_ids_to_cleanup}})

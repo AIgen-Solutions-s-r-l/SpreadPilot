@@ -59,9 +59,7 @@ class TestGatewayManagerVaultIntegration:
         """Test credential retrieval when Vault throws error."""
         # Arrange
         mock_vault_client = Mock()
-        mock_vault_client.get_ibkr_credentials.side_effect = Exception(
-            "Vault connection error"
-        )
+        mock_vault_client.get_ibkr_credentials.side_effect = Exception("Vault connection error")
         mock_get_vault_client.return_value = mock_vault_client
 
         # Act
@@ -83,9 +81,7 @@ class TestGatewayManagerVaultIntegration:
 
     @patch("spreadpilot_core.ibkr.gateway_manager.docker.from_env")
     @patch("spreadpilot_core.ibkr.gateway_manager.get_vault_client")
-    def test_start_gateway_with_vault_credentials(
-        self, mock_get_vault_client, mock_docker
-    ):
+    def test_start_gateway_with_vault_credentials(self, mock_get_vault_client, mock_docker):
         """Test starting gateway with Vault credentials."""
         # Arrange
         mock_vault_client = Mock()
@@ -113,11 +109,8 @@ class TestGatewayManagerVaultIntegration:
         # Mock port and client ID allocation
         with (
             patch.object(self.gateway_manager, "_allocate_port", return_value=4100),
-            patch.object(
-                self.gateway_manager, "_allocate_client_id", return_value=1000
-            ),
+            patch.object(self.gateway_manager, "_allocate_client_id", return_value=1000),
         ):
-
             # Act
             gateway = self.gateway_manager._start_gateway(follower)
 
@@ -142,9 +135,7 @@ class TestGatewayManagerVaultIntegration:
         """Test starting gateway falls back to stored credentials when Vault fails."""
         # Arrange
         mock_vault_client = Mock()
-        mock_vault_client.get_ibkr_credentials.return_value = (
-            None  # Vault credentials not found
-        )
+        mock_vault_client.get_ibkr_credentials.return_value = None  # Vault credentials not found
         mock_get_vault_client.return_value = mock_vault_client
 
         mock_docker_client = Mock()
@@ -165,11 +156,8 @@ class TestGatewayManagerVaultIntegration:
         # Mock port and client ID allocation
         with (
             patch.object(self.gateway_manager, "_allocate_port", return_value=4100),
-            patch.object(
-                self.gateway_manager, "_allocate_client_id", return_value=1000
-            ),
+            patch.object(self.gateway_manager, "_allocate_client_id", return_value=1000),
         ):
-
             # Act
             gateway = self.gateway_manager._start_gateway(follower)
 
@@ -202,11 +190,8 @@ class TestGatewayManagerVaultIntegration:
         # Mock port and client ID allocation
         with (
             patch.object(self.gateway_manager, "_allocate_port", return_value=4100),
-            patch.object(
-                self.gateway_manager, "_allocate_client_id", return_value=1000
-            ),
+            patch.object(self.gateway_manager, "_allocate_client_id", return_value=1000),
         ):
-
             # Act
             gateway = self.gateway_manager._start_gateway(follower)
 
@@ -243,7 +228,6 @@ class TestGatewayManagerVaultIntegration:
             patch.object(gateway_manager, "_allocate_port", return_value=4100),
             patch.object(gateway_manager, "_allocate_client_id", return_value=1000),
         ):
-
             # Act
             gateway = gateway_manager._start_gateway(follower)
 

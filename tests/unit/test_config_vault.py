@@ -30,9 +30,7 @@ class TestSettingsVaultIntegration:
 
     def test_vault_configuration_defaults(self):
         """Test Vault configuration default values."""
-        settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test"
-        )
+        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
 
         assert settings.vault_url == "http://vault:8200"
         assert settings.vault_token == "dev-only-token"
@@ -50,9 +48,7 @@ class TestSettingsVaultIntegration:
     )
     def test_vault_configuration_from_environment(self):
         """Test Vault configuration from environment variables."""
-        settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test"
-        )
+        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
 
         assert settings.vault_url == "http://env-vault:8200"
         assert settings.vault_token == "env-token"
@@ -103,9 +99,7 @@ class TestSettingsVaultIntegration:
         """Test IBKR credentials retrieval when Vault throws error."""
         # Arrange
         mock_vault_client = Mock()
-        mock_vault_client.get_ibkr_credentials.side_effect = Exception(
-            "Vault connection error"
-        )
+        mock_vault_client.get_ibkr_credentials.side_effect = Exception("Vault connection error")
         mock_get_vault_client.return_value = mock_vault_client
 
         # Act
@@ -190,9 +184,7 @@ class TestSettingsIntegrationWithStrategies:
         }
         mock_get_vault_client.return_value = mock_vault_client
 
-        settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test"
-        )
+        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
 
         # Act - Get credentials for vertical spreads strategy
         result = settings.get_ibkr_credentials_from_vault(

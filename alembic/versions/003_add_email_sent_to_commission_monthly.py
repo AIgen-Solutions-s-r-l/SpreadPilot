@@ -27,14 +27,10 @@ def upgrade() -> None:
     )
 
     # Add sent_at timestamp
-    op.add_column(
-        "commission_monthly", sa.Column("sent_at", sa.DateTime(), nullable=True)
-    )
+    op.add_column("commission_monthly", sa.Column("sent_at", sa.DateTime(), nullable=True))
 
     # Create index for sent status
-    op.create_index(
-        "ix_commission_monthly_sent", "commission_monthly", ["sent"], unique=False
-    )
+    op.create_index("ix_commission_monthly_sent", "commission_monthly", ["sent"], unique=False)
 
 
 def downgrade() -> None:

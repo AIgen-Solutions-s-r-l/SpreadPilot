@@ -367,7 +367,6 @@ class TestReportGenerator:
                 patch("os.listdir", return_value=[]),
                 patch("os.rmdir") as mock_rmdir,
             ):
-
                 result = await generator.generate_and_store_reports(
                     sample_follower, 2024, 12, formats=["pdf", "excel"]
                 )

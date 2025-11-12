@@ -46,8 +46,8 @@ class TestGatewayManager:
         mock_container = Mock()
         mock_container.id = "test_container_id"
         self.gateway_manager.docker_client.containers.run.return_value = mock_container
-        self.gateway_manager.docker_client.containers.get.side_effect = (
-            docker.errors.NotFound("Not found")
+        self.gateway_manager.docker_client.containers.get.side_effect = docker.errors.NotFound(
+            "Not found"
         )
 
         follower = MockFollower(id="test_follower", ibkr_username="test_user")
@@ -203,8 +203,8 @@ class TestGatewayManager:
         mock_container = Mock()
         mock_container.id = "test_container_id"
         self.gateway_manager.docker_client.containers.run.return_value = mock_container
-        self.gateway_manager.docker_client.containers.get.side_effect = (
-            docker.errors.NotFound("Not found")
+        self.gateway_manager.docker_client.containers.get.side_effect = docker.errors.NotFound(
+            "Not found"
         )
 
         vault_credentials = {"IB_USER": "vault_username", "IB_PASS": "vault_password"}
@@ -376,9 +376,7 @@ class TestGatewayManager:
 
         mock_db["followers"].find.return_value = AsyncIterator([new_follower])
 
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-        ):
+        with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
             with patch.object(
                 self.gateway_manager, "_start_gateway", return_value=AsyncMock()
             ) as mock_start:
@@ -416,9 +414,7 @@ class TestGatewayManager:
 
         mock_db["followers"].find.return_value = AsyncIterator()
 
-        with patch(
-            "spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db
-        ):
+        with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
             with patch.object(
                 self.gateway_manager, "_stop_gateway", return_value=AsyncMock()
             ) as mock_stop:
@@ -433,28 +429,26 @@ class TestGatewayManager:
         """Test Vault credentials retrieval with retry logic and alert on failure."""
         # Arrange
         follower = MockFollower(
-            id="test_follower",
-            ibkr_username="test_user",
-            vault_secret_ref="ibkr/test_follower"
+            id="test_follower", ibkr_username="test_user", vault_secret_ref="ibkr/test_follower"
         )
-        
+
         # Mock Vault client to fail all retries
         with patch("spreadpilot_core.ibkr.gateway_manager.get_vault_client") as mock_vault:
             mock_vault_client = Mock()
             mock_vault_client.get_ibkr_credentials.side_effect = Exception("Vault error")
             mock_vault.return_value = mock_vault_client
-            
+
             # Mock Redis for alert publishing
             with patch("spreadpilot_core.utils.redis_client.get_redis_client") as mock_redis:
                 mock_redis_client = AsyncMock()
                 mock_redis.return_value = mock_redis_client
-                
+
                 # Act - should fail after retries
                 try:
                     await self.gateway_manager._get_ibkr_credentials_from_vault(follower)
                 except Exception:
                     pass  # Expected to fail
-                
+
                 # Assert - verify retries happened (backoff decorator behavior)
                 assert mock_vault_client.get_ibkr_credentials.call_count >= 1
 
@@ -464,7 +458,7 @@ class TestGatewayManager:
         # Arrange
         mock_ib_client = Mock()
         mock_ib_client.isConnected.return_value = False  # Simulate disconnection
-        
+
         gateway = GatewayInstance(
             follower_id="test_follower",
             container_id="test_container",
@@ -473,21 +467,23 @@ class TestGatewayManager:
             status=GatewayStatus.RUNNING,
             ib_client=mock_ib_client,
             container=Mock(),
-            connection_failures=0
+            connection_failures=0,
         )
         gateway.container.reload = Mock()
         gateway.container.status = "running"
-        
+
         self.gateway_manager.gateways["test_follower"] = gateway
-        
+
         # Act - First failure
         await self.gateway_manager._check_gateway_health(gateway, time.time())
         assert gateway.connection_failures == 1
-        
+
         # Act - Second failure should trigger reconnect
-        with patch.object(self.gateway_manager, "_reconnect", new_callable=AsyncMock) as mock_reconnect:
+        with patch.object(
+            self.gateway_manager, "_reconnect", new_callable=AsyncMock
+        ) as mock_reconnect:
             await self.gateway_manager._check_gateway_health(gateway, time.time() + 35)
-            
+
             # Assert
             assert gateway.connection_failures == 2
             mock_reconnect.assert_called_once_with(gateway)
@@ -501,17 +497,17 @@ class TestGatewayManager:
             container_id="test_container",
             host_port=4100,
             client_id=1000,
-            status=GatewayStatus.RUNNING
+            status=GatewayStatus.RUNNING,
         )
-        
+
         mock_db = AsyncMock()
         mock_collection = AsyncMock()
         mock_db.__getitem__.return_value = mock_collection
-        
+
         # Act
         with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
             await self.gateway_manager._store_gateway_mapping(gateway)
-        
+
         # Assert
         mock_collection.update_one.assert_called_once()
         call_args = mock_collection.update_one.call_args
@@ -527,11 +523,11 @@ class TestGatewayManager:
         mock_db = AsyncMock()
         mock_collection = AsyncMock()
         mock_db.__getitem__.return_value = mock_collection
-        
+
         # Act
         with patch("spreadpilot_core.ibkr.gateway_manager.get_mongo_db", return_value=mock_db):
             await self.gateway_manager._remove_gateway_mapping("test_follower")
-        
+
         # Assert
         mock_collection.delete_one.assert_called_once_with({"follower_id": "test_follower"})
 
@@ -541,7 +537,7 @@ class TestGatewayManager:
         # Arrange
         mock_ib_client = Mock()
         mock_ib_client.isConnected.return_value = False
-        
+
         gateway = GatewayInstance(
             follower_id="test_follower",
             container_id="test_container",
@@ -550,22 +546,24 @@ class TestGatewayManager:
             status=GatewayStatus.RUNNING,
             ib_client=mock_ib_client,
             container=Mock(),
-            connection_failures=1  # Already had one failure
+            connection_failures=1,  # Already had one failure
         )
         gateway.container.reload = Mock()
         gateway.container.status = "running"
-        
+
         self.gateway_manager.gateways["test_follower"] = gateway
-        
+
         # Mock reconnect to fail
-        with patch.object(self.gateway_manager, "_reconnect", side_effect=Exception("Reconnect failed")):
+        with patch.object(
+            self.gateway_manager, "_reconnect", side_effect=Exception("Reconnect failed")
+        ):
             with patch("spreadpilot_core.utils.redis_client.get_redis_client") as mock_redis:
                 mock_redis_client = AsyncMock()
                 mock_redis.return_value = mock_redis_client
-                
+
                 # Act
                 await self.gateway_manager._check_gateway_health(gateway, time.time())
-                
+
                 # Assert
                 assert gateway.status == GatewayStatus.FAILED
                 mock_redis_client.xadd.assert_called_once()

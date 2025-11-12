@@ -175,9 +175,7 @@ def run_tests():
         print("-" * 60)
 
         test_instance = test_class()
-        test_methods = [
-            method for method in dir(test_instance) if method.startswith("test_")
-        ]
+        test_methods = [method for method in dir(test_instance) if method.startswith("test_")]
 
         for method_name in test_methods:
             total_tests += 1

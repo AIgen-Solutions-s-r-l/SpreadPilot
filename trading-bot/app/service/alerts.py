@@ -191,10 +191,7 @@ class AlertManager:
         """
         try:
             # Check if email settings are configured
-            if (
-                not self.service.settings.sendgrid_api_key
-                or not self.service.settings.admin_email
-            ):
+            if not self.service.settings.sendgrid_api_key or not self.service.settings.admin_email:
                 logger.warning("Email settings not configured, skipping notification")
                 return
 
@@ -222,7 +219,9 @@ class AlertManager:
                 if follower_id:
                     dashboard_link = f'<p><a href="{self.service.settings.dashboard_url}/followers/{follower_id}">View in Dashboard</a></p>'
                 else:
-                    dashboard_link = f'<p><a href="{self.service.settings.dashboard_url}">View Dashboard</a></p>'
+                    dashboard_link = (
+                        f'<p><a href="{self.service.settings.dashboard_url}">View Dashboard</a></p>'
+                    )
 
             html_content = f"""
             <html>

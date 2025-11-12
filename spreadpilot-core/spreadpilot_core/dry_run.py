@@ -66,9 +66,7 @@ class DryRunConfig:
 
         return {
             "total_operations": len(cls._operations_log),
-            "operations_by_type": {
-                k: len(v) for k, v in operations_by_type.items()
-            },
+            "operations_by_type": {k: len(v) for k, v in operations_by_type.items()},
             "operations": cls._operations_log,
             "generated_at": datetime.utcnow().isoformat(),
         }
@@ -122,9 +120,7 @@ def dry_run(
 
                 # Filter out 'self' and 'cls'
                 operation["arguments"] = {
-                    k: v
-                    for k, v in bound_args.arguments.items()
-                    if k not in ("self", "cls")
+                    k: v for k, v in bound_args.arguments.items() if k not in ("self", "cls")
                 }
 
             # Log operation
@@ -179,9 +175,7 @@ def dry_run_async(
                 bound_args.apply_defaults()
 
                 operation["arguments"] = {
-                    k: v
-                    for k, v in bound_args.arguments.items()
-                    if k not in ("self", "cls")
+                    k: v for k, v in bound_args.arguments.items() if k not in ("self", "cls")
                 }
 
             logger.info(

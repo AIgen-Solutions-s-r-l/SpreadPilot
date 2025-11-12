@@ -49,9 +49,7 @@ async def test_create_follower_with_vault_secret(test_mongo_db: AsyncIOMotorData
         "enabled": True,
     }
 
-    with patch(
-        "spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client
-    ):
+    with patch("spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client):
         # Create follower
         created_follower = await follower_service.create_follower(follower_data)
 
@@ -67,9 +65,7 @@ async def test_create_follower_with_vault_secret(test_mongo_db: AsyncIOMotorData
         )
 
         # Verify follower exists in MongoDB
-        stored_follower = await test_mongo_db.followers.find_one(
-            {"_id": created_follower.id}
-        )
+        stored_follower = await test_mongo_db.followers.find_one({"_id": created_follower.id})
         assert stored_follower is not None
         assert stored_follower["vault_secret_ref"] == vault_secret_ref
         # Password should not be stored in MongoDB
@@ -126,13 +122,9 @@ async def test_update_follower_vault_credentials(test_mongo_db: AsyncIOMotorData
         "ibkr_password": "new_password_secure_2024",
     }
 
-    with patch(
-        "spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client
-    ):
+    with patch("spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client):
         # Update follower
-        updated_follower = await follower_service.update_follower(
-            follower_id, update_data
-        )
+        updated_follower = await follower_service.update_follower(follower_id, update_data)
 
         # Verify follower was updated
         assert updated_follower.ibkr_username == "new_username"
@@ -190,9 +182,7 @@ async def test_delete_follower_removes_vault_secrets(
     settings.mongo_db_name = "test_db"
     follower_service = FollowerService(db=test_mongo_db, settings=settings)
 
-    with patch(
-        "spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client
-    ):
+    with patch("spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client):
         # Delete follower
         result = await follower_service.delete_follower(follower_id)
         assert result is True
@@ -235,9 +225,7 @@ async def test_vault_connection_failure_handling(test_mongo_db: AsyncIOMotorData
         "vault_secret_ref": "secret/ibkr/follower_fail_test",
     }
 
-    with patch(
-        "spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client
-    ):
+    with patch("spreadpilot_core.utils.vault.get_vault_client", return_value=mock_vault_client):
         # Follower creation should fail
         with pytest.raises(Exception) as exc_info:
             await follower_service.create_follower(follower_data)
@@ -245,7 +233,5 @@ async def test_vault_connection_failure_handling(test_mongo_db: AsyncIOMotorData
         assert "Vault" in str(exc_info.value)
 
         # Verify no follower was created in MongoDB
-        failed_follower = await test_mongo_db.followers.find_one(
-            {"email": follower_data["email"]}
-        )
+        failed_follower = await test_mongo_db.followers.find_one({"email": follower_data["email"]})
         assert failed_follower is None

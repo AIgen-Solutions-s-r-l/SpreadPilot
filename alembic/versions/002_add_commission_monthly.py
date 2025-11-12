@@ -30,9 +30,7 @@ def upgrade() -> None:
         sa.Column("month", sa.Integer(), nullable=False),
         sa.Column("monthly_pnl", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("commission_pct", sa.Numeric(precision=5, scale=4), nullable=False),
-        sa.Column(
-            "commission_amount", sa.Numeric(precision=12, scale=4), nullable=False
-        ),
+        sa.Column("commission_amount", sa.Numeric(precision=12, scale=4), nullable=False),
         sa.Column("commission_currency", sa.String(length=3), nullable=False),
         sa.Column("follower_iban", sa.String(length=34), nullable=False),
         sa.Column("follower_email", sa.String(length=255), nullable=False),
@@ -71,9 +69,7 @@ def upgrade() -> None:
         ["is_payable"],
         unique=False,
     )
-    op.create_index(
-        "ix_commission_monthly_paid", "commission_monthly", ["is_paid"], unique=False
-    )
+    op.create_index("ix_commission_monthly_paid", "commission_monthly", ["is_paid"], unique=False)
 
 
 def downgrade() -> None:

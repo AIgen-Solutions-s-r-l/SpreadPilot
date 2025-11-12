@@ -77,9 +77,7 @@ def setup_test_environment():
     """Set up the test environment variables and mock external services."""
     # Set environment variables for testing
     # Removed Firestore env var line
-    os.environ["GOOGLE_CLOUD_PROJECT"] = (
-        "spreadpilot-test"  # Keep if other services might need it
-    )
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "spreadpilot-test"  # Keep if other services might need it
     os.environ["TESTING"] = "true"
     # MongoDB URI is handled by Testcontainers and dependency injection override
 
@@ -210,9 +208,7 @@ def mock_ibkr_client():
 @pytest_asyncio.fixture
 async def patched_ibkr_client(mock_ibkr_client):
     """Fixture to patch the IBKRClient with the mock."""
-    with patch(
-        "spreadpilot_core.ibkr.client.IBKRClient", return_value=mock_ibkr_client
-    ):
+    with patch("spreadpilot_core.ibkr.client.IBKRClient", return_value=mock_ibkr_client):
         yield mock_ibkr_client
 
 
@@ -362,9 +358,7 @@ async def admin_api_client(
     port = find_free_port()
     base_url = f"http://{host}:{port}"
 
-    config = uvicorn.Config(
-        admin_app_instance, host=host, port=port, log_level="warning"
-    )
+    config = uvicorn.Config(admin_app_instance, host=host, port=port, log_level="warning")
     server = UvicornServer(config=config)
     server.run_in_thread()
     # --- End Run App ---

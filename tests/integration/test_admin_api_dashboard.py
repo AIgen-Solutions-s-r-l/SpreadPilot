@@ -58,29 +58,25 @@ async def test_dashboard_api_endpoints(  # Ensure async def
             "daily_pnl": -20.0,
             "monthly_pnl": -100.0,
         }
-        await test_mongo_db.followers.insert_many(
-            [follower_data_active, follower_data_inactive]
-        )
+        await test_mongo_db.followers.insert_many([follower_data_active, follower_data_inactive])
         follower_ids_to_cleanup.append(follower_data_active["_id"])
         follower_ids_to_cleanup.append(follower_data_inactive["_id"])
 
         # 1. Test /summary endpoint
-        response_summary = await admin_api_client.get(
-            "/api/v1/dashboard/summary"
-        )  # Ensure await
+        response_summary = await admin_api_client.get("/api/v1/dashboard/summary")  # Ensure await
         assert response_summary.status_code == 200
         summary_data = response_summary.json()
-        
+
         # Assert against the actual keys returned by the endpoint
         assert "follower_stats" in summary_data
         assert "system_status" in summary_data
-        
+
         # Check follower stats structure
         follower_stats = summary_data["follower_stats"]
         assert "total" in follower_stats
         assert "active" in follower_stats
         assert "inactive" in follower_stats
-        
+
         # Check the values based on the inserted data
         assert follower_stats["total"] == 2
         assert follower_stats["active"] == 1
@@ -102,9 +98,7 @@ async def test_dashboard_api_endpoints(  # Ensure async def
     finally:
         # Clean up
         if follower_ids_to_cleanup:
-            await test_mongo_db.followers.delete_many(
-                {"_id": {"$in": follower_ids_to_cleanup}}
-            )
+            await test_mongo_db.followers.delete_many({"_id": {"$in": follower_ids_to_cleanup}})
 
 
 @pytest.mark.asyncio  # Ensure async marker
@@ -126,15 +120,10 @@ async def test_dashboard_api_error_handling(  # Ensure async def
             "admin_api.app.api.v1.endpoints.dashboard.get_settings",
             return_value=MagicMock(),
         ):
-            response = await admin_api_client.get(
-                "/api/v1/dashboard/summary"
-            )  # Ensure await
+            response = await admin_api_client.get("/api/v1/dashboard/summary")  # Ensure await
         assert response.status_code == 500
         # Check for a generic server error message as the specific exception might be caught
-        assert (
-            "Internal Server Error" in response.text
-            or "Summary DB Error" in response.text
-        )
+        assert "Internal Server Error" in response.text or "Summary DB Error" in response.text
 
     # Test /summary again with a different service error (patching the actual underlying method)
     with patch(
@@ -147,15 +136,10 @@ async def test_dashboard_api_error_handling(  # Ensure async def
             "admin_api.app.api.v1.endpoints.dashboard.get_settings",
             return_value=MagicMock(),
         ):
-            response = await admin_api_client.get(
-                "/api/v1/dashboard/summary"
-            )  # Ensure await
+            response = await admin_api_client.get("/api/v1/dashboard/summary")  # Ensure await
         assert response.status_code == 500
         # Check for a generic server error message
-        assert (
-            "Internal Server Error" in response.text
-            or "Summary DB Error 2" in response.text
-        )
+        assert "Internal Server Error" in response.text or "Summary DB Error 2" in response.text
 
 
 @pytest.mark.asyncio
@@ -195,7 +179,6 @@ async def test_periodic_follower_update_task(
             new_callable=AsyncMock,
         ) as mock_broadcast,
     ):
-
         mock_get_all.return_value = mock_followers
 
         # Instantiate the service needed by the task
@@ -210,9 +193,7 @@ async def test_periodic_follower_update_task(
 
         # Run the task function directly, passing the mocked service and the test interval
         task = asyncio.create_task(
-            periodic_follower_update_task(
-                follower_service=service, interval_seconds=test_interval
-            )
+            periodic_follower_update_task(follower_service=service, interval_seconds=test_interval)
         )
         await asyncio.sleep(
             test_interval * 2
@@ -262,17 +243,13 @@ async def test_websocket_dashboard_connect(
 
     try:
         # Use TestClient's websocket_connect within the async test
-        with admin_api_test_client.websocket_connect(
-            "/api/v1/ws/dashboard"
-        ) as websocket:
+        with admin_api_test_client.websocket_connect("/api/v1/ws/dashboard") as websocket:
             initial_message = websocket.receive_json()  # Sync receive
             assert initial_message["type"] == "initial_state"
             assert "followers" in initial_message["data"]
             assert isinstance(initial_message["data"]["followers"], list)
             # Check if the created follower is present (use the correct ID field)
-            assert any(
-                f["id"] == follower_id for f in initial_message["data"]["followers"]
-            )
+            assert any(f["id"] == follower_id for f in initial_message["data"]["followers"])
     finally:
         # Cleanup needs to be async as test_mongo_db is async
         await test_mongo_db.followers.delete_one({"_id": follower_id})
@@ -347,9 +324,7 @@ async def test_websocket_dashboard_disconnection_handling(
     initial_connection_count = len(active_connections)
 
     try:
-        with admin_api_test_client.websocket_connect(
-            "/api/v1/ws/dashboard"
-        ) as websocket:
+        with admin_api_test_client.websocket_connect("/api/v1/ws/dashboard") as websocket:
             websocket.receive_json()  # Receive initial state
             assert len(active_connections) == initial_connection_count + 1
 
