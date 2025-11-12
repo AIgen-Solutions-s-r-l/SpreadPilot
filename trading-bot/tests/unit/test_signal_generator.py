@@ -545,9 +545,11 @@ class TestGenerateSignal:
     @pytest.mark.asyncio
     async def test_generate_signal_success(self, signal_generator):
         """Test successful signal generation."""
-        with patch.object(signal_generator, "_get_current_price", return_value=450.0), patch.object(
-            signal_generator, "_determine_strategy", return_value="Long"
-        ), patch.object(signal_generator, "_select_strikes_by_delta", return_value=(440.0, 445.0)):
+        with (
+            patch.object(signal_generator, "_get_current_price", return_value=450.0),
+            patch.object(signal_generator, "_determine_strategy", return_value="Long"),
+            patch.object(signal_generator, "_select_strikes_by_delta", return_value=(440.0, 445.0)),
+        ):
             signal = await signal_generator.generate_signal()
 
             assert signal is not None
@@ -569,8 +571,9 @@ class TestGenerateSignal:
     @pytest.mark.asyncio
     async def test_generate_signal_no_strategy(self, signal_generator):
         """Test signal generation failure when strategy unclear."""
-        with patch.object(signal_generator, "_get_current_price", return_value=450.0), patch.object(
-            signal_generator, "_determine_strategy", return_value=None
+        with (
+            patch.object(signal_generator, "_get_current_price", return_value=450.0),
+            patch.object(signal_generator, "_determine_strategy", return_value=None),
         ):
             signal = await signal_generator.generate_signal()
 
@@ -579,9 +582,11 @@ class TestGenerateSignal:
     @pytest.mark.asyncio
     async def test_generate_signal_no_strikes(self, signal_generator):
         """Test signal generation failure when strikes unavailable."""
-        with patch.object(signal_generator, "_get_current_price", return_value=450.0), patch.object(
-            signal_generator, "_determine_strategy", return_value="Long"
-        ), patch.object(signal_generator, "_select_strikes_by_delta", return_value=None):
+        with (
+            patch.object(signal_generator, "_get_current_price", return_value=450.0),
+            patch.object(signal_generator, "_determine_strategy", return_value="Long"),
+            patch.object(signal_generator, "_select_strikes_by_delta", return_value=None),
+        ):
             signal = await signal_generator.generate_signal()
 
             assert signal is None

@@ -111,8 +111,9 @@ class TestRedisClient:
         """Test Redis availability check when available."""
         mock_client = Mock()
 
-        with patch("app.db.redis_client._redis_client", mock_client), patch(
-            "app.db.redis_client.redis", Mock()
+        with (
+            patch("app.db.redis_client._redis_client", mock_client),
+            patch("app.db.redis_client.redis", Mock()),
         ):
             available = is_redis_available()
 
@@ -120,8 +121,9 @@ class TestRedisClient:
 
     def test_is_redis_available_no_client(self):
         """Test Redis availability check when client not initialized."""
-        with patch("app.db.redis_client._redis_client", None), patch(
-            "app.db.redis_client.redis", Mock()
+        with (
+            patch("app.db.redis_client._redis_client", None),
+            patch("app.db.redis_client.redis", Mock()),
         ):
             available = is_redis_available()
 
@@ -131,8 +133,9 @@ class TestRedisClient:
         """Test Redis availability check when module not installed."""
         mock_client = Mock()
 
-        with patch("app.db.redis_client._redis_client", mock_client), patch(
-            "app.db.redis_client.redis", None
+        with (
+            patch("app.db.redis_client._redis_client", mock_client),
+            patch("app.db.redis_client.redis", None),
         ):
             available = is_redis_available()
 
@@ -140,8 +143,9 @@ class TestRedisClient:
 
     def test_is_redis_available_both_missing(self):
         """Test Redis availability check when both client and module missing."""
-        with patch("app.db.redis_client._redis_client", None), patch(
-            "app.db.redis_client.redis", None
+        with (
+            patch("app.db.redis_client._redis_client", None),
+            patch("app.db.redis_client.redis", None),
         ):
             available = is_redis_available()
 

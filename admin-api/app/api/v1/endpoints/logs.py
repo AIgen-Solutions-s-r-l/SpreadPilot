@@ -15,8 +15,9 @@ logger = get_logger(__name__)
 async def get_logs(
     limit: int = Query(default=200, ge=1, le=1000, description="Number of log entries to retrieve"),
     service: str | None = Query(default=None, description="Filter by service name"),
-    level: str
-    | None = Query(default=None, description="Filter by log level (INFO, WARNING, ERROR)"),
+    level: str | None = Query(
+        default=None, description="Filter by log level (INFO, WARNING, ERROR)"
+    ),
     search: str | None = Query(default=None, description="Search text in log messages"),
 ):
     """

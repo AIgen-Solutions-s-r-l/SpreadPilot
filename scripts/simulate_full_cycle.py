@@ -336,9 +336,11 @@ class FullCycleSimulator:
         # In dry-run mode, this would return simulated response
         result = {
             "success": True,
-            "message": "[DRY-RUN] Manual close operation simulated"
-            if self.mode == "dry-run"
-            else "Manual close executed",
+            "message": (
+                "[DRY-RUN] Manual close operation simulated"
+                if self.mode == "dry-run"
+                else "Manual close executed"
+            ),
             "closed_positions": 0 if self.mode == "dry-run" else 2,
             "follower_id": "DRY_RUN" if self.mode == "dry-run" else "FOLLOWER_001",
         }

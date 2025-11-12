@@ -30,8 +30,9 @@ class TestPINVerificationRedis:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # No lockout
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier.verify_pin("123456", "user123")
 
@@ -45,9 +46,11 @@ class TestPINVerificationRedis:
         mock_redis.get.return_value = None  # No lockout
         mock_redis.zrangebyscore.return_value = []  # No previous attempts
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
-        ), pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             await pin_verifier.verify_pin("wrong", "user123")
 
         assert exc_info.value.status_code == 403
@@ -65,9 +68,11 @@ class TestPINVerificationRedis:
             str(datetime.utcnow().timestamp()) for _ in range(MAX_PIN_ATTEMPTS)
         ]
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
-        ), pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             await pin_verifier.verify_pin("wrong", "user123")
 
         assert exc_info.value.status_code == 429
@@ -81,9 +86,11 @@ class TestPINVerificationRedis:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = lockout_end.isoformat()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
-        ), pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             await pin_verifier.verify_pin("123456", "user123")
 
         assert exc_info.value.status_code == 429
@@ -95,8 +102,9 @@ class TestPINVerificationRedis:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = lockout_end.isoformat()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier.verify_pin("123456", "user123")
 
@@ -106,8 +114,9 @@ class TestPINVerificationRedis:
 
     async def test_verify_pin_fallback_when_redis_unavailable(self, pin_verifier):
         """Test fallback to in-memory when Redis unavailable."""
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             result = await pin_verifier.verify_pin("123456", "user123")
 
@@ -118,8 +127,9 @@ class TestPINVerificationRedis:
         mock_redis = AsyncMock()
         mock_redis.get.side_effect = Exception("Redis connection error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier.verify_pin("123456", "user123")
 
@@ -132,8 +142,9 @@ class TestPINVerificationFallback:
 
     async def test_fallback_rate_limiting(self, pin_verifier):
         """Test in-memory rate limiting when Redis unavailable."""
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             # Make multiple failed attempts
             for i in range(MAX_PIN_ATTEMPTS - 1):
@@ -148,8 +159,9 @@ class TestPINVerificationFallback:
 
     async def test_fallback_clears_after_success(self, pin_verifier):
         """Test in-memory attempts cleared after successful verification."""
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             # Make a failed attempt
             with pytest.raises(HTTPException):
@@ -174,8 +186,9 @@ class TestRecordFailedAttempt:
         """Test recording attempt in Redis."""
         mock_redis = AsyncMock()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             await pin_verifier._record_failed_attempt("user123")
 
@@ -188,9 +201,11 @@ class TestRecordFailedAttempt:
         mock_redis = AsyncMock()
         mock_redis.zadd.side_effect = Exception("Redis error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
-        ), patch.object(pin_verifier, "_record_failed_attempt_fallback") as mock_fallback:
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
+            patch.object(pin_verifier, "_record_failed_attempt_fallback") as mock_fallback,
+        ):
             await pin_verifier._record_failed_attempt("user123")
 
         mock_fallback.assert_called_once_with("user123")
@@ -201,8 +216,9 @@ class TestRecordFailedAttempt:
 
         _pin_attempts_fallback.clear()
 
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             await pin_verifier._record_failed_attempt("user123")
 
@@ -221,8 +237,9 @@ class TestGetRecentAttempts:
         mock_redis = AsyncMock()
         mock_redis.zrangebyscore.return_value = timestamps
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             attempts = await pin_verifier._get_recent_attempts("user123")
 
@@ -234,11 +251,13 @@ class TestGetRecentAttempts:
         mock_redis = AsyncMock()
         mock_redis.zrangebyscore.side_effect = Exception("Redis error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
-        ), patch.object(
-            pin_verifier, "_get_recent_attempts_fallback", return_value=[]
-        ) as mock_fallback:
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
+            patch.object(
+                pin_verifier, "_get_recent_attempts_fallback", return_value=[]
+            ) as mock_fallback,
+        ):
             attempts = await pin_verifier._get_recent_attempts("user123")
 
         assert attempts == []
@@ -252,8 +271,9 @@ class TestGetRecentAttempts:
         now = datetime.utcnow()
         _pin_attempts_fallback["user123"] = [now - timedelta(minutes=i) for i in range(3)]
 
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             attempts = await pin_verifier._get_recent_attempts("user123")
 
@@ -269,8 +289,9 @@ class TestSetLockout:
         lockout_end = datetime.utcnow() + timedelta(minutes=15)
         mock_redis = AsyncMock()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             await pin_verifier._set_lockout("user123", lockout_end)
 
@@ -288,8 +309,9 @@ class TestSetLockout:
         mock_redis = AsyncMock()
         mock_redis.set.side_effect = Exception("Redis error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             await pin_verifier._set_lockout("user123", lockout_end)
 
@@ -302,8 +324,9 @@ class TestSetLockout:
         _locked_users_fallback.clear()
         lockout_end = datetime.utcnow() + timedelta(minutes=15)
 
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             await pin_verifier._set_lockout("user123", lockout_end)
 
@@ -321,8 +344,9 @@ class TestGetLockoutEnd:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = lockout_end.isoformat()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier._get_lockout_end("user123")
 
@@ -335,8 +359,9 @@ class TestGetLockoutEnd:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier._get_lockout_end("user123")
 
@@ -351,8 +376,9 @@ class TestGetLockoutEnd:
         mock_redis = AsyncMock()
         mock_redis.get.side_effect = Exception("Redis error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             result = await pin_verifier._get_lockout_end("user123")
 
@@ -366,8 +392,9 @@ class TestGetLockoutEnd:
         lockout_end = datetime.utcnow() + timedelta(minutes=15)
         _locked_users_fallback["user123"] = lockout_end
 
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             result = await pin_verifier._get_lockout_end("user123")
 
@@ -382,8 +409,9 @@ class TestClearAttempts:
         """Test clearing attempts in Redis."""
         mock_redis = AsyncMock()
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             await pin_verifier._clear_attempts("user123")
 
@@ -398,8 +426,9 @@ class TestClearAttempts:
         mock_redis = AsyncMock()
         mock_redis.delete.side_effect = Exception("Redis error")
 
-        with patch("app.core.security.get_redis_client", return_value=mock_redis), patch(
-            "app.core.security.is_redis_available", return_value=True
+        with (
+            patch("app.core.security.get_redis_client", return_value=mock_redis),
+            patch("app.core.security.is_redis_available", return_value=True),
         ):
             await pin_verifier._clear_attempts("user123")
 
@@ -415,8 +444,9 @@ class TestClearAttempts:
         _pin_attempts_fallback["user123"] = [datetime.utcnow()]
         _locked_users_fallback["user123"] = datetime.utcnow()
 
-        with patch("app.core.security.get_redis_client", return_value=None), patch(
-            "app.core.security.is_redis_available", return_value=False
+        with (
+            patch("app.core.security.get_redis_client", return_value=None),
+            patch("app.core.security.is_redis_available", return_value=False),
         ):
             await pin_verifier._clear_attempts("user123")
 
