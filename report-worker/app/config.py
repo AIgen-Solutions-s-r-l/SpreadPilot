@@ -176,11 +176,12 @@ def get_settings() -> Settings:
     """Get cached settings."""
     settings = Settings()
     logger.info(
-        "Loaded report worker settings",
-        project_id=settings.project_id,
-        mongo_db_name=settings.mongo_db_name,
-        gcs_bucket_configured=bool(settings.gcs_bucket_name),
-        smtp_configured=bool(settings.smtp_host),
-        minio_configured=bool(settings.minio_endpoint_url),
+        "Loaded report worker settings: project_id=%s, mongo_db_name=%s, "
+        "gcs_bucket_configured=%s, smtp_configured=%s, minio_configured=%s",
+        settings.project_id,
+        settings.mongo_db_name,
+        bool(settings.gcs_bucket_name),
+        bool(settings.smtp_host),
+        bool(settings.minio_endpoint_url),
     )
     return settings

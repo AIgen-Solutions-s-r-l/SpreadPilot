@@ -9,7 +9,7 @@ import fakeredis.aioredis
 import httpx
 import pytest
 from alert_router.app.alert_router import AlertRouter, AlertRouterConfig
-from httpx_mock import HTTPXMock
+from pytest_httpx import HTTPXMock
 from spreadpilot_core.models.alert import Alert, AlertSeverity
 
 
