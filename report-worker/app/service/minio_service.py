@@ -7,7 +7,14 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from spreadpilot_core.logging.logger import get_logger
 
-from .. import config
+from .. import (
+    MINIO_ACCESS_KEY,
+    MINIO_BUCKET_NAME,
+    MINIO_ENDPOINT_URL,
+    MINIO_REGION,
+    MINIO_SECURE,
+    MINIO_SECRET_KEY,
+)
 
 logger = get_logger(__name__)
 
@@ -17,12 +24,12 @@ class MinIOService:
 
     def __init__(self):
         """Initialize MinIO service with configuration."""
-        self.endpoint_url = config.MINIO_ENDPOINT_URL
-        self.access_key = config.MINIO_ACCESS_KEY
-        self.secret_key = config.MINIO_SECRET_KEY
-        self.bucket_name = config.MINIO_BUCKET_NAME
-        self.region = config.MINIO_REGION
-        self.secure = config.MINIO_SECURE
+        self.endpoint_url = MINIO_ENDPOINT_URL
+        self.access_key = MINIO_ACCESS_KEY
+        self.secret_key = MINIO_SECRET_KEY
+        self.bucket_name = MINIO_BUCKET_NAME
+        self.region = MINIO_REGION
+        self.secure = MINIO_SECURE
 
         self._s3_client = None
 
