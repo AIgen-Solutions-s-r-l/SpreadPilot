@@ -6,6 +6,8 @@
 
 [![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/AIgen-Solutions-s-r-l/SpreadPilot/releases)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+[![CI Pipeline](https://github.com/AIgen-Solutions-s-r-l/SpreadPilot/actions/workflows/ci.yml/badge.svg)](https://github.com/AIgen-Solutions-s-r-l/SpreadPilot/actions/workflows/ci.yml)
+[![Security Scan](https://github.com/AIgen-Solutions-s-r-l/SpreadPilot/actions/workflows/ci-security.yml/badge.svg)](https://github.com/AIgen-Solutions-s-r-l/SpreadPilot/actions/workflows/ci-security.yml)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.7+-blue.svg)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
