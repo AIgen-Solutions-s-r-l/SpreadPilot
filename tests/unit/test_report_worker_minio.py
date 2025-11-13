@@ -5,7 +5,7 @@ import tempfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 from report_worker.app.service.minio_service import MinIOService, minio_service
 from report_worker.app.service.notifier_minio import send_report_email_with_minio
 from spreadpilot_core.models.follower import Follower
@@ -45,7 +45,7 @@ def test_follower():
 class TestMinIOService:
     """Test MinIO service functionality."""
 
-    @mock_s3
+    @mock_aws
     def test_minio_upload_success(self, temp_files):
         """Test successful MinIO upload."""
         pdf_path, excel_path = temp_files
@@ -90,7 +90,7 @@ class TestMinIOService:
             result = service.upload_report("/fake/path.pdf", "test.pdf")
             assert result is None
 
-    @mock_s3
+    @mock_aws
     def test_minio_upload_with_url_generation(self, temp_files):
         """Test MinIO upload with URL generation."""
         pdf_path, excel_path = temp_files
