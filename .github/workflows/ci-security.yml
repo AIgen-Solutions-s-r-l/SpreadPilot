@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   REGISTRY: gcr.io
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

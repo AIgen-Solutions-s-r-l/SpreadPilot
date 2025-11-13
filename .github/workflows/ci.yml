@@ -6,6 +6,10 @@ on:
   push:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '18'
@@ -96,6 +100,12 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
           pip install -e ./spreadpilot-core
+
+      - name: Create symbolic links for hyphenated directories
+        run: |
+          ln -s alert-router alert_router
+          ln -s trading-bot trading_bot
+          ln -s report-worker report_worker
 
       - name: Run unit tests with coverage
         env:
