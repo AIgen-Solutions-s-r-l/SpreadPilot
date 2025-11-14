@@ -156,5 +156,17 @@ class MinIOService:
         return uploaded_key, presigned_url
 
 
-# Create singleton instance
-minio_service = MinIOService()
+# Singleton instance (lazy-initialized to avoid import-time errors)
+_minio_service: MinIOService | None = None
+
+
+def get_minio_service() -> MinIOService:
+    """Get or create the singleton MinIOService instance.
+
+    Returns:
+        MinIOService instance
+    """
+    global _minio_service
+    if _minio_service is None:
+        _minio_service = MinIOService()
+    return _minio_service

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from moto import mock_aws
-from report_worker.app.service.minio_service import MinIOService, minio_service
+from report_worker.app.service.minio_service import MinIOService
 from report_worker.app.service.notifier_minio import send_report_email_with_minio
 from spreadpilot_core.models.follower import Follower
 

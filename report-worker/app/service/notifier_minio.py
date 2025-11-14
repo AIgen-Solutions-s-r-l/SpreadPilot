@@ -7,7 +7,7 @@ from spreadpilot_core.models.follower import Follower
 from spreadpilot_core.utils.email import send_email
 
 from .. import config
-from .minio_service import minio_service
+from .minio_service import get_minio_service
 
 logger = get_logger(__name__)
 
@@ -55,11 +55,12 @@ def send_report_email_with_minio(
     pdf_url = None
     excel_url = None
 
-    if minio_service.is_configured():
+    minio = get_minio_service()
+    if minio.is_configured():
         logger.info("MinIO configured, uploading reports")
 
         # Upload PDF
-        pdf_key, pdf_url = minio_service.upload_report_with_url(
+        pdf_key, pdf_url = minio.upload_report_with_url(
             pdf_path, follower.id, report_period, "pdf"
         )
         if pdf_url:
@@ -67,7 +68,7 @@ def send_report_email_with_minio(
             logger.info(f"PDF uploaded to MinIO: {pdf_key}")
 
         # Upload Excel
-        excel_key, excel_url = minio_service.upload_report_with_url(
+        excel_key, excel_url = minio.upload_report_with_url(
             excel_path, follower.id, report_period, "xlsx"
         )
         if excel_url:
