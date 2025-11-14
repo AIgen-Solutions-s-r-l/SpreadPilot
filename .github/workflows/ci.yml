@@ -113,7 +113,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/trading-bot:${{ github.workspace }}/admin-api:${{ github.workspace }}/alert-router:${{ github.workspace }}/report-worker:${{ github.workspace }}/watchdog
           # Report worker required env vars
-          PROJECT_ID: test-project
+          GOOGLE_CLOUD_PROJECT: test-project
           REPORT_SENDER_EMAIL: test@example.com
         run: |
           pytest tests/unit/ -v --cov=. --cov-report=xml --cov-report=html --cov-report=term
