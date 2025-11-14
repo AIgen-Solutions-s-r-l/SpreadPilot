@@ -380,6 +380,7 @@ class TestPnLServiceRedisStreams:
                     assert now_et.time().minute == 10
 
     @pytest.mark.asyncio
+    @pytest.mark.timeout(5)  # Prevent infinite hanging in CI
     async def test_pnl_service_lifecycle(self, pnl_service, fake_redis):
         """Test complete P&L service lifecycle."""
         # Mock Redis client
@@ -402,9 +403,14 @@ class TestPnLServiceRedisStreams:
 
             # Wait for graceful shutdown
             try:
-                await asyncio.wait_for(monitor_task, timeout=1.0)
+                await asyncio.wait_for(monitor_task, timeout=2.0)
             except asyncio.TimeoutError:
+                # Force cancel if graceful shutdown takes too long
                 monitor_task.cancel()
+                try:
+                    await monitor_task
+                except asyncio.CancelledError:
+                    pass
 
             # Verify cleanup
             assert pnl_service.monitoring_active is False
