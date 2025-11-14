@@ -124,7 +124,7 @@ jobs:
         echo "- [ ] Verify security headers are implemented" >> security-reports/SUMMARY.md
 
     - name: Comment PR with security summary
-      uses: actions/github-script@v6
+      uses: actions/github-script@v8
       if: github.event_name == 'pull_request'
       continue-on-error: true
       with:
