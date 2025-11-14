@@ -66,6 +66,7 @@ services:
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD_HASH: $$2b$$12$$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCsuBKQLi
       LOG_LEVEL: DEBUG
+      VAULT_ENABLED: "false"
     depends_on:
       mongodb-test:
         condition: service_healthy
@@ -118,6 +119,9 @@ services:
       SMTP_USE_TLS: "false"
       GCS_BUCKET: test-reports
       LOG_LEVEL: DEBUG
+      VAULT_ENABLED: "false"
+      GOOGLE_CLOUD_PROJECT: test-project
+      REPORT_SENDER_EMAIL: test@example.com
     depends_on:
       mongodb-test:
         condition: service_healthy
@@ -142,6 +146,7 @@ services:
       SMTP_PASSWORD: test_password
       SMTP_USE_TLS: "false"
       LOG_LEVEL: DEBUG
+      VAULT_ENABLED: "false"
     depends_on:
       mongodb-test:
         condition: service_healthy

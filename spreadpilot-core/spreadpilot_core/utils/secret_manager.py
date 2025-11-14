@@ -340,12 +340,16 @@ _secret_manager: Optional[SecretManager] = None
 def get_secret_manager() -> SecretManager:
     """Get or create the global secret manager instance.
 
+    Respects the VAULT_ENABLED environment variable to disable Vault for testing.
+
     Returns:
         SecretManager instance
     """
     global _secret_manager
     if _secret_manager is None:
-        _secret_manager = SecretManager()
+        # Check if Vault should be used (default: True for backward compatibility)
+        use_vault = os.getenv("VAULT_ENABLED", "true").lower() in ("true", "1", "yes")
+        _secret_manager = SecretManager(use_vault=use_vault)
     return _secret_manager
 
 
