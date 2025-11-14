@@ -60,9 +60,7 @@ def send_report_email_with_minio(
         logger.info("MinIO configured, uploading reports")
 
         # Upload PDF
-        pdf_key, pdf_url = minio.upload_report_with_url(
-            pdf_path, follower.id, report_period, "pdf"
-        )
+        pdf_key, pdf_url = minio.upload_report_with_url(pdf_path, follower.id, report_period, "pdf")
         if pdf_url:
             report_info["pdf_url"] = pdf_url
             logger.info(f"PDF uploaded to MinIO: {pdf_key}")
