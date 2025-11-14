@@ -54,6 +54,8 @@ class TestMinIOService:
         with patch.dict(
             os.environ,
             {
+                "GOOGLE_CLOUD_PROJECT": "test-project",
+                "REPORT_SENDER_EMAIL": "test@example.com",
                 "MINIO_ENDPOINT_URL": "http://localhost:9000",
                 "MINIO_ACCESS_KEY": "test_access",
                 "MINIO_SECRET_KEY": "test_secret",
@@ -83,7 +85,14 @@ class TestMinIOService:
 
     def test_minio_not_configured(self):
         """Test MinIO service when not configured."""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_CLOUD_PROJECT": "test-project",
+                "REPORT_SENDER_EMAIL": "test@example.com",
+            },
+            clear=True,
+        ):
             service = MinIOService()
             assert service.is_configured() is False
 
@@ -98,6 +107,8 @@ class TestMinIOService:
         with patch.dict(
             os.environ,
             {
+                "GOOGLE_CLOUD_PROJECT": "test-project",
+                "REPORT_SENDER_EMAIL": "test@example.com",
                 "MINIO_ENDPOINT_URL": "http://localhost:9000",
                 "MINIO_ACCESS_KEY": "test_access",
                 "MINIO_SECRET_KEY": "test_secret",
@@ -130,9 +141,16 @@ class TestMinIOService:
 
     def test_minio_file_not_found(self):
         """Test MinIO upload with non-existent file."""
-        service = MinIOService()
-        result = service.upload_report("/non/existent/file.pdf", "test.pdf")
-        assert result is None
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_CLOUD_PROJECT": "test-project",
+                "REPORT_SENDER_EMAIL": "test@example.com",
+            },
+        ):
+            service = MinIOService()
+            result = service.upload_report("/non/existent/file.pdf", "test.pdf")
+            assert result is None
 
 
 class TestEmailWithMinIO:
