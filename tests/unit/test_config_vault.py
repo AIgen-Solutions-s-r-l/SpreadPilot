@@ -21,7 +21,6 @@ class TestSettingsVaultIntegration:
         """Set up test fixtures."""
         # Create settings with test values
         self.settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             vault_url="http://test-vault:8200",
             vault_token="test-token",
             vault_mount_point="test-secret",
@@ -30,7 +29,7 @@ class TestSettingsVaultIntegration:
 
     def test_vault_configuration_defaults(self):
         """Test Vault configuration default values."""
-        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
+        settings = Settings()
 
         assert settings.vault_url == "http://vault:8200"
         assert settings.vault_token == "dev-only-token"
@@ -48,7 +47,7 @@ class TestSettingsVaultIntegration:
     )
     def test_vault_configuration_from_environment(self):
         """Test Vault configuration from environment variables."""
-        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
+        settings = Settings()
 
         assert settings.vault_url == "http://env-vault:8200"
         assert settings.vault_token == "env-token"
@@ -112,7 +111,6 @@ class TestSettingsVaultIntegration:
         """Test IBKR credentials retrieval when Vault is disabled."""
         # Arrange
         settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             vault_enabled=False,
         )
 
@@ -134,7 +132,6 @@ class TestSettingsVaultIntegration:
         mock_get_vault_client.return_value = mock_vault_client
 
         custom_settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             vault_url="http://custom-vault:8200",
             vault_token="custom-token",
             vault_mount_point="custom-secret",
@@ -155,7 +152,6 @@ class TestSettingsVaultIntegration:
         """Test that trading mode validation still works with Vault integration."""
         # Test valid trading mode
         settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             ib_trading_mode="paper",
         )
         assert settings.ib_trading_mode == "paper"
@@ -163,7 +159,6 @@ class TestSettingsVaultIntegration:
         # Test invalid trading mode should raise ValidationError
         with pytest.raises(ValidationError):
             Settings(
-                google_sheet_url="https://docs.google.com/spreadsheets/test",
                 ib_trading_mode="invalid",
             )
 
@@ -184,7 +179,7 @@ class TestSettingsIntegrationWithStrategies:
         }
         mock_get_vault_client.return_value = mock_vault_client
 
-        settings = Settings(google_sheet_url="https://docs.google.com/spreadsheets/test")
+        settings = Settings()
 
         # Act - Get credentials for vertical spreads strategy
         result = settings.get_ibkr_credentials_from_vault(
@@ -204,7 +199,6 @@ class TestSettingsBackwardCompatibility:
     def test_existing_configuration_unchanged(self):
         """Test that existing configuration fields are unchanged."""
         settings = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             project_id="test-project",
             ib_gateway_host="127.0.0.1",
             ib_gateway_port=4002,
@@ -235,14 +229,12 @@ class TestSettingsBackwardCompatibility:
         """Test that configuration works both with and without Vault."""
         # Without Vault
         settings_no_vault = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             vault_enabled=False,
         )
         assert settings_no_vault.vault_enabled is False
 
         # With Vault
         settings_with_vault = Settings(
-            google_sheet_url="https://docs.google.com/spreadsheets/test",
             vault_enabled=True,
         )
         assert settings_with_vault.vault_enabled is True

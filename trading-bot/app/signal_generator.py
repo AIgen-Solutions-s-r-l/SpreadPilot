@@ -86,7 +86,7 @@ class QQQSignalGenerator:
             ny_time = get_ny_time()
             current_date = ny_time.strftime("%Y-%m-%d")
 
-            logger.info("Generating signal for QQQ vertical spread", date=current_date)
+            logger.info("Generating signal for QQQ vertical spread", extra={"date": current_date})
 
             # Step 1: Get current QQQ price
             current_price = await self._get_current_price()
@@ -128,7 +128,7 @@ class QQQSignalGenerator:
                 "strike_short": strike_short,
             }
 
-            logger.info("Generated signal successfully", signal=signal)
+            logger.info("Generated signal successfully", extra={"signal": signal})
             return signal
 
         except Exception as e:

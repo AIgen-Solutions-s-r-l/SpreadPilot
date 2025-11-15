@@ -118,10 +118,12 @@ class VerticalSpreadExecutor:
 
             logger.info(
                 f"Executing vertical spread for follower {follower_id}",
-                strategy=strategy,
-                qty_per_leg=qty_per_leg,
-                strike_long=strike_long,
-                strike_short=strike_short,
+                extra={
+                    "strategy": strategy,
+                    "qty_per_leg": qty_per_leg,
+                    "strike_long": strike_long,
+                    "strike_short": strike_short,
+                },
             )
 
             # Phase 1: Pre-trade margin check via IB API whatIf
@@ -274,10 +276,12 @@ class VerticalSpreadExecutor:
 
             logger.info(
                 f"WhatIf margin check for follower {follower_id}",
-                init_margin=init_margin,
-                maint_margin=maint_margin,
-                available_funds=available_funds,
-                margin_sufficient=margin_sufficient,
+                extra={
+                    "init_margin": init_margin,
+                    "maint_margin": maint_margin,
+                    "available_funds": available_funds,
+                    "margin_sufficient": margin_sufficient,
+                },
             )
 
             return {
@@ -341,9 +345,11 @@ class VerticalSpreadExecutor:
 
             logger.info(
                 f"Calculated MID price for {strategy} spread",
-                long_price=long_price,
-                short_price=short_price,
-                mid_price=mid_price,
+                extra={
+                    "long_price": long_price,
+                    "short_price": short_price,
+                    "mid_price": mid_price,
+                },
             )
 
             return {
@@ -412,9 +418,11 @@ class VerticalSpreadExecutor:
 
             logger.info(
                 f"Starting limit-ladder execution for follower {follower_id}",
-                initial_limit=current_limit_price,
-                max_attempts=max_attempts,
-                price_increment=price_increment,
+                extra={
+                    "initial_limit": current_limit_price,
+                    "max_attempts": max_attempts,
+                    "price_increment": price_increment,
+                },
             )
 
             for attempt in range(1, max_attempts + 1):
@@ -437,7 +445,7 @@ class VerticalSpreadExecutor:
 
                 logger.info(
                     f"Attempt {attempt}/{max_attempts} for follower {follower_id}",
-                    limit_price=current_limit_price,
+                    extra={"limit_price": current_limit_price},
                 )
 
                 # Create limit order
@@ -464,9 +472,11 @@ class VerticalSpreadExecutor:
                 if trade.orderStatus.status == "Filled":
                     logger.info(
                         f"Order filled on attempt {attempt} for follower {follower_id}",
-                        order_id=trade.order.orderId,
-                        fill_price=trade.orderStatus.avgFillPrice,
-                        filled_qty=trade.orderStatus.filled,
+                        extra={
+                            "order_id": trade.order.orderId,
+                            "fill_price": trade.orderStatus.avgFillPrice,
+                            "filled_qty": trade.orderStatus.filled,
+                        },
                     )
 
                     return {

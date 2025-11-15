@@ -269,9 +269,11 @@ class IBKRClient:
 
             logger.warning(
                 "Failed to get market price",
-                contract=contract.symbol,
-                strike=contract.strike,
-                right=contract.right,
+                extra={
+                    "contract": contract.symbol,
+                    "strike": contract.strike,
+                    "right": contract.right,
+                },
             )
             return None
         except Exception as e:
@@ -347,12 +349,14 @@ class IBKRClient:
 
         logger.info(
             "Requesting historical data",
-            contract=contract.localSymbol or contract.symbol,
-            endDateTime=endDateTime,
-            durationStr=durationStr,
-            barSizeSetting=barSizeSetting,
-            whatToShow=whatToShow,
-            useRTH=useRTH,
+            extra={
+                "contract": contract.localSymbol or contract.symbol,
+                "endDateTime": endDateTime,
+                "durationStr": durationStr,
+                "barSizeSetting": barSizeSetting,
+                "whatToShow": whatToShow,
+                "useRTH": useRTH,
+            },
         )
         try:
             bars = await self.ib.reqHistoricalDataAsync(
@@ -366,14 +370,14 @@ class IBKRClient:
             )
             logger.info(
                 f"Received {len(bars)} historical bars",
-                contract=contract.localSymbol or contract.symbol,
+                extra={"contract": contract.localSymbol or contract.symbol},
             )
             return bars
         except Exception:
             logger.error(
                 "Error requesting historical data",
-                contract=contract.localSymbol or contract.symbol,
                 exc_info=True,
+                extra={"contract": contract.localSymbol or contract.symbol},
             )
             return []  # Return empty list on error
 
@@ -398,22 +402,26 @@ class IBKRClient:
 
         logger.info(
             "Placing order",
-            contract=contract.localSymbol or contract.symbol,
-            order_type=order.orderType,
-            action=order.action,
-            quantity=order.totalQuantity,
-            limit_price=getattr(order, "lmtPrice", None),
-            aux_price=getattr(order, "auxPrice", None),
-            trail_stop_price=getattr(order, "trailStopPrice", None),
-            trailing_percent=getattr(order, "trailingPercent", None),
+            extra={
+                "contract": contract.localSymbol or contract.symbol,
+                "order_type": order.orderType,
+                "action": order.action,
+                "quantity": order.totalQuantity,
+                "limit_price": getattr(order, "lmtPrice", None),
+                "aux_price": getattr(order, "auxPrice", None),
+                "trail_stop_price": getattr(order, "trailStopPrice", None),
+                "trailing_percent": getattr(order, "trailingPercent", None),
+            },
         )
         try:
             trade = self.ib.placeOrder(contract, order)
             logger.info(
                 "Order placed successfully",
-                order_id=trade.order.orderId,
-                contract=contract.localSymbol or contract.symbol,
-                status=trade.orderStatus.status,
+                extra={
+                    "order_id": trade.order.orderId,
+                    "contract": contract.localSymbol or contract.symbol,
+                    "status": trade.orderStatus.status,
+                },
             )
             # Note: This returns the trade object immediately.
             # The status might still be 'Submitted'. Caller needs to monitor the trade object for updates.
@@ -421,9 +429,11 @@ class IBKRClient:
         except Exception:
             logger.error(
                 "Error placing order",
-                contract=contract.localSymbol or contract.symbol,
-                order_type=order.orderType,
                 exc_info=True,
+                extra={
+                    "contract": contract.localSymbol or contract.symbol,
+                    "order_type": order.orderType,
+                },
             )
             return None
 

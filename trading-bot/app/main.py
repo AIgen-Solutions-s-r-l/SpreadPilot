@@ -263,7 +263,7 @@ async def close_positions(follower_id: str):
     if not trading_service:
         raise HTTPException(status_code=503, detail="Trading bot is not initialized")
 
-    logger.info("Closing positions for follower", follower_id=follower_id)
+    logger.info("Closing positions for follower", extra={"follower_id": follower_id})
 
     # Close positions
     result = await trading_service.close_positions(follower_id)

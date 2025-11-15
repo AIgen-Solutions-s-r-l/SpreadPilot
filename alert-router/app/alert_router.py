@@ -73,7 +73,7 @@ class AlertRouter:
         # Create consumer group if it doesn't exist
         try:
             await self.redis_client.xgroup_create(
-                "alerts", self.config.redis_consumer_group, id="0"
+                "alerts", self.config.redis_consumer_group, id="0", mkstream=True
             )
             logger.info(f"Created consumer group: {self.config.redis_consumer_group}")
         except redis.ResponseError as e:
