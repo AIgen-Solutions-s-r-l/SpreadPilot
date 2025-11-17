@@ -76,7 +76,7 @@ API service for managing SpreadPilot followers and operations.
 * **Followers Management**: CRUD operations for follower accounts
 * **P&L Tracking**: Real-time profit and loss data (daily and monthly)
 * **Logs Access**: Query system logs with filtering capabilities
-* **Manual Operations**: Emergency position closing with PIN verification (PIN: 0312)
+* **Manual Operations**: Emergency position closing with PIN verification (configured via MANUAL_OPERATION_PIN)
 * **WebSocket**: Real-time updates for dashboard
 * **Health Monitoring**: Service health check endpoint
 
@@ -102,18 +102,41 @@ Manual operations additionally require PIN verification.
     ],
 )
 
-# Configure CORS
+# Configure CORS - STRICT: No wildcard allowed
+# SECURITY: CORS_ORIGINS must be explicitly set to prevent unauthorized access
+if not settings.cors_origins:
+    logger.error(
+        "CRITICAL: CORS_ORIGINS environment variable is not set. "
+        "This is a security requirement. Set comma-separated allowed origins."
+    )
+    raise ValueError(
+        "CORS_ORIGINS must be set via environment variable. "
+        "Wildcard (*) is not allowed for security. "
+        "Example: CORS_ORIGINS=http://localhost:3000,https://app.example.com"
+    )
+
+# Parse and validate CORS origins
+allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+
+# Validate no wildcard in origins
+if "*" in allowed_origins:
+    logger.error(
+        "CRITICAL: Wildcard (*) is not allowed in CORS_ORIGINS. "
+        "Specify explicit origins for security."
+    )
+    raise ValueError(
+        "Wildcard (*) is not allowed in CORS_ORIGINS. "
+        "Specify explicit allowed origins (e.g., http://localhost:3000,https://app.example.com)"
+    )
+
+logger.info(f"CORS configured with {len(allowed_origins)} allowed origins")
+
 app.add_middleware(
     CORSMiddleware,
-    # Use origins from settings, split comma-separated string into a list
-    allow_origins=(
-        [origin.strip() for origin in settings.cors_origins.split(",")]
-        if settings.cors_origins
-        else ["*"]
-    ),
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicit methods instead of wildcard
+    allow_headers=["Content-Type", "Authorization"],  # Explicit headers instead of wildcard
 )
 
 

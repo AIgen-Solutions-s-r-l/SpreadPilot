@@ -24,8 +24,34 @@ from spreadpilot_core.logging.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
-# PIN for manual operations - get from environment or Vault
-MANUAL_OPERATION_PIN = os.getenv("MANUAL_OPERATION_PIN", "0312")
+# PIN for manual operations - MUST be set via environment variable or Vault
+# Security: No default value to prevent unauthorized access
+MANUAL_OPERATION_PIN = os.getenv("MANUAL_OPERATION_PIN")
+
+# Validate PIN is configured at module load time
+if not MANUAL_OPERATION_PIN:
+    logger.error(
+        "CRITICAL: MANUAL_OPERATION_PIN environment variable is not set. "
+        "Manual operations endpoint will not function. "
+        "Set this via environment variable or Vault before starting the service."
+    )
+    raise ValueError(
+        "MANUAL_OPERATION_PIN must be set via environment variable. "
+        "This is required for security. No default PIN is allowed."
+    )
+
+# Validate PIN strength (minimum 6 characters)
+if len(MANUAL_OPERATION_PIN) < 6:
+    logger.error(
+        "CRITICAL: MANUAL_OPERATION_PIN is too short (minimum 6 characters required). "
+        "Current length: %d", len(MANUAL_OPERATION_PIN)
+    )
+    raise ValueError(
+        f"MANUAL_OPERATION_PIN must be at least 6 characters long. "
+        f"Current length: {len(MANUAL_OPERATION_PIN)}"
+    )
+
+logger.info("Manual operations PIN validated successfully (length: %d characters)", len(MANUAL_OPERATION_PIN))
 
 
 class ManualCloseRequest(BaseModel):
@@ -152,7 +178,7 @@ async def _manual_close_positions_impl(request: ManualCloseRequest):
 async def manual_close_positions(request: ManualCloseRequest = Body(...)):
     """
     Manually close positions for a specific follower.
-    Requires authentication and correct PIN (0312).
+    Requires authentication and correct PIN configured via MANUAL_OPERATION_PIN environment variable.
 
     This endpoint triggers the trading bot to close positions for the specified follower.
 
