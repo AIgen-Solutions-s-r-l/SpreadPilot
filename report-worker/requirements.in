@@ -14,7 +14,7 @@ motor==3.2.0
 pymongo==4.5.0
 
 # Date/Time handling
-pytz>=2023.3,<2024.0
+pytz>=2023.3,<2026.0
 
 # Reporting specific
 openpyxl>=3.1.0,<4.0.0
