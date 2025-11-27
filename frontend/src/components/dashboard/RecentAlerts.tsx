@@ -8,7 +8,8 @@ import {
   List,
   ListItem,
   Avatar,
-  useTheme
+  useTheme,
+  CircularProgress
 } from '@mui/material';
 import { 
   Notifications as NotificationsIcon,
@@ -19,42 +20,11 @@ import {
   Info as InfoIcon,
   AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
-
-// Mock data for alerts
-const mockAlerts = [
-  {
-    type: 'warning' as const,
-    time: '12:45 PM',
-    message: 'Connection to IB Gateway temporarily lost for Follower_004'
-  },
-  {
-    type: 'success' as const,
-    time: '12:30 PM',
-    message: 'System backup completed successfully'
-  },
-  {
-    type: 'info' as const,
-    time: '11:50 AM',
-    message: 'New trading signal detected from Google Sheets'
-  },
-  {
-    type: 'warning' as const,
-    time: '10:20 AM',
-    message: 'High volatility detected for SOXL'
-  },
-  {
-    type: 'success' as const,
-    time: '09:30 AM',
-    message: 'Trading day started - all systems operational'
-  },
-];
+import { useAlerts } from '../../hooks/useAlerts';
+import { Alert } from '../../schemas/alert.schema';
 
 interface AlertItemProps {
-  alert: {
-    type: 'warning' | 'success' | 'info' | 'error';
-    time: string;
-    message: string;
-  };
+  alert: Alert;
   index: number;
 }
 
@@ -62,40 +32,46 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, index }) => {
   const theme = useTheme();
   
   const getAlertIcon = () => {
-    switch (alert.type) {
-      case 'warning':
-        return <WarningIcon sx={{ color: theme.palette.warning.main }} />;
-      case 'success':
-        return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
-      case 'info':
-        return <InfoIcon sx={{ color: theme.palette.info.main }} />;
-      case 'error':
+    switch (alert.severity) {
+      case 'HIGH':
+      case 'CRITICAL':
         return <ErrorIcon sx={{ color: theme.palette.error.main }} />;
+      case 'MEDIUM':
+        return <WarningIcon sx={{ color: theme.palette.warning.main }} />;
+      case 'LOW':
+        return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
+      case 'INFO':
+        return <InfoIcon sx={{ color: theme.palette.info.main }} />;
       default:
         return <InfoIcon sx={{ color: theme.palette.info.main }} />;
     }
   };
   
   const getAlertColor = () => {
-    switch (alert.type) {
-      case 'warning': return theme.palette.warning.main;
-      case 'success': return theme.palette.success.main;
-      case 'info': return theme.palette.info.main;
-      case 'error': return theme.palette.error.main;
+    switch (alert.severity) {
+      case 'HIGH':
+      case 'CRITICAL': return theme.palette.error.main;
+      case 'MEDIUM': return theme.palette.warning.main;
+      case 'LOW': return theme.palette.success.main;
+      case 'INFO': return theme.palette.info.main;
       default: return theme.palette.info.main;
     }
   };
   
   const getAlertBgColor = () => {
-    switch (alert.type) {
-      case 'warning': return theme.palette.warning.light;
-      case 'success': return theme.palette.success.light;
-      case 'info': return theme.palette.info.light;
-      case 'error': return theme.palette.error.light;
+    switch (alert.severity) {
+      case 'HIGH':
+      case 'CRITICAL': return theme.palette.error.light;
+      case 'MEDIUM': return theme.palette.warning.light;
+      case 'LOW': return theme.palette.success.light;
+      case 'INFO': return theme.palette.info.light;
       default: return theme.palette.info.light;
     }
   };
   
+  // Format timestamp
+  const timeString = new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   return (
     <ListItem 
       sx={{ 
@@ -146,7 +122,7 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, index }) => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <AccessTimeIcon sx={{ fontSize: 14, color: 'text.secondary', mr: 0.5 }} />
             <Typography variant="caption" color="text.secondary">
-              {alert.time}
+              {timeString}
             </Typography>
           </Box>
         </Box>
@@ -164,6 +140,8 @@ const RecentAlerts: React.FC<RecentAlertsProps> = ({
   title = 'RECENT ALERTS',
   onViewAll 
 }) => {
+  const { alerts, loading } = useAlerts(5);
+
   return (
     <Card 
       sx={{ 
@@ -203,11 +181,22 @@ const RecentAlerts: React.FC<RecentAlertsProps> = ({
           </Button>
         </Box>
         
-        <List disablePadding>
-          {mockAlerts.map((alert, index) => (
-            <AlertItem key={`${alert.time}-${index}`} alert={alert} index={index} />
-          ))}
-        </List>
+        {loading ? (
+          <Box display="flex" justifyContent="center" p={2}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : (
+          <List disablePadding>
+            {alerts.map((alert, index) => (
+              <AlertItem key={alert.id || index} alert={alert} index={index} />
+            ))}
+            {alerts.length === 0 && (
+               <Typography variant="body2" color="text.secondary" align="center">
+                 No recent alerts
+               </Typography>
+            )}
+          </List>
+        )}
       </CardContent>
     </Card>
   );

@@ -176,20 +176,3 @@ export const useDashboard = (): DashboardData => {
     refresh: fetchDashboardData,
   };
 };
-
-// Hook for real-time metrics updates via WebSocket
-export const useRealtimeMetrics = () => {
-  const [realtimeData, _setRealtimeData] = useState({
-    lastUpdate: new Date(),
-    pnlChange: 0,
-    newTrades: 0,
-    alerts: 0,
-  });
-
-  useEffect(() => {
-    // TODO: Subscribe to WebSocket events for real-time updates
-    // This would integrate with the WebSocketContext
-  }, []);
-
-  return realtimeData;
-};

@@ -15,7 +15,8 @@ import {
   ListItemIcon,
   ListItemText,
   useTheme,
-  Button
+  Button,
+  CircularProgress
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -50,36 +51,10 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-
-
-// Mock Data Types (keeping existing ones for now, will adapt to MUI DataGrid)
-interface Position {
-  id: string; // Added for DataGrid
-  followerId: string;
-  symbol: string;
-  qty: number;
-  entryPrice: string;
-  currentPrice: string;
-  pnl: string;
-}
-
-interface TradeHistoryItem {
-  time: string;
-  followerId: string;
-  action: 'BUY' | 'SELL';
-  symbol: string;
-  qty: number;
-  price: string;
-  pnl?: string; // Optional, only for closing trades
-}
-
-interface TradingSignal {
-  time: string;
-  symbol: string;
-  signal: 'BUY' | 'SELL';
-  details: string;
-  status: 'EXECUTED' | 'PENDING' | 'FAILED' | 'IGNORED';
-}
+import { usePositions } from '../hooks/usePositions';
+import { useTrades } from '../hooks/useTrades';
+import { Position } from '../schemas/position.schema';
+import { Trade } from '../schemas/trade.schema';
 
 type ActiveTab = 0 | 1 | 2 | 3; // For MUI Tabs, index is used
 
@@ -98,8 +73,18 @@ const TabPanel = (props: { children?: React.ReactNode; index: number; value: num
   );
 };
 
-const ActivePositionsSummary: React.FC = () => {
+const ActivePositionsSummary: React.FC<{ positions: Position[] }> = ({ positions }) => {
   const theme = useTheme();
+
+  // Calculate aggregate metrics
+  const totalPositions = positions.length;
+  const totalValue = positions.reduce((sum, p) => sum + (p.market_value || 0), 0);
+  const totalUnrealizedPnl = positions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0);
+  const pnlPercent = totalValue !== 0 ? (totalUnrealizedPnl / totalValue) * 100 : 0;
+
+  const pnlString = totalUnrealizedPnl >= 0 ? `+$${totalUnrealizedPnl.toFixed(2)}` : `-$${Math.abs(totalUnrealizedPnl).toFixed(2)}`;
+  const percentString = `(${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(1)}%)`;
+
   return (
   <Card sx={{ mb: 3 }}>
     <CardContent>
@@ -107,9 +92,9 @@ const ActivePositionsSummary: React.FC = () => {
         ACTIVE POSITIONS SUMMARY
       </Typography>
       <Typography variant="body1">
-        Total: 24 positions | Value: $245,678.90 | P&L:
-        <Typography component="span" sx={{ color: theme.palette.trading.profit, fontWeight: 'medium' }}>
-          {' '}+$12,345.67 (+5.3%)
+        Total: {totalPositions} positions | Value: ${totalValue.toFixed(2)} | P&L:
+        <Typography component="span" sx={{ color: totalUnrealizedPnl >= 0 ? theme.palette.trading.profit : theme.palette.trading.loss, fontWeight: 'medium' }}>
+          {' '}{pnlString} {percentString}
         </Typography>
       </Typography>
     </CardContent>
@@ -129,21 +114,25 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
   };
 
   const columns: GridColDef[] = [
-    { field: 'followerId', headerName: 'FOLLOWER', flex: 1.5, minWidth: 150 },
+    { field: 'follower_id', headerName: 'FOLLOWER', flex: 1.5, minWidth: 150 },
     { field: 'symbol', headerName: 'SYMBOL', flex: 1, minWidth: 100 },
-    { field: 'qty', headerName: 'QTY', type: 'number', flex: 0.5, minWidth: 80 },
-    { field: 'entryPrice', headerName: 'ENTRY', flex: 1, minWidth: 100 },
-    { field: 'currentPrice', headerName: 'CURRENT', flex: 1, minWidth: 100 },
+    { field: 'quantity', headerName: 'QTY', type: 'number', flex: 0.5, minWidth: 80 },
+    { field: 'avg_cost', headerName: 'ENTRY', flex: 1, minWidth: 100, valueFormatter: (params: any) => `$${params.value?.toFixed(2)}` },
+    { field: 'current_price', headerName: 'CURRENT', flex: 1, minWidth: 100, valueFormatter: (params: any) => `$${params.value?.toFixed(2) || '0.00'}` },
     {
-      field: 'pnl',
+      field: 'unrealized_pnl',
       headerName: 'P&L',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, string>) => (
-        <Typography sx={{ color: String(params.value).startsWith('-') ? theme.palette.trading.loss : theme.palette.trading.profit, fontWeight: 'medium' }}>
-          {String(params.value)}
-        </Typography>
-      ),
+      renderCell: (params: GridRenderCellParams<any, number>) => {
+        const val = params.value || 0;
+        const strVal = val >= 0 ? `+$${val.toFixed(2)}` : `-$${Math.abs(val).toFixed(2)}`;
+        return (
+          <Typography sx={{ color: val < 0 ? theme.palette.trading.loss : theme.palette.trading.profit, fontWeight: 'medium' }}>
+            {strVal}
+          </Typography>
+        );
+      },
     },
     {
       field: 'actions',
@@ -166,6 +155,7 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
       <DataGrid
         rows={positions}
         columns={columns}
+        getRowId={(row) => row.id || row._id || Math.random().toString()}
         pageSizeOptions={[5, 10, 25]}
         initialState={{
           pagination: {
@@ -175,7 +165,7 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
         density="compact"
         sx={{
           '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: theme.palette.background.paper, // Or a light gray
+            backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
           },
           '& .MuiDataGrid-cell': {
@@ -199,13 +189,32 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
   );
 };
 
-const PositionDistributionChart: React.FC = () => {
+const PositionDistributionChart: React.FC<{ positions: Position[] }> = ({ positions }) => {
   const theme = useTheme();
-  const data = [
-    { name: 'SOXL', value: 55, fill: theme.palette.primary.main },
-    { name: 'SOXS', value: 25, fill: theme.palette.secondary.main },
-    { name: 'QQQ', value: 20, fill: theme.palette.info.main },
-  ];
+
+  // Group positions by symbol
+  const symbolGroups: {[key: string]: number} = {};
+  positions.forEach(p => {
+    symbolGroups[p.symbol] = (symbolGroups[p.symbol] || 0) + 1;
+  });
+
+  const data = Object.entries(symbolGroups).map(([name, value], index) => ({
+    name,
+    value,
+    fill: [theme.palette.primary.main, theme.palette.secondary.main, theme.palette.info.main, theme.palette.warning.main, theme.palette.success.main][index % 5]
+  }));
+
+  // If no data, show placeholder
+  if (data.length === 0) {
+     return (
+        <Card sx={{ height: '100%' }}>
+            <CardContent sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
+                <Typography color="text.secondary">No active positions</Typography>
+            </CardContent>
+        </Card>
+     );
+  }
+
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -228,43 +237,56 @@ const PositionDistributionChart: React.FC = () => {
   );
 };
 
-const TradeHistoryTable: React.FC<{ trades: TradeHistoryItem[] }> = ({ trades }) => {
+const TradeHistoryTable: React.FC<{ trades: Trade[] }> = ({ trades }) => {
   const theme = useTheme();
   const columns: GridColDef[] = [
-    { field: 'time', headerName: 'TIME', flex: 1, minWidth: 150 },
-    { field: 'followerId', headerName: 'FOLLOWER', flex: 1.5, minWidth: 150 },
     {
-      field: 'action',
-      headerName: 'ACTION',
+      field: 'timestamps',
+      headerName: 'TIME',
+      flex: 1,
+      minWidth: 150,
+      valueGetter: (params: any) => {
+        const ts = params.value?.submitted || params.value?.filled;
+        return ts ? new Date(ts).toLocaleString() : 'N/A';
+      }
+    },
+    { field: 'follower_id', headerName: 'FOLLOWER', flex: 1.5, minWidth: 150 },
+    {
+      field: 'side',
+      headerName: 'SIDE',
       flex: 0.7,
       minWidth: 100,
       renderCell: (params) => (
         <Chip
           label={params.value}
           size="small"
-          color={params.value === 'BUY' ? 'primary' : 'secondary'}
-          sx={{ fontWeight: 'medium', backgroundColor: params.value === 'BUY' ? theme.palette.trading.buy : theme.palette.trading.sell, color: 'white' }}
+          color={['BUY', 'LONG'].includes(String(params.value)) ? 'primary' : 'secondary'}
+          sx={{ fontWeight: 'medium', backgroundColor: ['BUY', 'LONG'].includes(String(params.value)) ? theme.palette.trading.buy : theme.palette.trading.sell, color: 'white' }}
         />
       )
     },
     { field: 'symbol', headerName: 'SYMBOL', flex: 1, minWidth: 100 },
     { field: 'qty', headerName: 'QTY', type: 'number', flex: 0.5, minWidth: 80 },
-    { field: 'price', headerName: 'PRICE', flex: 1, minWidth: 100 },
+    { field: 'fill_price', headerName: 'PRICE', flex: 1, minWidth: 100, valueFormatter: (params: any) => params.value ? `$${params.value.toFixed(2)}` : '-' },
     {
-      field: 'pnl',
-      headerName: 'P&L',
+      field: 'status',
+      headerName: 'STATUS',
       flex: 1,
       minWidth: 120,
-      renderCell: (params: GridRenderCellParams<any, string | undefined>) => params.value ? (
-        <Typography sx={{ color: String(params.value).startsWith('-') ? theme.palette.trading.loss : theme.palette.trading.profit, fontWeight: 'medium' }}>
-          {String(params.value)}
-        </Typography>
-      ) : ('-'),
+      renderCell: (params) => (
+         <Chip label={params.value} size="small" variant="outlined" />
+      )
     },
   ];
   return (
     <Paper sx={{ height: 500, width: '100%' }}>
-      <DataGrid rows={trades.map((t, i) => ({...t, id: i}))} columns={columns} pageSizeOptions={[10, 25, 50]} density="compact" />
+      <DataGrid
+        rows={trades}
+        columns={columns}
+        getRowId={(row) => row.id || row._id || Math.random().toString()}
+        pageSizeOptions={[10, 25, 50]}
+        density="compact"
+      />
     </Paper>
   );
 };
@@ -330,25 +352,41 @@ const PerformanceDashboard: React.FC = () => {
   </Paper>
 )};
 
-const TradingSignalsTable: React.FC<{ signals: TradingSignal[] }> = ({ signals }) => {
+const TradingSignalsTable: React.FC<{ trades: Trade[] }> = ({ trades }) => {
   const theme = useTheme();
-  const getStatusChip = (status: TradingSignal['status']) => {
+
+  // Filter for pending or submitted trades to treat as "Signals"
+  // Or display all for now since we don't have separate signals
+  const signals = trades;
+
+  const getStatusChip = (status: string) => {
     let color: "success" | "warning" | "error" | "info" | "default" = "default";
     let icon = <InfoOutlinedIcon />;
     switch(status) {
-      case 'EXECUTED': color = 'success'; icon = <CheckCircleOutlineIcon />; break;
-      case 'PENDING': color = 'warning'; icon = <WarningAmberOutlinedIcon />; break;
-      case 'FAILED': color = 'error'; icon = <ErrorOutlineIcon />; break;
-      case 'IGNORED': color = 'info'; icon = <InfoOutlinedIcon />; break;
+      case 'FILLED': color = 'success'; icon = <CheckCircleOutlineIcon />; break;
+      case 'PENDING':
+      case 'SUBMITTED': color = 'warning'; icon = <WarningAmberOutlinedIcon />; break;
+      case 'REJECTED':
+      case 'FAILED':
+      case 'CANCELLED': color = 'error'; icon = <ErrorOutlineIcon />; break;
     }
     return <Chip icon={icon} label={status} color={color} size="small" sx={{fontWeight: 'medium'}}/>;
   }
 
   const columns: GridColDef[] = [
-    { field: 'time', headerName: 'TIME', flex: 1, minWidth: 150 },
+    {
+      field: 'timestamps',
+      headerName: 'TIME',
+      flex: 1,
+      minWidth: 150,
+      valueGetter: (params: any) => {
+        const ts = params.value?.submitted || params.value?.filled;
+        return ts ? new Date(ts).toLocaleString() : 'N/A';
+      }
+    },
     { field: 'symbol', headerName: 'SYMBOL', flex: 1, minWidth: 100 },
     {
-      field: 'signal',
+      field: 'side',
       headerName: 'SIGNAL',
       flex: 0.7,
       minWidth: 100,
@@ -356,18 +394,18 @@ const TradingSignalsTable: React.FC<{ signals: TradingSignal[] }> = ({ signals }
         <Chip
           label={params.value}
           size="small"
-          color={params.value === 'BUY' ? 'primary' : 'secondary'}
-          sx={{ fontWeight: 'medium', backgroundColor: params.value === 'BUY' ? theme.palette.trading.buy : theme.palette.trading.sell, color: 'white' }}
+          color={['BUY', 'LONG'].includes(String(params.value)) ? 'primary' : 'secondary'}
+          sx={{ fontWeight: 'medium', backgroundColor: ['BUY', 'LONG'].includes(String(params.value)) ? theme.palette.trading.buy : theme.palette.trading.sell, color: 'white' }}
         />
       )
     },
-    { field: 'details', headerName: 'DETAILS', flex: 2, minWidth: 200 },
+    { field: 'qty', headerName: 'DETAILS', flex: 2, minWidth: 200, valueFormatter: (params: any) => `${params.value} units` },
     {
       field: 'status',
       headerName: 'STATUS',
       flex: 1,
       minWidth: 120,
-      renderCell: (params) => getStatusChip(params.value as TradingSignal['status'])
+      renderCell: (params) => getStatusChip(params.value as string)
     },
     {
       field: 'actions',
@@ -384,7 +422,13 @@ const TradingSignalsTable: React.FC<{ signals: TradingSignal[] }> = ({ signals }
   ];
   return (
     <Paper sx={{ height: 500, width: '100%' }}>
-      <DataGrid rows={signals.map((s, i) => ({...s, id: i}))} columns={columns} pageSizeOptions={[10, 25, 50]} density="compact" />
+      <DataGrid
+        rows={signals}
+        columns={columns}
+        getRowId={(row) => row.id || row._id || Math.random().toString()}
+        pageSizeOptions={[10, 25, 50]}
+        density="compact"
+      />
     </Paper>
   );
 };
@@ -392,28 +436,17 @@ const TradingSignalsTable: React.FC<{ signals: TradingSignal[] }> = ({ signals }
 
 const TradingActivityPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>(0);
+  const { positions, loading: positionsLoading, refresh: refreshPositions } = usePositions();
+  const { trades, loading: tradesLoading, refresh: refreshTrades } = useTrades();
 
   const handleChangeTab = (_event: SyntheticEvent, newValue: ActiveTab) => {
     setActiveTab(newValue);
   };
 
-  // Mock Data
-  const mockPositions: Position[] = [
-    { id: 'pos1', followerId: 'Follower_001', symbol: 'SOXL', qty: 100, entryPrice: '$45.67', currentPrice: '$47.89', pnl: '+$222.00' },
-    { id: 'pos2', followerId: 'Follower_001', symbol: 'QQQ', qty: 25, entryPrice: '$410.25', currentPrice: '$415.75', pnl: '+$137.50' },
-    { id: 'pos3', followerId: 'Follower_002', symbol: 'SOXL', qty: 75, entryPrice: '$46.12', currentPrice: '$47.89', pnl: '+$132.75' },
-  ];
-
-  const mockTradeHistory: TradeHistoryItem[] = [
-    { time: '12:34:56 PM', followerId: 'Follower_001', action: 'BUY', symbol: 'SOXL', qty: 100, price: '$45.67' },
-    { time: '12:15:32 PM', followerId: 'Follower_003', action: 'SELL', symbol: 'SOXS', qty: 50, price: '$32.10', pnl: '+$42.50' },
-  ];
-
-  const mockTradingSignals: TradingSignal[] = [
-    { time: '12:30:00 PM', symbol: 'SOXL', signal: 'BUY', details: '100 shares @ MKT', status: 'EXECUTED' },
-    { time: '12:15:00 PM', symbol: 'SOXS', signal: 'SELL', details: '50 shares @ MKT', status: 'EXECUTED' },
-    { time: '11:00:00 AM', symbol: 'TQQQ', signal: 'BUY', details: '200 shares @ MKT', status: 'PENDING' },
-  ];
+  const handleRefresh = () => {
+    refreshPositions();
+    refreshTrades();
+  };
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -422,7 +455,7 @@ const TradingActivityPage: React.FC = () => {
           Trading Activity
         </Typography>
         <Box>
-          <IconButton aria-label="refresh">
+          <IconButton aria-label="refresh" onClick={handleRefresh}>
             <RefreshIcon />
           </IconButton>
           <IconButton aria-label="settings">
@@ -441,24 +474,28 @@ const TradingActivityPage: React.FC = () => {
       </Box>
 
       <TabPanel value={activeTab} index={0}>
-        <ActivePositionsSummary />
-        <Grid2 container spacing={3}>
-          <Grid2 size={{xs: 12, lg: 8}}>
-            <PositionsTable positions={mockPositions} />
-          </Grid2>
-          <Grid2 size={{xs: 12, lg: 4}}>
-            <PositionDistributionChart />
-          </Grid2>
-        </Grid2>
+        {positionsLoading ? <CircularProgress /> : (
+          <>
+            <ActivePositionsSummary positions={positions} />
+            <Grid2 container spacing={3}>
+              <Grid2 size={{xs: 12, lg: 8}}>
+                <PositionsTable positions={positions} />
+              </Grid2>
+              <Grid2 size={{xs: 12, lg: 4}}>
+                <PositionDistributionChart positions={positions} />
+              </Grid2>
+            </Grid2>
+          </>
+        )}
       </TabPanel>
       <TabPanel value={activeTab} index={1}>
-        <TradeHistoryTable trades={mockTradeHistory} />
+        {tradesLoading ? <CircularProgress /> : <TradeHistoryTable trades={trades} />}
       </TabPanel>
       <TabPanel value={activeTab} index={2}>
         <PerformanceDashboard />
       </TabPanel>
       <TabPanel value={activeTab} index={3}>
-        <TradingSignalsTable signals={mockTradingSignals} />
+        {tradesLoading ? <CircularProgress /> : <TradingSignalsTable trades={trades} />}
       </TabPanel>
     </Container>
   );

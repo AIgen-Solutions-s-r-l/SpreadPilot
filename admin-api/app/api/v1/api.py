@@ -1,4 +1,5 @@
 from app.api.v1.endpoints import (
+    alerts,
     auth,
     dashboard,
     followers,
@@ -6,6 +7,8 @@ from app.api.v1.endpoints import (
     logs,
     manual_operations,
     pnl,
+    positions,
+    trades,
     websocket,
 )
 from fastapi import APIRouter
@@ -17,6 +20,9 @@ api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(followers.router, prefix="/followers", tags=["Followers"])
+api_router.include_router(positions.router, prefix="/positions", tags=["Positions"])
+api_router.include_router(trades.router, prefix="/trades", tags=["Trades"])
+api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 api_router.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 api_router.include_router(pnl.router, prefix="/pnl", tags=["P&L"])
 api_router.include_router(logs.router, prefix="/logs", tags=["Logs"])

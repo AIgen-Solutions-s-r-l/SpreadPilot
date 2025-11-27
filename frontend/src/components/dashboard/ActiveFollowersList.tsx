@@ -7,21 +7,15 @@ import {
   Button,
   List,
   ListItem,
-  useTheme
+  useTheme,
+  CircularProgress
 } from '@mui/material';
 import { 
   People as PeopleIcon,
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
-
-// Mock data for followers
-const mockFollowers = [
-  { id: 'Follower_001', status: 'online' as const, pnl: '+$1,245.67', positions: 3, lastActive: '2 min ago' },
-  { id: 'Follower_002', status: 'online' as const, pnl: '+$867.45', positions: 2, lastActive: '5 min ago' },
-  { id: 'Follower_003', status: 'online' as const, pnl: '-$123.45', positions: 1, lastActive: '10 min ago' },
-  { id: 'Follower_004', status: 'offline' as const, pnl: '$0.00', positions: 0, lastActive: '1 day ago' },
-  { id: 'Follower_005', status: 'warning' as const, pnl: '+$2,345.67', positions: 4, lastActive: '15 min ago' },
-];
+import { useFollowers } from '../../hooks/useFollowers';
+import { Follower } from '../../schemas/follower.schema';
 
 interface StatusIndicatorProps {
   status: 'online' | 'offline' | 'warning' | 'error';
@@ -55,23 +49,25 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({ status }) => {
 };
 
 interface FollowerItemProps {
-  follower: {
-    id: string;
-    status: 'online' | 'offline' | 'warning' | 'error';
-    pnl: string;
-    positions: number;
-    lastActive: string;
-  };
+  follower: Follower;
 }
 
 const FollowerItem: React.FC<FollowerItemProps> = ({ follower }) => {
   const theme = useTheme();
   
+  // Logic to determine PnL (assuming follower object might have pnl data in the future or we fetch it)
+  // For now, we'll display a placeholder or 0 if not available
+  const pnl = 0; // Placeholder until PnL is integrated into Follower model or fetched separately
+  const pnlString = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+
   const getPnlColor = () => {
-    if (follower.pnl.startsWith('+')) return theme.palette.trading.profit;
-    if (follower.pnl.startsWith('-')) return theme.palette.trading.loss;
+    if (pnl > 0) return theme.palette.trading.profit;
+    if (pnl < 0) return theme.palette.trading.loss;
     return theme.palette.trading.neutral;
   };
+
+  // Determine status based on enabled/active flags
+  const status = follower.enabled && follower.botStatus === 'RUNNING' ? 'online' : 'offline';
   
   return (
     <ListItem 
@@ -92,7 +88,7 @@ const FollowerItem: React.FC<FollowerItemProps> = ({ follower }) => {
       <Box sx={{ width: '100%' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
           <Box display="flex" alignItems="center">
-            <StatusIndicator status={follower.status} />
+            <StatusIndicator status={status} />
             <Typography variant="subtitle2" fontWeight="medium">
               {follower.id}
             </Typography>
@@ -102,16 +98,16 @@ const FollowerItem: React.FC<FollowerItemProps> = ({ follower }) => {
             fontWeight="medium"
             sx={{ color: getPnlColor() }}
           >
-            {follower.pnl}
+            {pnlString}
           </Typography>
         </Box>
         
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="caption" color="text.secondary">
-            Positions: {follower.positions}
+            Positions: {follower.positions?.count || 0}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Last active: {follower.lastActive}
+            Bot Status: {follower.botStatus}
           </Typography>
         </Box>
       </Box>
@@ -128,6 +124,9 @@ const ActiveFollowersList: React.FC<ActiveFollowersListProps> = ({
   title = 'ACTIVE FOLLOWERS',
   onViewAll 
 }) => {
+  const { followers, loading } = useFollowers();
+  const activeFollowers = followers.filter(f => f.enabled).slice(0, 5); // Show top 5 active
+
   return (
     <Card 
       sx={{ 
@@ -167,11 +166,22 @@ const ActiveFollowersList: React.FC<ActiveFollowersListProps> = ({
           </Button>
         </Box>
         
-        <List disablePadding>
-          {mockFollowers.map((follower) => (
-            <FollowerItem key={follower.id} follower={follower} />
-          ))}
-        </List>
+        {loading ? (
+          <Box display="flex" justifyContent="center" p={2}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : (
+          <List disablePadding>
+            {activeFollowers.map((follower) => (
+              <FollowerItem key={follower.id} follower={follower} />
+            ))}
+            {activeFollowers.length === 0 && (
+               <Typography variant="body2" color="text.secondary" align="center">
+                 No active followers
+               </Typography>
+            )}
+          </List>
+        )}
       </CardContent>
     </Card>
   );
