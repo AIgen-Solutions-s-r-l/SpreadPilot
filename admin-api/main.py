@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 from app.api.v1.api import api_router
 from app.api.v1.endpoints.dashboard import periodic_follower_update_task
 from app.core.config import get_settings
+from app.core.cors import configure_cors
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
 from app.services.follower_service import FollowerService
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 try:
     from spreadpilot_core.dry_run import DryRunConfig
@@ -102,48 +102,10 @@ Manual operations additionally require PIN verification.
     ],
 )
 
-# Configure CORS - STRICT: No wildcard allowed
-# SECURITY: CORS_ORIGINS must be explicitly set to prevent unauthorized access
-if not settings.cors_origins:
-    logger.error(
-        "CRITICAL: CORS_ORIGINS environment variable is not set. "
-        "This is a security requirement. Set comma-separated allowed origins."
-    )
-    raise ValueError(
-        "CORS_ORIGINS must be set via environment variable. "
-        "Wildcard (*) is not allowed for security. "
-        "Example: CORS_ORIGINS=http://localhost:3000,https://app.example.com"
-    )
-
-# Parse and validate CORS origins
-allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",")]
-
-# Validate no wildcard in origins
-if "*" in allowed_origins:
-    logger.error(
-        "CRITICAL: Wildcard (*) is not allowed in CORS_ORIGINS. "
-        "Specify explicit origins for security."
-    )
-    raise ValueError(
-        "Wildcard (*) is not allowed in CORS_ORIGINS. "
-        "Specify explicit allowed origins (e.g., http://localhost:3000,https://app.example.com)"
-    )
-
+# Configure CORS — strict: no wildcards, explicit method/header allowlists.
+# See admin-api/app/core/cors.py for the policy (issue #111).
+allowed_origins = configure_cors(app, settings)
 logger.info(f"CORS configured with {len(allowed_origins)} allowed origins")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "OPTIONS",
-    ],  # Explicit methods instead of wildcard
-    allow_headers=["Content-Type", "Authorization"],  # Explicit headers instead of wildcard
-)
 
 
 @app.get("/health", tags=["Health"])
