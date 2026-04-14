@@ -14,7 +14,7 @@ _ADMIN_API_ROOT = _PROJECT_ROOT / "admin-api"
 if str(_ADMIN_API_ROOT) not in sys.path:
     sys.path.insert(0, str(_ADMIN_API_ROOT))
 
-from app.core.cors import configure_cors  # type: ignore  # noqa: E402
+from app.core.cors import configure_cors  # type: ignore
 
 
 def _settings(cors_origins: str) -> SimpleNamespace:
@@ -38,13 +38,13 @@ def test_rejects_empty_cors_origins() -> None:
 
 def test_rejects_exact_wildcard() -> None:
     app = FastAPI()
-    with pytest.raises(ValueError, match="[Ww]ildcard"):
+    with pytest.raises(ValueError, match=r"[Ww]ildcard"):
         configure_cors(app, _settings("*"))
 
 
 def test_rejects_wildcard_in_comma_separated_list() -> None:
     app = FastAPI()
-    with pytest.raises(ValueError, match="[Ww]ildcard"):
+    with pytest.raises(ValueError, match=r"[Ww]ildcard"):
         configure_cors(app, _settings("http://localhost:3000,*"))
 
 
