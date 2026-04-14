@@ -135,3 +135,5 @@ Pipfile.lock
 .cache/
 .temp/
 .tmp/
+# Per-developer Claude Code project guidance (local only)
+CLAUDE.md
