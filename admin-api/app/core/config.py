@@ -8,6 +8,27 @@ from spreadpilot_core.utils.secret_manager import SecretType, get_secret_manager
 
 logger = get_logger(__name__)
 
+# Values that must never slip into production as a JWT secret.
+# Lowercased for case-insensitive comparison. Extend as new leaks are discovered.
+KNOWN_WEAK_JWT_SECRETS: frozenset[str] = frozenset(
+    {
+        "testsecret",
+        "test_secret_123",
+        "test-jwt-secret",
+        "test-secret-key",
+        "changeme",
+        "change_me",
+        "password",
+        "secret",
+        "jwt_secret",
+        "your-secret-key-here",
+        "your_jwt_secret_key_should_be_long_and_random",
+    }
+)
+
+# HS256 minimum key length. 64 chars (256 bits as hex) matches `openssl rand -hex 32`.
+JWT_SECRET_MIN_LENGTH: int = 64
+
 
 class Settings(BaseModel):
     """Application settings."""
@@ -63,9 +84,20 @@ class Settings(BaseModel):
         if not self.jwt_secret:
             missing_secrets.append("JWT_SECRET")
 
-        # Validate JWT secret strength (minimum 32 characters for HS256)
-        if self.jwt_secret and len(self.jwt_secret) < 32:
-            missing_secrets.append("JWT_SECRET (too short - minimum 32 characters required)")
+        # Validate JWT secret strength (minimum 64 characters for HS256 safety margin)
+        if self.jwt_secret and len(self.jwt_secret) < JWT_SECRET_MIN_LENGTH:
+            missing_secrets.append(
+                f"JWT_SECRET (too short - minimum {JWT_SECRET_MIN_LENGTH} characters required)"
+            )
+
+        # Reject known-weak placeholder values in every environment. These strings have
+        # historically shipped as docker-compose defaults or .env.example templates;
+        # treating them as secrets is a deployment hazard.
+        if self.jwt_secret and self.jwt_secret.lower() in KNOWN_WEAK_JWT_SECRETS:
+            missing_secrets.append(
+                "JWT_SECRET (value is a known-weak placeholder - generate a real secret "
+                "with: openssl rand -hex 32)"
+            )
 
         # Validate CORS is not wildcard
         if self.cors_origins == "*":

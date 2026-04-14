@@ -24,7 +24,7 @@ services:
       - MONGO_DB_NAME=spreadpilot_admin_test
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
-      - JWT_SECRET=${JWT_SECRET:-testsecret}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set (min 64 chars). Export the var or use deploy/.env.dev.template. Never ship a default.}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
     volumes:
       - ./credentials:/app/credentials

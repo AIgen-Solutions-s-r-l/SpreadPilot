@@ -37,7 +37,7 @@ def setup_test_env():
             "SMTP_SERVER": "localhost",
             "SMTP_PORT": "1025",  # MailHog port
             "GCS_BUCKET": "test-reports",
-            "JWT_SECRET": "test_secret_123",
+            "JWT_SECRET": "DEV_ONLY_NOT_A_SECRET_regenerate_with_openssl_rand_hex_32_aaaaaaaa",
         }
     )
     yield

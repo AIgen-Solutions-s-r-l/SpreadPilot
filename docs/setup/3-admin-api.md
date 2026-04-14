@@ -71,7 +71,7 @@ admin-api:
     - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
     - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
-    - JWT_SECRET=${JWT_SECRET:-testsecret}
+    - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set (min 64 chars)}
     - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
   volumes:
     - ./credentials:/app/credentials
@@ -100,7 +100,7 @@ The Admin API requires several environment variables to be set in the `.env` fil
 # Admin API Authentication
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD_HASH=your_hashed_password
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=  # REQUIRED, min 64 chars. Generate with: openssl rand -hex 32
 
 # MongoDB (Already set up for MongoDB)
 MONGO_INITDB_ROOT_USERNAME=admin
@@ -113,8 +113,10 @@ Replace the placeholder values with your actual credentials and settings.
 - The `ADMIN_USERNAME` is the username for logging into the Admin API
 - The `ADMIN_PASSWORD_HASH` should be a bcrypt hash of your admin password
 - The `JWT_SECRET` is used for signing JSON Web Tokens for authentication
-- If you don't provide values for `ADMIN_USERNAME` and `JWT_SECRET`, the defaults will be used (`admin` and `testsecret` respectively)
-- For production environments, you should use strong, unique values for all these variables
+- `JWT_SECRET` is **REQUIRED** — the stack refuses to start without it (no default is shipped)
+- Minimum 64 characters; known-weak placeholders (`testsecret`, `changeme`, etc.) are rejected at startup
+- Generate a real secret with: `openssl rand -hex 32`
+- For production environments, use strong, unique values for all these variables (store them in Vault or GCP Secret Manager)
 
 ## 4. 🔑 Generating a Password Hash
 
