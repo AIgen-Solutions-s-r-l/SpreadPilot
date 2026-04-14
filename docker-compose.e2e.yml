@@ -62,7 +62,7 @@ services:
     environment:
       MONGO_URI: mongodb://admin:password@mongodb-test:27017/spreadpilot_test?authSource=admin
       IBKR_GATEWAY_URL: http://ibkr-gateway-mock:5001
-      JWT_SECRET: test_secret_123
+      JWT_SECRET: DEV_ONLY_NOT_A_SECRET_regenerate_with_openssl_rand_hex_32_aaaaaaaa
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD_HASH: $$2b$$12$$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCsuBKQLi
       LOG_LEVEL: DEBUG

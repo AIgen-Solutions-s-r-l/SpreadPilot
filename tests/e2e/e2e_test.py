@@ -74,7 +74,7 @@ def test_environment(docker_client):
                 "environment": {
                     "MONGO_URI": TEST_MONGODB_URI,
                     "IBKR_GATEWAY_URL": TEST_IBKR_GATEWAY_URL,
-                    "JWT_SECRET": "test_secret_123",
+                    "JWT_SECRET": "DEV_ONLY_NOT_A_SECRET_regenerate_with_openssl_rand_hex_32_aaaaaaaa",
                     "ADMIN_USERNAME": "admin",
                     "ADMIN_PASSWORD_HASH": "$2b$12$test_hash",
                 },

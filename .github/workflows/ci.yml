@@ -49,6 +49,36 @@ jobs:
         run: |
           black --check --diff .
 
+  # Secret-hygiene regression check for issue #109.
+  # Blocks merges that re-introduce known-weak JWT_SECRET defaults in compose/env files.
+  secret-hygiene:
+    name: Secret Hygiene (JWT weak-default check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject known-weak JWT_SECRET defaults
+        run: |
+          set -euo pipefail
+          # Known-weak fallback patterns. The DEV_ONLY_NOT_A_SECRET_* placeholder is
+          # allowed because its name makes intent obvious and its length (>=64) also
+          # passes the admin-api runtime validation.
+          patterns='JWT_SECRET[[:space:]]*[:=][[:space:]]*['"'"'"]?(testsecret|changeme|change_me|password|test[_-]secret[_-]key|test[_-]secret[_-]123|test[-_]jwt[-_]secret|your[-_]secret[-_]key[-_]here|your_jwt_secret_key_should_be_long_and_random|secret|jwt_secret)[[:space:]'"'"'"]*$'
+          files=$(git ls-files '*.yml' '*.yaml' '.env*' '*.env*' '**/.env*' 'admin-api/.env.example' 'deploy/*.template' 'infra/*.template' 2>/dev/null | sort -u)
+          fail=0
+          for f in $files; do
+            if grep -HnE "$patterns" "$f"; then
+              fail=1
+            fi
+          done
+          # Also flag :-weak-value defaults in compose files
+          if git ls-files 'docker-compose*.y*ml' '**/docker-compose*.y*ml' | xargs grep -HnE 'JWT_SECRET[^}]*:-(testsecret|changeme|password|secret|test[_-]secret|test[_-]jwt[_-]secret)' 2>/dev/null; then
+            fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Weak JWT_SECRET value or fallback detected. See issue #109."
+            exit 1
+          fi
+
   # Python unit tests
   python-tests:
     name: Python Unit Tests (Pytest)
@@ -189,7 +219,7 @@ jobs:
           ENV=test
           MONGO_INITDB_ROOT_USERNAME=testuser
           MONGO_INITDB_ROOT_PASSWORD=testpass
-          JWT_SECRET=test-secret-key
+          JWT_SECRET=DEV_ONLY_NOT_A_SECRET_regenerate_with_openssl_rand_hex_32_aaaaaaaa
           VAULT_TOKEN=test-vault-token
           TELEGRAM_BOT_TOKEN=test-telegram-token
           TELEGRAM_CHAT_ID=test-chat-id

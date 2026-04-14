@@ -350,7 +350,7 @@ ADMIN_USERNAME=admin
 # Generate password hash: htpasswd -bnBC 12 "" your_password | tr -d ':\n'
 ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password
 # Generate JWT secret: openssl rand -hex 32
-JWT_SECRET=your_32_byte_hex_secret
+JWT_SECRET=  # REQUIRED, min 64 chars. Generate with: openssl rand -hex 32
 JWT_EXPIRATION_MINUTES=1440  # 24 hours
 
 # ==========================================
@@ -529,7 +529,7 @@ cat security_checklist.md
 Before production deployment, ensure:
 
 - ✅ All default passwords changed
-- ✅ JWT_SECRET is cryptographically random (32+ bytes)
+- ✅ JWT_SECRET is cryptographically random, minimum 64 characters (e.g. `openssl rand -hex 32`)
 - ✅ ADMIN_PASSWORD_HASH uses bcrypt with work factor >= 12
 - ✅ Vault is unsealed and backed up
 - ✅ TLS certificates are valid and not self-signed
