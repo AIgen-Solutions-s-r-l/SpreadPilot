@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sys
+import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,12 +10,15 @@ import pytest
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_ADMIN_API_ROOT = _PROJECT_ROOT / "admin-api"
-if str(_ADMIN_API_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ADMIN_API_ROOT))
-
-from app.core.cors import configure_cors  # type: ignore
+# Load cors.py by absolute path to avoid the `app` package-name collision
+# between admin-api/app/ and trading-bot/app/ that otherwise breaks in CI
+# (where both are on PYTHONPATH).
+_CORS_PATH = Path(__file__).resolve().parents[2] / "admin-api" / "app" / "core" / "cors.py"
+_spec = importlib.util.spec_from_file_location("_admin_api_cors", _CORS_PATH)
+assert _spec and _spec.loader
+_admin_api_cors = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_admin_api_cors)
+configure_cors = _admin_api_cors.configure_cors
 
 
 def _settings(cors_origins: str) -> SimpleNamespace:
