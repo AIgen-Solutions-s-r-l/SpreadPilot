@@ -5,6 +5,7 @@ Centralising the CORS middleware setup here prevents the two entrypoints
 shipped a permissive `allow_origins=['*']` fallback with `allow_credentials=True`,
 which is a CORS bypass (see issue #111).
 """
+
 from __future__ import annotations
 
 from typing import Protocol

@@ -1,4 +1,5 @@
 """Tests for admin-api CORS hardening (issue #111)."""
+
 from __future__ import annotations
 
 import sys
