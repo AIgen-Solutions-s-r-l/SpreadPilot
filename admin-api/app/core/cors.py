@@ -23,11 +23,14 @@ class _SettingsLike(Protocol):
 
 
 def configure_cors(app: FastAPI, settings: _SettingsLike) -> list[str]:
-    """Validate CORS_ORIGINS and register CORSMiddleware.
+    """Validate CORS_ORIGINS and register CORSMiddleware on `app`.
 
-    Raises ValueError (fail-fast) if `settings.cors_origins` is unset or
-    contains the wildcard `*`. Returns the parsed list of allowed origins
-    for logging / testing purposes.
+    Side effect: calls `app.add_middleware(CORSMiddleware, ...)` with an
+    explicit methods/headers allowlist and `allow_credentials=True`.
+
+    Raises ValueError (fail-fast) if `settings.cors_origins` is empty,
+    whitespace-only, or contains the wildcard `*`. Returns the parsed
+    list of allowed origins for logging / testing purposes.
     """
     raw = (settings.cors_origins or "").strip()
     if not raw:
@@ -49,6 +52,8 @@ def configure_cors(app: FastAPI, settings: _SettingsLike) -> list[str]:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        # Required for JWT bearer-token cookies and the Authorization header.
+        # Safe because wildcard origins are rejected above.
         allow_credentials=True,
         allow_methods=ALLOWED_METHODS,
         allow_headers=ALLOWED_HEADERS,

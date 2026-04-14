@@ -62,13 +62,13 @@ def test_accepts_multiple_valid_origins_trimming_whitespace() -> None:
     assert opts["allow_origins"] == ["http://localhost:3000", "https://app.example.com"]
 
 
-def test_credentials_never_combined_with_wildcard() -> None:
-    """After configure_cors, if credentials are allowed, origins must not be ['*']."""
+def test_credentials_enabled_and_origins_are_never_wildcard() -> None:
+    """Unconditional assertion: credentials on, wildcard off, always together."""
     app = FastAPI()
     configure_cors(app, _settings("http://localhost:3000"))
     opts = _cors_middleware_options(app)
-    if opts.get("allow_credentials"):
-        assert "*" not in opts["allow_origins"]
+    assert opts["allow_credentials"] is True
+    assert "*" not in opts["allow_origins"]
 
 
 def test_methods_are_explicit_allowlist_not_wildcard() -> None:
@@ -87,8 +87,16 @@ def test_headers_are_explicit_allowlist_not_wildcard() -> None:
     assert set(opts["allow_headers"]) == {"Content-Type", "Authorization"}
 
 
-def test_expose_headers_does_not_contain_wildcard() -> None:
+def test_expose_headers_is_not_set() -> None:
+    """expose_headers defaults to [] when unset, never ['*']."""
     app = FastAPI()
     configure_cors(app, _settings("http://localhost:3000"))
     opts = _cors_middleware_options(app)
-    assert "*" not in opts.get("expose_headers", [])
+    assert opts.get("expose_headers", []) == []
+
+
+def test_rejects_whitespace_only_origin() -> None:
+    """A single whitespace entry is equivalent to empty — must fail fast."""
+    app = FastAPI()
+    with pytest.raises(ValueError, match="CORS_ORIGINS"):
+        configure_cors(app, _settings("   "))

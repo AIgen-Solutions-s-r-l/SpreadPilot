@@ -24,7 +24,7 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
       - JWT_SECRET=${JWT_SECRET:-testsecret}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CORS_ORIGINS=${CORS_ORIGINS:?CORS_ORIGINS must be set explicitly (comma-separated list). Wildcard is not allowed — see issue #111.}
     volumes:
       - ./credentials:/app/credentials
       - ./spreadpilot-core:/app/spreadpilot-core

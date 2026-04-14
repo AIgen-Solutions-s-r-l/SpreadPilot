@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Security
+
+#### CORS hardening on admin-api — no more wildcard with credentials (#111)
+- **Removed** the permissive `allow_origins=['*']` fallback and the
+  `allow_methods/headers/expose_headers=['*']` wildcards from the
+  `admin_api.py` entrypoint. Combined with `allow_credentials=True` those
+  wildcards constituted a CORS bypass.
+- **Added** a shared helper `admin-api/app/core/cors.py:configure_cors()`
+  used by **both** `main.py` and `admin_api.py` so the two entrypoints
+  can no longer drift.
+- **Breaking for operators**: `CORS_ORIGINS` is now required. The service
+  refuses to start on empty or wildcard values. Ops action: set
+  `CORS_ORIGINS=http://localhost:3000,https://app.example.com` (or your
+  real origins) before deploying.
+
 ## [2.1.0.0] - 2025-11-11
 
 ### ✨ Features
