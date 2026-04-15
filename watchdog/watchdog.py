@@ -7,12 +7,13 @@ import logging
 import os
 import subprocess
 import sys
+import uuid
 from datetime import datetime
 
 import httpx
 import redis.asyncio as redis
 from motor.motor_asyncio import AsyncIOMotorClient
-from spreadpilot_core.models.alert import Alert, AlertEvent, AlertSeverity, AlertType
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 # Configure logging
 logging.basicConfig(
@@ -180,38 +181,40 @@ class ServiceWatchdog:
         """
         service_config = SERVICES[service_name]
 
-        # Determine severity based on action and success
+        # Determine severity based on action and success. AlertSeverity has
+        # only INFO / WARNING / CRITICAL; the 'down' case maps to CRITICAL.
         if action == "recovery":
             severity = AlertSeverity.INFO
-            reason = f"RECOVERED: {service_config['display_name']} is now healthy"
+            message = f"RECOVERED: {service_config['display_name']} is now healthy"
         elif action == "restart" and success:
             severity = AlertSeverity.WARNING
-            reason = (
+            message = (
                 f"RESTARTED: {service_config['display_name']} was "
                 "successfully restarted after failures"
             )
         elif action == "restart" and not success:
             severity = AlertSeverity.CRITICAL
-            reason = f"RESTART_FAILED: Failed to restart {service_config['display_name']}"
+            message = f"RESTART_FAILED: Failed to restart {service_config['display_name']}"
         else:
-            severity = AlertSeverity.ERROR
-            reason = f"DOWN: {service_config['display_name']} is not responding"
+            severity = AlertSeverity.CRITICAL
+            message = f"DOWN: {service_config['display_name']} is not responding"
 
-        # Create alert compatible with alert router
+        # Create alert compatible with alert router.
+        # The legacy 'details' payload (component_name, container_name, action,
+        # success, consecutive_failures, health_url) has no field on the current
+        # Alert model — it is folded into the message string so nothing is lost.
         alert = Alert(
-            service="watchdog",
+            _id=str(uuid.uuid4()),
             follower_id="system",  # System-level alert
-            reason=reason,
             severity=severity,
-            timestamp=datetime.utcnow(),
-            details={
-                "component_name": service_name,
-                "container_name": service_config["container_name"],
-                "action": action,
-                "success": success,
-                "consecutive_failures": self.failure_counts[service_name],
-                "health_url": service_config["health_url"],
-            },
+            type=AlertType.COMPONENT_DOWN,
+            message=(
+                f"{message} "
+                f"[service={service_name}, container={service_config['container_name']}, "
+                f"action={action}, success={success}, "
+                f"consecutive_failures={self.failure_counts[service_name]}, "
+                f"health_url={service_config['health_url']}]"
+            ),
         )
 
         # Publish to Redis Stream for alert router
@@ -219,31 +222,23 @@ class ServiceWatchdog:
             if self.redis_client:
                 alert_json = alert.model_dump_json()
                 await self.redis_client.xadd(REDIS_ALERT_STREAM, {"data": alert_json})
-                logger.info(f"Alert published to Redis: {alert.reason}")
+                logger.info(f"Alert published to Redis: {alert.message}")
             else:
                 logger.warning("Redis not connected, alert not published")
         except Exception as e:
-            logger.error(f"Failed to publish alert to Redis: {e}")
+            logger.error(f"Failed to publish alert to Redis: {e}", exc_info=True)
 
-        # Also store in MongoDB for persistence
+        # Also store in MongoDB for persistence.
+        # Uses the Alert document directly (model_dump with the _id alias for
+        # Mongo's _id field). The legacy path used AlertEvent with timestamp/
+        # reason/details/COMPONENT_RECOVERED — all of which are absent from the
+        # current models and would raise AttributeError / invalid-enum errors.
         try:
             if self.mongo_db:
-                # Store as AlertEvent for MongoDB compatibility
-                event_type = (
-                    AlertType.COMPONENT_RECOVERED
-                    if action == "recovery"
-                    else AlertType.COMPONENT_DOWN
-                )
-                alert_event = AlertEvent(
-                    event_type=event_type,
-                    timestamp=alert.timestamp,
-                    message=alert.reason,
-                    params=alert.details,
-                )
-                await self.mongo_db.alerts.insert_one(alert_event.dict())
-                logger.info(f"Alert stored in MongoDB for persistence")
+                await self.mongo_db.alerts.insert_one(alert.model_dump(by_alias=True))
+                logger.info("Alert stored in MongoDB for persistence")
         except Exception as e:
-            logger.error(f"Failed to store alert in MongoDB: {e}")
+            logger.error(f"Failed to store alert in MongoDB: {e}", exc_info=True)
 
     async def monitor_service(self, service_name: str):
         """

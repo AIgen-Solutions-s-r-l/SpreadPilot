@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import json
 import time
+import uuid
 from typing import Any
 
 import ib_insync
@@ -11,7 +12,7 @@ import redis.asyncio as redis
 from ib_insync import LimitOrder
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 logger = get_logger(__name__)
 
@@ -45,13 +46,18 @@ class VerticalSpreadExecutor:
             logger.info("Disconnected from Redis")
 
     async def _publish_alert(
-        self, follower_id: str, reason: str, severity: AlertSeverity = AlertSeverity.CRITICAL
+        self,
+        follower_id: str,
+        message: str,
+        alert_type: AlertType,
+        severity: AlertSeverity = AlertSeverity.CRITICAL,
     ):
         """Publish an alert to Redis alerts stream.
 
         Args:
             follower_id: Follower ID
-            reason: Alert reason
+            message: Human-readable alert message (was 'reason' pre-#179)
+            alert_type: The AlertType category (required by the Alert model)
             severity: Alert severity level
         """
         try:
@@ -60,21 +66,21 @@ class VerticalSpreadExecutor:
 
             # Create alert object
             alert = Alert(
+                _id=str(uuid.uuid4()),
                 follower_id=follower_id,
-                reason=reason,
                 severity=severity,
-                service="executor",
-                timestamp=time.time(),
+                type=alert_type,
+                message=message,
             )
 
             # Add to Redis stream
             await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
 
             logger.info(
-                f"Published {severity.value} alert to Redis for follower {follower_id}: {reason}"
+                f"Published {severity.value} alert to Redis for follower {follower_id}: {message}"
             )
         except Exception as e:
-            logger.error(f"Failed to publish alert to Redis: {e}")
+            logger.error(f"Failed to publish alert to Redis: {e}", exc_info=True)
 
     async def execute_vertical_spread(
         self,
@@ -135,7 +141,8 @@ class VerticalSpreadExecutor:
                 # Publish alert for margin failure
                 await self._publish_alert(
                     follower_id=follower_id,
-                    reason=f"NO_MARGIN: {margin_check_result['error']}",
+                    message=f"NO_MARGIN: {margin_check_result['error']}",
+                    alert_type=AlertType.NO_MARGIN,
                     severity=AlertSeverity.CRITICAL,
                 )
                 return {
@@ -162,7 +169,8 @@ class VerticalSpreadExecutor:
                 # Publish alert for MID too low
                 await self._publish_alert(
                     follower_id=follower_id,
-                    reason=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold}",
+                    message=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold}",
+                    alert_type=AlertType.MID_TOO_LOW,
                     severity=AlertSeverity.CRITICAL,
                 )
                 return {
@@ -195,7 +203,8 @@ class VerticalSpreadExecutor:
             # Publish alert for gateway/execution error
             await self._publish_alert(
                 follower_id=follower_id,
-                reason=f"GATEWAY_UNREACHABLE: {str(e)}",
+                message=f"GATEWAY_UNREACHABLE: {str(e)}",
+                alert_type=AlertType.GATEWAY_UNREACHABLE,
                 severity=AlertSeverity.CRITICAL,
             )
             return {
@@ -431,7 +440,8 @@ class VerticalSpreadExecutor:
                     # Publish alert for limit price below threshold
                     await self._publish_alert(
                         follower_id=follower_id,
-                        reason=f"MID_TOO_LOW: Limit price ${current_limit_price:.3f} fell below threshold ${min_price_threshold} on attempt {attempt}",
+                        message=f"MID_TOO_LOW: Limit price ${current_limit_price:.3f} fell below threshold ${min_price_threshold} on attempt {attempt}",
+                        alert_type=AlertType.MID_TOO_LOW,
                         severity=AlertSeverity.CRITICAL,
                     )
                     return {
@@ -510,7 +520,11 @@ class VerticalSpreadExecutor:
                     if is_ib_rejection:
                         await self._publish_alert(
                             follower_id=follower_id,
-                            reason=f"REJECTED: IB rejected order on attempt {attempt}. Reason: {trade.orderStatus.whyHeld or 'Unknown'}",
+                            message=f"REJECTED: IB rejected order on attempt {attempt}. Reason: {trade.orderStatus.whyHeld or 'Unknown'}",
+                            # IB rejection most commonly maps to margin/credit issues;
+                            # NO_MARGIN is the closest enum value until a dedicated
+                            # REJECTED type is introduced (see #191).
+                            alert_type=AlertType.NO_MARGIN,
                             severity=AlertSeverity.CRITICAL,
                         )
                         return {
@@ -558,7 +572,8 @@ class VerticalSpreadExecutor:
             # All attempts exhausted
             await self._publish_alert(
                 follower_id=follower_id,
-                reason=f"LIMIT_REACHED: All {max_attempts} attempts exhausted. Initial limit: ${initial_mid_price:.3f}, Final limit: ${current_limit_price:.3f}",
+                message=f"LIMIT_REACHED: All {max_attempts} attempts exhausted. Initial limit: ${initial_mid_price:.3f}, Final limit: ${current_limit_price:.3f}",
+                alert_type=AlertType.LIMIT_REACHED,
                 severity=AlertSeverity.CRITICAL,
             )
 

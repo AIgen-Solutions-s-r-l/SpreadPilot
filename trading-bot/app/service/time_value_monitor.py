@@ -6,6 +6,7 @@ Monitors open positions and automatically closes them when time value falls belo
 import asyncio
 import json
 import time
+import uuid
 from enum import StrEnum
 from typing import Any
 
@@ -15,7 +16,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from ib_insync import Contract, MarketOrder
 from spreadpilot_core.logging import get_logger
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 logger = get_logger(__name__)
 
@@ -311,19 +312,20 @@ class TimeValueMonitor:
             TimeValueStatus.CRITICAL: AlertSeverity.CRITICAL,
         }
 
-        # Create reason based on status
+        # Create message based on status
         if status == TimeValueStatus.CRITICAL:
-            reason = f"TIME_VALUE_THRESHOLD: Position {contract.symbol} {contract.strike}{contract.right} has critical time value ${time_value:.2f} <= $0.10. Closing position."
+            message = f"TIME_VALUE_THRESHOLD: Position {contract.symbol} {contract.strike}{contract.right} has critical time value ${time_value:.2f} <= $0.10. Closing position."
         else:
-            reason = f"TIME_VALUE_WARNING: Position {contract.symbol} {contract.strike}{contract.right} has low time value ${time_value:.2f}"
+            message = f"TIME_VALUE_WARNING: Position {contract.symbol} {contract.strike}{contract.right} has low time value ${time_value:.2f}"
 
-        # Create alert
+        # Create alert — time-value threshold breach maps to LIMIT_REACHED
+        # (the closest AlertType value for "position-level threshold crossed").
         alert = Alert(
+            _id=str(uuid.uuid4()),
             follower_id=follower_id,
-            reason=reason,
             severity=severity_map[status],
-            service="time_value_monitor",
-            timestamp=time.time(),
+            type=AlertType.LIMIT_REACHED,
+            message=message,
         )
 
         try:
@@ -382,13 +384,14 @@ class TimeValueMonitor:
                     fill_price=trade.orderStatus.avgFillPrice,
                 )
 
-                # Publish success alert
+                # Publish success alert (informational — same AlertType as the
+                # threshold breach that triggered this liquidation, INFO severity).
                 alert = Alert(
+                    _id=str(uuid.uuid4()),
                     follower_id=follower_id,
-                    reason=f"TIME_VALUE_LIQUIDATION: Successfully closed position {contract.symbol} {contract.strike}{contract.right} at ${trade.orderStatus.avgFillPrice:.2f} due to TV ${time_value:.2f} <= $0.10",
                     severity=AlertSeverity.INFO,
-                    service="time_value_monitor",
-                    timestamp=time.time(),
+                    type=AlertType.LIMIT_REACHED,
+                    message=f"TIME_VALUE_LIQUIDATION: Successfully closed position {contract.symbol} {contract.strike}{contract.right} at ${trade.orderStatus.avgFillPrice:.2f} due to TV ${time_value:.2f} <= $0.10",
                 )
 
                 if self.redis_client:

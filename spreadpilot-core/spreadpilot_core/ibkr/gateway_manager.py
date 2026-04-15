@@ -3,6 +3,7 @@
 import asyncio
 import random
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -12,7 +13,7 @@ import docker
 from ib_insync import IB
 
 from ..logging import get_logger
-from ..models.alert import Alert, AlertSeverity
+from ..models.alert import Alert, AlertSeverity, AlertType
 from ..models.follower import Follower, FollowerState
 from ..utils.vault import get_vault_client
 
@@ -120,7 +121,7 @@ class GatewayManager:
             if not secret_ref:
                 await self._publish_alert(
                     follower_id=follower.id,
-                    reason=f"No vault_secret_ref configured for follower {follower.id}",
+                    message=f"No vault_secret_ref configured for follower {follower.id}",
                     severity=AlertSeverity.CRITICAL,
                 )
                 return None
@@ -134,7 +135,7 @@ class GatewayManager:
                 logger.warning(f"No IBKR credentials found in Vault for secret: {secret_ref}")
                 await self._publish_alert(
                     follower_id=follower.id,
-                    reason=f"No IBKR credentials found in Vault for secret: {secret_ref}",
+                    message=f"No IBKR credentials found in Vault for secret: {secret_ref}",
                     severity=AlertSeverity.CRITICAL,
                 )
                 return None
@@ -278,7 +279,7 @@ class GatewayManager:
                 if not ibkr_username or not ibkr_password:
                     await self._publish_alert(
                         follower_id=follower.id,
-                        reason=f"Missing IB_USER or IB_PASS in Vault credentials for follower {follower.id}",
+                        message=f"Missing IB_USER or IB_PASS in Vault credentials for follower {follower.id}",
                         severity=AlertSeverity.CRITICAL,
                     )
                     raise ValueError(f"Missing credentials in Vault for follower {follower.id}")
@@ -288,7 +289,7 @@ class GatewayManager:
                 # Final failure after retries
                 await self._publish_alert(
                     follower_id=follower.id,
-                    reason=f"Failed to retrieve IBKR credentials from Vault after retries: {str(e)}",
+                    message=f"Failed to retrieve IBKR credentials from Vault after retries: {str(e)}",
                     severity=AlertSeverity.CRITICAL,
                 )
                 raise
@@ -568,7 +569,7 @@ class GatewayManager:
                                         gateway.status = GatewayStatus.FAILED
                                         await self._publish_alert(
                                             follower_id=gateway.follower_id,
-                                            reason=f"Failed to reconnect after {gateway.connection_failures} failures: {str(e)}",
+                                            message=f"Failed to reconnect after {gateway.connection_failures} failures: {str(e)}",
                                             severity=AlertSeverity.CRITICAL,
                                         )
                             else:
@@ -763,13 +764,22 @@ class GatewayManager:
         except Exception as e:
             logger.error(f"Failed to remove gateway mapping: {e}")
 
-    async def _publish_alert(self, follower_id: str, reason: str, severity: AlertSeverity) -> None:
+    async def _publish_alert(
+        self,
+        follower_id: str,
+        message: str,
+        severity: AlertSeverity,
+        alert_type: AlertType = AlertType.GATEWAY_UNREACHABLE,
+    ) -> None:
         """Publish an alert for gateway issues.
 
         Args:
             follower_id: Follower ID
-            reason: Alert reason
+            message: Human-readable alert message (was 'reason' pre-#179)
             severity: Alert severity
+            alert_type: AlertType category — gateway-manager alerts default
+                to GATEWAY_UNREACHABLE since every call site describes a
+                connectivity / container-health failure.
         """
         try:
             # Import here to avoid circular dependency
@@ -778,14 +788,14 @@ class GatewayManager:
             redis_client = await get_redis_client()
             if redis_client:
                 alert = Alert(
+                    _id=str(uuid.uuid4()),
                     follower_id=follower_id,
-                    reason=reason,
                     severity=severity,
-                    service="gateway_manager",
-                    timestamp=time.time(),
+                    type=alert_type,
+                    message=message,
                 )
 
                 await redis_client.xadd("alerts", {"data": alert.model_dump_json()})
-                logger.info(f"Published alert for follower {follower_id}: {reason}")
+                logger.info(f"Published alert for follower {follower_id}: {message}")
         except Exception as e:
-            logger.error(f"Failed to publish alert: {e}")
+            logger.error(f"Failed to publish alert: {e}", exc_info=True)

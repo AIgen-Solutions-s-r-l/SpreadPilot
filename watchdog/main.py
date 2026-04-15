@@ -7,11 +7,12 @@ import json
 import logging
 import os
 import time
+import uuid
 
 import docker
 import httpx
 import redis.asyncio as redis
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 # Configure logging
 logging.basicConfig(
@@ -137,32 +138,39 @@ class ContainerWatchdog:
             return False
 
     async def publish_alert(
-        self, service_name: str, reason: str, severity: AlertSeverity = AlertSeverity.CRITICAL
+        self,
+        service_name: str,
+        message: str,
+        severity: AlertSeverity = AlertSeverity.CRITICAL,
+        alert_type: AlertType = AlertType.COMPONENT_DOWN,
     ):
         """
         Publish an alert to Redis stream.
 
         Args:
-            service_name: Name of the service/container
-            reason: Alert reason
+            service_name: Name of the service/container (embedded in the message
+                since the Alert model does not have a dedicated service field).
+            message: Human-readable alert message (was 'reason' pre-#179)
             severity: Alert severity level
+            alert_type: AlertType category (default COMPONENT_DOWN since the
+                watchdog observes service-health events)
         """
         alert = Alert(
+            _id=str(uuid.uuid4()),
             follower_id="system",  # System-level alert
-            reason=reason,
             severity=severity,
-            service="watchdog",
-            timestamp=time.time(),
+            type=alert_type,
+            message=f"[{service_name}] {message}",
         )
 
         try:
             if self.redis_client:
                 await self.redis_client.xadd("alerts", {"data": alert.model_dump_json()})
-                logger.info(f"Published alert: {reason}")
+                logger.info(f"Published alert: {message}")
             else:
                 logger.warning("Redis not connected, alert not published")
         except Exception as e:
-            logger.error(f"Failed to publish alert to Redis: {e}")
+            logger.error(f"Failed to publish alert to Redis: {e}", exc_info=True)
 
     async def monitor_container(self, container):
         """
@@ -187,7 +195,7 @@ class ContainerWatchdog:
                 )
                 await self.publish_alert(
                     service_name=container_name,
-                    reason=f"SERVICE_RECOVERED: {container_name} recovered after {self.failure_counts[container_name]} failed health checks",
+                    message=f"SERVICE_RECOVERED: {container_name} recovered after {self.failure_counts[container_name]} failed health checks",
                     severity=AlertSeverity.INFO,
                 )
             self.failure_counts[container_name] = 0
@@ -212,14 +220,14 @@ class ContainerWatchdog:
                 if restart_success:
                     await self.publish_alert(
                         service_name=container_name,
-                        reason=f"SERVICE_RESTART: {container_name} was restarted after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
+                        message=f"SERVICE_RESTART: {container_name} was restarted after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
                         severity=AlertSeverity.WARNING,
                     )
                     self.failure_counts[container_name] = 0
                 else:
                     await self.publish_alert(
                         service_name=container_name,
-                        reason=f"SERVICE_RESTART_FAILED: Failed to restart {container_name} after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
+                        message=f"SERVICE_RESTART_FAILED: Failed to restart {container_name} after {MAX_CONSECUTIVE_FAILURES} consecutive health check failures",
                         severity=AlertSeverity.CRITICAL,
                     )
 

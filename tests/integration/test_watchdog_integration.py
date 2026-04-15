@@ -145,11 +145,10 @@ class TestWatchdogIntegration:
         alert = Alert.model_validate_json(alert_data["data"])
 
         assert alert.follower_id == "system"
-        assert "SERVICE_RESTART" in alert.reason
-        assert "test-service" in alert.reason
-        assert "3 consecutive health check failures" in alert.reason
+        assert "SERVICE_RESTART" in alert.message
+        assert "test-service" in alert.message
+        assert "3 consecutive health check failures" in alert.message
         assert alert.severity == AlertSeverity.WARNING
-        assert alert.service == "watchdog"
 
     @pytest.mark.asyncio
     async def test_service_recovery_after_failures(
@@ -187,8 +186,8 @@ class TestWatchdogIntegration:
         _, alert_data = alerts[0]
         alert = Alert.model_validate_json(alert_data["data"])
 
-        assert "SERVICE_RECOVERED" in alert.reason
-        assert "recovered after 2 failed health checks" in alert.reason
+        assert "SERVICE_RECOVERED" in alert.message
+        assert "recovered after 2 failed health checks" in alert.message
         assert alert.severity == AlertSeverity.INFO
 
     @pytest.mark.asyncio
@@ -223,7 +222,7 @@ class TestWatchdogIntegration:
         _, alert_data = alerts[0]
         alert = Alert.model_validate_json(alert_data["data"])
 
-        assert "SERVICE_RESTART_FAILED" in alert.reason
+        assert "SERVICE_RESTART_FAILED" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL
 
     @pytest.mark.asyncio

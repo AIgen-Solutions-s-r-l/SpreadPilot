@@ -194,8 +194,8 @@ class TestTimeValueMonitor:
         _, alert_data = alerts[0]
         alert = Alert.model_validate_json(alert_data["data"])
         assert alert.follower_id == "test_follower_123"
-        assert "TIME_VALUE_WARNING" in alert.reason
-        assert "$0.50" in alert.reason
+        assert "TIME_VALUE_WARNING" in alert.message
+        assert "$0.50" in alert.message
         assert alert.severity == AlertSeverity.WARNING
 
     @pytest.mark.asyncio
@@ -250,14 +250,14 @@ class TestTimeValueMonitor:
         # First alert: critical warning
         _, alert1_data = alerts[0]
         alert1 = Alert.model_validate_json(alert1_data["data"])
-        assert "TIME_VALUE_THRESHOLD" in alert1.reason
+        assert "TIME_VALUE_THRESHOLD" in alert1.message
         assert alert1.severity == AlertSeverity.CRITICAL
 
         # Second alert: liquidation success
         _, alert2_data = alerts[1]
         alert2 = Alert.model_validate_json(alert2_data["data"])
-        assert "TIME_VALUE_LIQUIDATION" in alert2.reason
-        assert "Successfully closed position" in alert2.reason
+        assert "TIME_VALUE_LIQUIDATION" in alert2.message
+        assert "Successfully closed position" in alert2.message
         assert alert2.severity == AlertSeverity.INFO
 
     @pytest.mark.asyncio
