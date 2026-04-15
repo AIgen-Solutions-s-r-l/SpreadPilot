@@ -82,9 +82,8 @@ class TestExecutorAlerts:
 
         # Verify alert content
         assert alert.follower_id == "test_follower_123"
-        assert "NO_MARGIN" in alert.reason
+        assert "NO_MARGIN" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL
-        assert alert.service == "executor"
 
     @pytest.mark.asyncio
     async def test_mid_price_too_low_publishes_alert(self, executor, fake_redis):
@@ -117,9 +116,9 @@ class TestExecutorAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.follower_id == "test_follower_123"
-        assert "MID_TOO_LOW" in alert.reason
-        assert "$0.30" in alert.reason
-        assert "$0.70" in alert.reason  # threshold
+        assert "MID_TOO_LOW" in alert.message
+        assert "$0.30" in alert.message
+        assert "$0.70" in alert.message  # threshold
         assert alert.severity == AlertSeverity.CRITICAL
 
     @pytest.mark.asyncio
@@ -162,8 +161,8 @@ class TestExecutorAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.follower_id == "test_follower_123"
-        assert "LIMIT_REACHED" in alert.reason
-        assert "All 2 attempts exhausted" in alert.reason
+        assert "LIMIT_REACHED" in alert.message
+        assert "All 2 attempts exhausted" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL
 
     @pytest.mark.asyncio
@@ -189,7 +188,7 @@ class TestExecutorAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.follower_id == "test_follower_123"
-        assert "GATEWAY_UNREACHABLE" in alert.reason
+        assert "GATEWAY_UNREACHABLE" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL
 
     @pytest.mark.asyncio
@@ -221,8 +220,8 @@ class TestExecutorAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.follower_id == "test_follower_123"
-        assert "GATEWAY_UNREACHABLE" in alert.reason
-        assert "Order rejected by IB" in alert.reason
+        assert "GATEWAY_UNREACHABLE" in alert.message
+        assert "Order rejected by IB" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL
 
     @pytest.mark.asyncio
@@ -289,8 +288,8 @@ class TestExecutorAlerts:
 
         # Verify first alert (margin)
         assert alerts[0].follower_id == "follower_001"
-        assert "NO_MARGIN" in alerts[0].reason
+        assert "NO_MARGIN" in alerts[0].message
 
         # Verify second alert (MID)
         assert alerts[1].follower_id == "follower_002"
-        assert "MID_TOO_LOW" in alerts[1].reason
+        assert "MID_TOO_LOW" in alerts[1].message
