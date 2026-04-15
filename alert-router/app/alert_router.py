@@ -198,7 +198,7 @@ class AlertRouter:
             alert = Alert.model_validate_json(alert_json)
 
             logger.info(
-                f"Processing alert: {alert.reason} for follower {alert.follower_id} "
+                f"Processing alert: {alert.message} for follower {alert.follower_id} "
                 f"with severity {alert.severity}"
             )
 
@@ -242,7 +242,6 @@ class AlertRouter:
             AlertSeverity.INFO: "ℹ️",
             AlertSeverity.WARNING: "⚠️",
             AlertSeverity.CRITICAL: "🚨",
-            AlertSeverity.ERROR: "❌",
         }
 
         emoji = severity_emoji.get(alert.severity, "📢")
@@ -250,10 +249,10 @@ class AlertRouter:
         message = (
             f"{emoji} *SpreadPilot Alert*\n\n"
             f"*Severity:* {alert.severity.value}\n"
-            f"*Service:* {alert.service}\n"
-            f"*Follower:* {alert.follower_id}\n"
-            f"*Reason:* {alert.reason}\n"
-            f"*Time:* {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(alert.timestamp))}"
+            f"*Type:* {alert.type.value}\n"
+            f"*Follower:* {alert.follower_id or 'N/A'}\n"
+            f"*Message:* {alert.message}\n"
+            f"*Time:* {alert.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
         )
 
         # Send to Telegram
@@ -289,17 +288,17 @@ class AlertRouter:
         msg = MIMEMultipart()
         msg["From"] = self.config.email_from
         msg["To"] = self.config.email_to
-        msg["Subject"] = f"SpreadPilot Alert: {alert.severity.value} - {alert.reason[:50]}"
+        msg["Subject"] = f"SpreadPilot Alert: {alert.severity.value} - {alert.message[:50]}"
 
         # Email body
         body = f"""
 SpreadPilot Alert Notification
 
 Severity: {alert.severity.value}
-Service: {alert.service}
-Follower: {alert.follower_id}
-Reason: {alert.reason}
-Time: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(alert.timestamp))}
+Type: {alert.type.value}
+Follower: {alert.follower_id or 'N/A'}
+Message: {alert.message}
+Time: {alert.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}
 
 This is an automated alert from the SpreadPilot trading system.
         """
