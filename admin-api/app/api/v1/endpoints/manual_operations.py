@@ -44,14 +44,18 @@ if not MANUAL_OPERATION_PIN:
 if len(MANUAL_OPERATION_PIN) < 6:
     logger.error(
         "CRITICAL: MANUAL_OPERATION_PIN is too short (minimum 6 characters required). "
-        "Current length: %d", len(MANUAL_OPERATION_PIN)
+        "Current length: %d",
+        len(MANUAL_OPERATION_PIN),
     )
     raise ValueError(
         f"MANUAL_OPERATION_PIN must be at least 6 characters long. "
         f"Current length: {len(MANUAL_OPERATION_PIN)}"
     )
 
-logger.info("Manual operations PIN validated successfully (length: %d characters)", len(MANUAL_OPERATION_PIN))
+logger.info(
+    "Manual operations PIN validated successfully (length: %d characters)",
+    len(MANUAL_OPERATION_PIN),
+)
 
 
 class ManualCloseRequest(BaseModel):
