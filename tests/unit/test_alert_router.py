@@ -2,13 +2,12 @@
 
 import asyncio
 import json
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fakeredis import aioredis as fakeredis
 from httpx import Response
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 
 @pytest.fixture
@@ -23,11 +22,11 @@ async def fake_redis():
 def mock_alert():
     """Create a mock alert for testing."""
     return Alert(
+        _id="test_alert_id_123",
         follower_id="test_follower_123",
-        reason="Test alert reason",
         severity=AlertSeverity.CRITICAL,
-        service="test_service",
-        timestamp=time.time(),
+        type=AlertType.GATEWAY_UNREACHABLE,
+        message="Test alert reason",
     )
 
 
@@ -131,7 +130,7 @@ class TestAlertRouter:
         json_data = call_args[1]["json"]
         assert json_data["chat_id"] == "test_chat_id"
         assert "SpreadPilot Alert" in json_data["text"]
-        assert mock_alert.reason in json_data["text"]
+        assert mock_alert.message in json_data["text"]
 
     @pytest.mark.asyncio
     async def test_email_notification_with_retry(self, alert_router, mock_alert):
@@ -230,15 +229,27 @@ class TestAlertRouter:
     @pytest.mark.asyncio
     async def test_consumer_group_creation(self, alert_router, fake_redis):
         """Test that consumer group is created if it doesn't exist."""
-        alert_router.redis_client = fake_redis
 
-        # Mock other dependencies
-        alert_router.mongo_client = MagicMock()
-        alert_router.mongo_db = MagicMock()
-        alert_router.httpx_client = AsyncMock()
+        # Patch the connection initializers so start() keeps our pre-configured
+        # fake_redis / mocked mongo / mocked httpx instead of replacing them with
+        # real clients that would attempt network I/O.
+        async def _fake_init_redis():
+            alert_router.redis_client = fake_redis
 
-        # Start router (which should create consumer group)
-        with patch.object(alert_router, "_process_alerts", new_callable=AsyncMock):
+        async def _fake_init_mongo():
+            alert_router.mongo_client = MagicMock()
+            alert_router.mongo_db = MagicMock()
+
+        async def _fake_init_httpx():
+            alert_router.httpx_client = AsyncMock()
+
+        with (
+            patch.object(alert_router, "_init_redis", side_effect=_fake_init_redis),
+            patch.object(alert_router, "_init_mongo", side_effect=_fake_init_mongo),
+            patch.object(alert_router, "_init_httpx", side_effect=_fake_init_httpx),
+            patch.object(alert_router, "_load_vault_secrets", new_callable=AsyncMock),
+            patch.object(alert_router, "_process_alerts", new_callable=AsyncMock),
+        ):
             await alert_router.start()
 
         # Verify consumer group exists
