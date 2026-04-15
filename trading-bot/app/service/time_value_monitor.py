@@ -194,15 +194,17 @@ class TimeValueMonitor:
 
             logger.info(
                 "Position time value check",
-                follower_id=follower_id,
-                symbol=contract.symbol,
-                strike=contract.strike,
-                right=contract.right,
-                position_qty=position.position,
-                market_price=market_price,
-                intrinsic_value=intrinsic_value,
-                time_value=time_value,
-                status=status,
+                extra={
+                    "follower_id": follower_id,
+                    "symbol": contract.symbol,
+                    "strike": contract.strike,
+                    "right": contract.right,
+                    "position_qty": position.position,
+                    "market_price": market_price,
+                    "intrinsic_value": intrinsic_value,
+                    "time_value": time_value,
+                    "status": status,
+                },
             )
 
             # Publish status to Redis key
@@ -223,10 +225,12 @@ class TimeValueMonitor:
         except Exception as e:
             logger.error(
                 f"Error checking time value for position: {e}",
-                follower_id=follower_id,
-                contract_symbol=contract.symbol,
-                strike=contract.strike,
-                right=contract.right,
+                extra={
+                    "follower_id": follower_id,
+                    "contract_symbol": contract.symbol,
+                    "strike": contract.strike,
+                    "right": contract.right,
+                },
                 exc_info=True,
             )
 
@@ -354,12 +358,14 @@ class TimeValueMonitor:
         """
         logger.warning(
             "Closing position due to critical time value",
-            follower_id=follower_id,
-            symbol=contract.symbol,
-            strike=contract.strike,
-            right=contract.right,
-            position_qty=position_qty,
-            time_value=time_value,
+            extra={
+                "follower_id": follower_id,
+                "symbol": contract.symbol,
+                "strike": contract.strike,
+                "right": contract.right,
+                "position_qty": position_qty,
+                "time_value": time_value,
+            },
         )
 
         try:
@@ -379,9 +385,11 @@ class TimeValueMonitor:
             if trade.orderStatus.status == "Filled":
                 logger.info(
                     "Successfully closed position",
-                    follower_id=follower_id,
-                    order_id=trade.order.orderId,
-                    fill_price=trade.orderStatus.avgFillPrice,
+                    extra={
+                        "follower_id": follower_id,
+                        "order_id": trade.order.orderId,
+                        "fill_price": trade.orderStatus.avgFillPrice,
+                    },
                 )
 
                 # Publish success alert (informational — same AlertType as the
@@ -399,17 +407,21 @@ class TimeValueMonitor:
             else:
                 logger.error(
                     "Failed to close position",
-                    follower_id=follower_id,
-                    order_status=trade.orderStatus.status,
-                    order_id=trade.order.orderId,
+                    extra={
+                        "follower_id": follower_id,
+                        "order_status": trade.orderStatus.status,
+                        "order_id": trade.order.orderId,
+                    },
                 )
 
         except Exception as e:
             logger.error(
                 f"Error closing position: {e}",
-                follower_id=follower_id,
-                contract_symbol=contract.symbol,
-                strike=contract.strike,
-                right=contract.right,
+                extra={
+                    "follower_id": follower_id,
+                    "contract_symbol": contract.symbol,
+                    "strike": contract.strike,
+                    "right": contract.right,
+                },
                 exc_info=True,
             )
