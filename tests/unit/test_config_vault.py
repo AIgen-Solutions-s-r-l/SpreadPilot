@@ -27,12 +27,20 @@ class TestSettingsVaultIntegration:
             vault_enabled=True,
         )
 
-    def test_vault_configuration_defaults(self):
-        """Test Vault configuration default values."""
+    def test_vault_configuration_defaults(self, monkeypatch):
+        """Test Vault configuration default values.
+
+        vault_token has no default — the startup validation introduced in #84
+        requires it to be set explicitly via env var or Vault bootstrap.
+        """
+        # Strip any leaked env vars from pytest.ini or the host shell
+        for var in ("VAULT_ADDR", "VAULT_TOKEN", "VAULT_MOUNT_POINT", "VAULT_ENABLED"):
+            monkeypatch.delenv(var, raising=False)
+
         settings = Settings()
 
         assert settings.vault_url == "http://vault:8200"
-        assert settings.vault_token == "dev-only-token"
+        assert settings.vault_token is None
         assert settings.vault_mount_point == "secret"
         assert settings.vault_enabled is True
 
@@ -147,6 +155,21 @@ class TestSettingsVaultIntegration:
         assert mock_vault_client.vault_url == "http://custom-vault:8200"
         assert mock_vault_client.vault_token == "custom-token"
         assert mock_vault_client.mount_point == "custom-secret"
+
+    def test_project_id_reads_google_cloud_project_env_var(self, monkeypatch):
+        """Regression guard for the `project_id` env-var bug fixed alongside #181.
+
+        `project_id` uses `validation_alias=AliasChoices('project_id',
+        'GOOGLE_CLOUD_PROJECT')` because pydantic-settings v2 cannot auto-map
+        the attribute name to the (non-matching) env var GOOGLE_CLOUD_PROJECT.
+        """
+        monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "prod-gcp-project-abc")
+        # Clear Vault env vars so they don't trigger validation elsewhere
+        for var in ("VAULT_ADDR", "VAULT_TOKEN", "VAULT_MOUNT_POINT", "VAULT_ENABLED"):
+            monkeypatch.delenv(var, raising=False)
+
+        settings = Settings()
+        assert settings.project_id == "prod-gcp-project-abc"
 
     def test_trading_mode_validation_unchanged(self):
         """Test that trading mode validation still works with Vault integration."""
