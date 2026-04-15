@@ -17,9 +17,12 @@ class Settings(BaseSettings):
     """
 
     # Google Cloud Project
+    # Same AliasChoices pattern as vault_url: the standard env var is
+    # GOOGLE_CLOUD_PROJECT but the Python attribute is project_id, so
+    # pydantic-settings v2 auto-mapping cannot bridge them.
     project_id: str = Field(
         default="spreadpilot-dev",
-        env="GOOGLE_CLOUD_PROJECT",
+        validation_alias=AliasChoices("project_id", "GOOGLE_CLOUD_PROJECT"),
         description="Google Cloud Project ID",
     )
 
