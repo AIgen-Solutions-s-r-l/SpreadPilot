@@ -183,7 +183,9 @@ class TestPnLServiceRedisStreams:
                 is_open = pnl_service._is_market_open()
                 assert not is_open
 
-    @freeze_time("2025-06-29 16:30:00")  # Daily rollup time (4:30 PM ET)
+    # freeze_time interprets the literal as UTC. June = EDT (UTC-4), so to
+    # observe 16:30 ET the UTC clock must be 20:30.
+    @freeze_time("2025-06-29 20:30:00")  # 16:30 ET / 20:30 UTC (EDT = UTC-4)
     @pytest.mark.asyncio
     async def test_daily_rollup_scheduling(self, pnl_service):
         """Test daily rollup scheduling at 16:30 ET."""
@@ -363,7 +365,9 @@ class TestPnLServiceRedisStreams:
                     # Expected - should handle gracefully
                     pass
 
-    @freeze_time("2025-01-01 00:10:00")  # Monthly rollup time
+    # freeze_time interprets the literal as UTC. January = EST (UTC-5), so to
+    # observe 2025-01-01 00:10 ET the UTC clock must be 2025-01-01 05:10.
+    @freeze_time("2025-01-01 05:10:00")  # 00:10 ET / 05:10 UTC (EST = UTC-5)
     @pytest.mark.asyncio
     async def test_monthly_rollup_scheduling(self, pnl_service):
         """Test monthly rollup scheduling on 1st at 00:10 ET."""
