@@ -1,13 +1,13 @@
 """Isolated unit tests for time value monitor."""
 
 import asyncio
-from enum import Enum
+from enum import StrEnum
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 
-class RiskStatus(str, Enum):
+class RiskStatus(StrEnum):
     """Risk status levels for time value monitoring."""
 
     SAFE = "SAFE"

@@ -1,7 +1,7 @@
 """Follower model for SpreadPilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any  # Added Annotated
 
 from bson import ObjectId  # Added ObjectId
@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from pydantic.functional_validators import BeforeValidator  # Added BeforeValidator
 
 
-class FollowerState(str, Enum):
+class FollowerState(StrEnum):
     """Follower state enum."""
 
     ACTIVE = "ACTIVE"

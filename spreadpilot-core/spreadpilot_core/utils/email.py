@@ -3,7 +3,6 @@
 import asyncio
 import datetime
 import os
-import smtplib
 import urllib.parse
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart

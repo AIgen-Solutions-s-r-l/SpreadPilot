@@ -6,7 +6,7 @@ services, with automatic fallback to environment variables for backward compatib
 """
 
 import os
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from typing import Any, Optional
 
@@ -18,7 +18,7 @@ from .vault import VaultClient, get_vault_client
 logger = get_logger(__name__)
 
 
-class SecretType(str, Enum):
+class SecretType(StrEnum):
     """Enumeration of secret types in SpreadPilot."""
 
     # Authentication & Security

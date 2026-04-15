@@ -1,7 +1,7 @@
 """Position model for SpreadPilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any  # Added Any, Annotated
 
 from bson import ObjectId  # Added ObjectId
@@ -20,7 +20,7 @@ def validate_objectid_to_str(v: Any) -> str:
     raise TypeError("ObjectId or str required")
 
 
-class AssignmentState(str, Enum):
+class AssignmentState(StrEnum):
     """Assignment state enum."""
 
     NONE = "NONE"

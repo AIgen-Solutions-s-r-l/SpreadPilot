@@ -4,12 +4,12 @@ Replays historical market data with configurable speed for strategy validation.
 """
 
 import time
-from datetime import datetime, timedelta
-from enum import Enum
+from datetime import datetime
+from enum import StrEnum
 from typing import Any, Callable, Dict, List, Optional
 
 
-class SimulationMode(str, Enum):
+class SimulationMode(StrEnum):
     """Simulation modes."""
 
     BACKTEST = "backtest"  # Full historical replay

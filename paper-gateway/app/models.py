@@ -1,27 +1,27 @@
 """Data models for paper trading gateway."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
-class OrderAction(str, Enum):
+class OrderAction(StrEnum):
     """Order action."""
 
     BUY = "BUY"
     SELL = "SELL"
 
 
-class OrderType(str, Enum):
+class OrderType(StrEnum):
     """Order type."""
 
     MARKET = "MKT"
     LIMIT = "LMT"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Order status."""
 
     PENDING = "PENDING"
@@ -32,14 +32,14 @@ class OrderStatus(str, Enum):
     REJECTED = "REJECTED"
 
 
-class AssetType(str, Enum):
+class AssetType(StrEnum):
     """Asset type."""
 
     STOCK = "STOCK"
     OPTION = "OPTION"
 
 
-class OptionType(str, Enum):
+class OptionType(StrEnum):
     """Option type."""
 
     CALL = "CALL"

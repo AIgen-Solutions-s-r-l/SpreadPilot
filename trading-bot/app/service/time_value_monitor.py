@@ -6,7 +6,7 @@ Monitors open positions and automatically closes them when time value falls belo
 import asyncio
 import json
 import time
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import ib_insync
@@ -20,7 +20,7 @@ from spreadpilot_core.models.alert import Alert, AlertSeverity
 logger = get_logger(__name__)
 
 
-class TimeValueStatus(str, Enum):
+class TimeValueStatus(StrEnum):
     """Time value status enum."""
 
     SAFE = "SAFE"  # TV > $1.00
