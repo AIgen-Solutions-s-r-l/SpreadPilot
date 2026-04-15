@@ -2,15 +2,13 @@
 
 import asyncio
 import json
-import time
 from unittest.mock import AsyncMock, patch
 
 import fakeredis.aioredis
 import httpx
 import pytest
 from alert_router.app.alert_router import AlertRouter, AlertRouterConfig
-from pytest_httpx import HTTPXMock
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 
 @pytest.fixture
@@ -50,11 +48,11 @@ async def mock_router(alert_config, fake_redis):
 def test_alert():
     """Create a test alert."""
     return Alert(
+        _id="test_alert_id_456",
         follower_id="test_follower",
-        reason="Test alert reason",
         severity=AlertSeverity.CRITICAL,
-        service="test_service",
-        timestamp=time.time(),
+        type=AlertType.GATEWAY_UNREACHABLE,
+        message="Test alert reason",
     )
 
 
@@ -62,102 +60,100 @@ class TestAlertRouter:
     """Test alert router functionality."""
 
     @pytest.mark.asyncio
-    async def test_telegram_message_sent(self, mock_router, test_alert):
+    async def test_telegram_message_sent(self, mock_router, test_alert, httpx_mock):
         """Test that Telegram messages are sent correctly."""
-        with HTTPXMock() as httpx_mock:
-            # Mock Telegram API response
-            httpx_mock.add_response(
-                method="POST",
-                url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                json={"ok": True, "result": {"message_id": 123}},
-                status_code=200,
-            )
+        # Mock Telegram API response
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+            json={"ok": True, "result": {"message_id": 123}},
+            status_code=200,
+        )
 
-            # Create real httpx client for this test
-            mock_router.httpx_client = httpx.AsyncClient()
+        # Create real httpx client for this test
+        mock_router.httpx_client = httpx.AsyncClient()
 
-            try:
-                # Send Telegram alert
-                await mock_router._send_telegram_with_retry(test_alert)
+        try:
+            # Send Telegram alert
+            await mock_router._send_telegram_with_retry(test_alert)
 
-                # Verify the request was made
-                requests = httpx_mock.get_requests()
-                assert len(requests) == 1
+            # Verify the request was made
+            requests = httpx_mock.get_requests()
+            assert len(requests) == 1
 
-                request = requests[0]
-                assert request.method == "POST"
-                assert f"bot{mock_router.config.telegram_bot_token}" in str(request.url)
+            request = requests[0]
+            assert request.method == "POST"
+            assert f"bot{mock_router.config.telegram_bot_token}" in str(request.url)
 
-                # Check request payload
-                payload = json.loads(request.content)
-                assert payload["chat_id"] == mock_router.config.telegram_chat_id
-                assert "SpreadPilot Alert" in payload["text"]
-                assert test_alert.reason in payload["text"]
-                assert test_alert.severity.value in payload["text"]
+            # Check request payload
+            payload = json.loads(request.content)
+            assert payload["chat_id"] == mock_router.config.telegram_chat_id
+            assert "SpreadPilot Alert" in payload["text"]
+            assert test_alert.message in payload["text"]
+            assert test_alert.severity.value in payload["text"]
 
-            finally:
-                await mock_router.httpx_client.aclose()
+        finally:
+            await mock_router.httpx_client.aclose()
 
     @pytest.mark.asyncio
-    async def test_telegram_retry_on_failure(self, mock_router, test_alert):
+    async def test_telegram_retry_on_failure(self, mock_router, test_alert, httpx_mock):
         """Test that Telegram sending retries on failure."""
-        with HTTPXMock() as httpx_mock:
-            # Mock failed responses (first 2 fail, 3rd succeeds)
-            httpx_mock.add_response(
-                method="POST",
-                url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                status_code=500,
-            )
-            httpx_mock.add_response(
-                method="POST",
-                url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                status_code=500,
-            )
-            httpx_mock.add_response(
-                method="POST",
-                url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                json={"ok": True, "result": {"message_id": 123}},
-                status_code=200,
-            )
+        # Mock failed responses (first 2 fail, 3rd succeeds)
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+            status_code=500,
+        )
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+            status_code=500,
+        )
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+            json={"ok": True, "result": {"message_id": 123}},
+            status_code=200,
+        )
 
-            mock_router.httpx_client = httpx.AsyncClient()
+        mock_router.httpx_client = httpx.AsyncClient()
 
-            try:
-                # Should succeed on 3rd attempt
-                await mock_router._send_telegram_with_retry(test_alert)
+        try:
+            # Should succeed on 3rd attempt
+            await mock_router._send_telegram_with_retry(test_alert)
 
-                # Verify 3 requests were made
-                requests = httpx_mock.get_requests()
-                assert len(requests) == 3
+            # Verify 3 requests were made
+            requests = httpx_mock.get_requests()
+            assert len(requests) == 3
 
-            finally:
-                await mock_router.httpx_client.aclose()
+        finally:
+            await mock_router.httpx_client.aclose()
 
     @pytest.mark.asyncio
-    async def test_telegram_max_retries_exceeded(self, mock_router, test_alert):
+    async def test_telegram_max_retries_exceeded(self, mock_router, test_alert, httpx_mock):
         """Test that Telegram sending fails after max retries."""
-        with HTTPXMock() as httpx_mock:
-            # Mock all responses as failures
-            for _ in range(5):  # More than max_tries=3
-                httpx_mock.add_response(
-                    method="POST",
-                    url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                    status_code=500,
-                )
+        # Mock exactly max_tries=3 failures. pytest_httpx asserts all mocked
+        # responses are consumed in teardown, so over-registering would error.
+        for _ in range(3):
+            httpx_mock.add_response(
+                method="POST",
+                url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+                status_code=500,
+            )
 
-            mock_router.httpx_client = httpx.AsyncClient()
+        mock_router.httpx_client = httpx.AsyncClient()
 
-            try:
-                # Should raise exception after 3 attempts
-                with pytest.raises(httpx.HTTPStatusError):
-                    await mock_router._send_telegram_with_retry(test_alert)
+        try:
+            # Should raise exception after 3 attempts
+            with pytest.raises(httpx.HTTPStatusError):
+                await mock_router._send_telegram_with_retry(test_alert)
 
-                # Verify exactly 3 attempts were made
-                requests = httpx_mock.get_requests()
-                assert len(requests) == 3
+            # Verify exactly 3 attempts were made
+            requests = httpx_mock.get_requests()
+            assert len(requests) == 3
 
-            finally:
-                await mock_router.httpx_client.aclose()
+        finally:
+            await mock_router.httpx_client.aclose()
 
     @pytest.mark.asyncio
     async def test_email_sending(self, mock_router, test_alert):
@@ -181,7 +177,7 @@ class TestAlertRouter:
             # Check message content
             sent_message = smtp_instance.send_message.call_args[0][0]
             assert sent_message["Subject"].startswith("SpreadPilot Alert: CRITICAL")
-            assert test_alert.reason in str(sent_message)
+            assert test_alert.message in str(sent_message)
 
     @pytest.mark.asyncio
     async def test_email_retry_on_failure(self, mock_router, test_alert):
@@ -255,53 +251,16 @@ class TestAlertRouter:
         assert inserted_doc["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_alert_severity_emojis(self, mock_router):
+    async def test_alert_severity_emojis(self, mock_router, httpx_mock):
         """Test that different alert severities use correct emojis."""
         test_cases = [
             (AlertSeverity.INFO, "ℹ️"),
             (AlertSeverity.WARNING, "⚠️"),
             (AlertSeverity.CRITICAL, "🚨"),
-            (AlertSeverity.ERROR, "❌"),
         ]
 
-        with HTTPXMock() as httpx_mock:
-            # Mock successful responses for all severities
-            for _ in test_cases:
-                httpx_mock.add_response(
-                    method="POST",
-                    url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
-                    json={"ok": True, "result": {"message_id": 123}},
-                    status_code=200,
-                )
-
-            mock_router.httpx_client = httpx.AsyncClient()
-
-            try:
-                for severity, expected_emoji in test_cases:
-                    alert = Alert(
-                        follower_id="test",
-                        reason="Test",
-                        severity=severity,
-                        service="test",
-                        timestamp=time.time(),
-                    )
-
-                    await mock_router._send_telegram_with_retry(alert)
-
-                # Check that correct emojis were used
-                requests = httpx_mock.get_requests()
-                for i, (severity, expected_emoji) in enumerate(test_cases):
-                    payload = json.loads(requests[i].content)
-                    assert expected_emoji in payload["text"]
-
-            finally:
-                await mock_router.httpx_client.aclose()
-
-    @pytest.mark.asyncio
-    async def test_partial_delivery_failure(self, mock_router, test_alert):
-        """Test handling when one delivery method fails but other succeeds."""
-        # Mock Telegram success, email failure
-        with HTTPXMock() as httpx_mock:
+        # Mock successful responses for all severities
+        for _ in test_cases:
             httpx_mock.add_response(
                 method="POST",
                 url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
@@ -309,28 +268,62 @@ class TestAlertRouter:
                 status_code=200,
             )
 
-            mock_router.httpx_client = httpx.AsyncClient()
+        mock_router.httpx_client = httpx.AsyncClient()
 
-            with patch("alert_router.app.alert_router.aiosmtplib.SMTP") as mock_smtp:
-                smtp_instance = AsyncMock()
-                mock_smtp.return_value.__aenter__.return_value = smtp_instance
-                smtp_instance.send_message.side_effect = Exception("SMTP Failed")
+        try:
+            for severity, expected_emoji in test_cases:
+                alert = Alert(
+                    _id=f"test_{severity.value.lower()}",
+                    follower_id="test",
+                    severity=severity,
+                    type=AlertType.GATEWAY_UNREACHABLE,
+                    message="Test",
+                )
 
-                mock_router._log_alert_to_mongo = AsyncMock()
+                await mock_router._send_telegram_with_retry(alert)
 
-                try:
-                    # Process alert data
-                    alert_data = {"data": test_alert.model_dump_json()}
-                    await mock_router._process_single_alert("test_id", alert_data)
+            # Check that correct emojis were used
+            requests = httpx_mock.get_requests()
+            for i, (severity, expected_emoji) in enumerate(test_cases):
+                payload = json.loads(requests[i].content)
+                assert expected_emoji in payload["text"]
 
-                    # Verify logging shows partial success
-                    log_call = mock_router._log_alert_to_mongo.call_args
-                    assert log_call[1]["success"] is False  # Overall failed due to email
-                    assert log_call[1]["telegram_sent"] is True
-                    assert log_call[1]["email_sent"] is False
+        finally:
+            await mock_router.httpx_client.aclose()
 
-                finally:
-                    await mock_router.httpx_client.aclose()
+    @pytest.mark.asyncio
+    async def test_partial_delivery_failure(self, mock_router, test_alert, httpx_mock):
+        """Test handling when one delivery method fails but other succeeds."""
+        # Mock Telegram success, email failure
+        httpx_mock.add_response(
+            method="POST",
+            url=f"https://api.telegram.org/bot{mock_router.config.telegram_bot_token}/sendMessage",
+            json={"ok": True, "result": {"message_id": 123}},
+            status_code=200,
+        )
+
+        mock_router.httpx_client = httpx.AsyncClient()
+
+        with patch("alert_router.app.alert_router.aiosmtplib.SMTP") as mock_smtp:
+            smtp_instance = AsyncMock()
+            mock_smtp.return_value.__aenter__.return_value = smtp_instance
+            smtp_instance.send_message.side_effect = Exception("SMTP Failed")
+
+            mock_router._log_alert_to_mongo = AsyncMock()
+
+            try:
+                # Process alert data
+                alert_data = {"data": test_alert.model_dump_json()}
+                await mock_router._process_single_alert("test_id", alert_data)
+
+                # Verify logging shows partial success
+                log_call = mock_router._log_alert_to_mongo.call_args
+                assert log_call[1]["success"] is False  # Overall failed due to email
+                assert log_call[1]["telegram_sent"] is True
+                assert log_call[1]["email_sent"] is False
+
+            finally:
+                await mock_router.httpx_client.aclose()
 
 
 class TestAlertRouterIntegration:
@@ -363,11 +356,11 @@ class TestAlertRouterIntegration:
 
         # Add test alert to stream
         test_alert = Alert(
+            _id="integration_test_alert",
             follower_id="integration_test",
-            reason="Integration test alert",
             severity=AlertSeverity.WARNING,
-            service="test",
-            timestamp=time.time(),
+            type=AlertType.GATEWAY_UNREACHABLE,
+            message="Integration test alert",
         )
 
         alert_data = {"data": test_alert.model_dump_json()}
