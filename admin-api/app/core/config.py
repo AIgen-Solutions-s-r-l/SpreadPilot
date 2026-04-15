@@ -15,8 +15,10 @@ class Settings(BaseModel):
     # API configuration
     api_v1_prefix: str = "/api/v1"
 
-    # CORS configuration
-    cors_origins: str = "*"
+    # CORS configuration. Empty by default — the real value must come from
+    # CORS_ORIGINS env var. A wildcard here would be a loaded gun one
+    # constructor call away from shipping (see issue #111).
+    cors_origins: str = ""
 
     # MongoDB configuration
     mongo_uri: str = os.getenv("MONGO_URI", "")
@@ -67,8 +69,12 @@ class Settings(BaseModel):
         if self.jwt_secret and len(self.jwt_secret) < 32:
             missing_secrets.append("JWT_SECRET (too short - minimum 32 characters required)")
 
-        # Validate CORS is not wildcard
-        if self.cors_origins == "*":
+        # Validate CORS_ORIGINS is set and not a wildcard. Empty-string check
+        # catches the case where the env var is unset; wildcard check covers
+        # explicit `*` or an all-whitespace value (see issue #111).
+        if not self.cors_origins or not self.cors_origins.strip():
+            missing_secrets.append("CORS_ORIGINS (must be set; wildcard not allowed)")
+        elif self.cors_origins.strip() == "*":
             missing_secrets.append("CORS_ORIGINS (wildcard not allowed)")
 
         # Validate Redis URL

@@ -13,10 +13,10 @@ from app.api.v1.api import api_router
 from app.api.v1.endpoints.auth import User, get_current_user
 from app.api.v1.endpoints.dashboard import periodic_follower_update_task
 from app.core.config import get_settings
+from app.core.cors import configure_cors
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
 from app.services.follower_service import FollowerService
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from spreadpilot_core.logging.logger import get_logger, setup_logging
 
@@ -79,19 +79,9 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Configure CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=(
-        [origin.strip() for origin in settings.cors_origins.split(",")]
-        if settings.cors_origins
-        else ["*"]
-    ),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+# Configure CORS middleware (fail-fast on empty/wildcard origins; see #111)
+allowed_origins = configure_cors(app, settings)
+logger.info(f"CORS configured with {len(allowed_origins)} allowed origins")
 
 
 @app.exception_handler(HTTPException)
