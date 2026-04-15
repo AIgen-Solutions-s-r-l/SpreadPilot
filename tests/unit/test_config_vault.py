@@ -27,12 +27,20 @@ class TestSettingsVaultIntegration:
             vault_enabled=True,
         )
 
-    def test_vault_configuration_defaults(self):
-        """Test Vault configuration default values."""
+    def test_vault_configuration_defaults(self, monkeypatch):
+        """Test Vault configuration default values.
+
+        vault_token has no default — the startup validation introduced in #84
+        requires it to be set explicitly via env var or Vault bootstrap.
+        """
+        # Strip any leaked env vars from pytest.ini or the host shell
+        for var in ("VAULT_ADDR", "VAULT_TOKEN", "VAULT_MOUNT_POINT", "VAULT_ENABLED"):
+            monkeypatch.delenv(var, raising=False)
+
         settings = Settings()
 
         assert settings.vault_url == "http://vault:8200"
-        assert settings.vault_token == "dev-only-token"
+        assert settings.vault_token is None
         assert settings.vault_mount_point == "secret"
         assert settings.vault_enabled is True
 

@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field, validator
+from pydantic import AliasChoices, Field, validator
 from pydantic_settings import BaseSettings
 from spreadpilot_core.logging import get_logger
 from spreadpilot_core.utils.vault import get_vault_client
@@ -153,9 +153,11 @@ class Settings(BaseSettings):
     )
 
     # Vault configuration
+    # AliasChoices accepts both the Python field name (for test construction
+    # via Settings(vault_url=...)) and the standard Vault env var VAULT_ADDR.
     vault_url: str = Field(
         default="http://vault:8200",
-        env="VAULT_ADDR",
+        validation_alias=AliasChoices("vault_url", "VAULT_ADDR"),
         description="HashiCorp Vault server URL",
     )
     vault_token: str | None = Field(
