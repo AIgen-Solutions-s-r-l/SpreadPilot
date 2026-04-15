@@ -13,7 +13,7 @@ from datetime import datetime
 import httpx
 import redis.asyncio as redis
 from motor.motor_asyncio import AsyncIOMotorClient
-from spreadpilot_core.models.alert import Alert, AlertEvent, AlertSeverity, AlertType
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 
 # Configure logging
 logging.basicConfig(
@@ -226,27 +226,19 @@ class ServiceWatchdog:
             else:
                 logger.warning("Redis not connected, alert not published")
         except Exception as e:
-            logger.error(f"Failed to publish alert to Redis: {e}")
+            logger.error(f"Failed to publish alert to Redis: {e}", exc_info=True)
 
-        # Also store in MongoDB for persistence
+        # Also store in MongoDB for persistence.
+        # Uses the Alert document directly (model_dump with the _id alias for
+        # Mongo's _id field). The legacy path used AlertEvent with timestamp/
+        # reason/details/COMPONENT_RECOVERED — all of which are absent from the
+        # current models and would raise AttributeError / invalid-enum errors.
         try:
             if self.mongo_db:
-                # Store as AlertEvent for MongoDB compatibility
-                event_type = (
-                    AlertType.COMPONENT_RECOVERED
-                    if action == "recovery"
-                    else AlertType.COMPONENT_DOWN
-                )
-                alert_event = AlertEvent(
-                    event_type=event_type,
-                    timestamp=alert.timestamp,
-                    message=alert.reason,
-                    params=alert.details,
-                )
-                await self.mongo_db.alerts.insert_one(alert_event.dict())
-                logger.info(f"Alert stored in MongoDB for persistence")
+                await self.mongo_db.alerts.insert_one(alert.model_dump(by_alias=True))
+                logger.info("Alert stored in MongoDB for persistence")
         except Exception as e:
-            logger.error(f"Failed to store alert in MongoDB: {e}")
+            logger.error(f"Failed to store alert in MongoDB: {e}", exc_info=True)
 
     async def monitor_service(self, service_name: str):
         """

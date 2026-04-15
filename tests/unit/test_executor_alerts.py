@@ -8,7 +8,7 @@ import pytest
 from fakeredis import aioredis as fakeredis
 from ib_insync import IB
 from spreadpilot_core.ibkr.client import IBKRClient, OrderStatus
-from spreadpilot_core.models.alert import Alert, AlertSeverity
+from spreadpilot_core.models.alert import Alert, AlertSeverity, AlertType
 from trading_bot.app.service.executor import VerticalSpreadExecutor
 
 
@@ -220,6 +220,11 @@ class TestExecutorAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.follower_id == "test_follower_123"
+        # This path is reached via a generic Exception from placeOrder which
+        # bubbles to the outer try/except in execute_vertical_spread and
+        # publishes via the GATEWAY_UNREACHABLE branch (not the limit-ladder
+        # IB REJECTED branch which uses NO_MARGIN).
+        assert alert.type == AlertType.GATEWAY_UNREACHABLE
         assert "GATEWAY_UNREACHABLE" in alert.message
         assert "Order rejected by IB" in alert.message
         assert alert.severity == AlertSeverity.CRITICAL

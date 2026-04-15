@@ -49,14 +49,13 @@ class TestWatchdogRedisAlerts:
         alert_json = data["data"]
         alert = Alert.model_validate_json(alert_json)
 
-        assert alert.service == "watchdog"
         assert alert.follower_id == "system"
-        assert "RECOVERED" in alert.reason
-        assert "Trading Bot" in alert.reason
+        assert "RECOVERED" in alert.message
+        assert "Trading Bot" in alert.message
         assert alert.severity == AlertSeverity.INFO
-        assert alert.details["component_name"] == "trading_bot"
-        assert alert.details["action"] == "recovery"
-        assert alert.details["success"] is True
+        assert "service=trading_bot" in alert.message
+        assert "action=recovery" in alert.message
+        assert "success=True" in alert.message
 
     @pytest.mark.asyncio
     async def test_publish_restart_success_alert(self, watchdog_with_redis, fake_redis):
@@ -73,10 +72,10 @@ class TestWatchdogRedisAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.severity == AlertSeverity.WARNING
-        assert "RESTARTED" in alert.reason
-        assert "Admin API" in alert.reason
-        assert alert.details["consecutive_failures"] == 3
-        assert alert.details["success"] is True
+        assert "RESTARTED" in alert.message
+        assert "Admin API" in alert.message
+        assert "consecutive_failures=3" in alert.message
+        assert "success=True" in alert.message
 
     @pytest.mark.asyncio
     async def test_publish_restart_failure_alert(self, watchdog_with_redis, fake_redis):
@@ -92,9 +91,9 @@ class TestWatchdogRedisAlerts:
         alert = Alert.model_validate_json(data["data"])
 
         assert alert.severity == AlertSeverity.CRITICAL
-        assert "RESTART_FAILED" in alert.reason
-        assert "Report Worker" in alert.reason
-        assert alert.details["success"] is False
+        assert "RESTART_FAILED" in alert.message
+        assert "Report Worker" in alert.message
+        assert "success=False" in alert.message
 
     @pytest.mark.asyncio
     async def test_monitor_service_publishes_alerts(self, watchdog_with_redis, fake_redis):
@@ -113,7 +112,7 @@ class TestWatchdogRedisAlerts:
 
         alert = Alert.model_validate_json(messages[0][1]["data"])
         assert alert.severity == AlertSeverity.WARNING
-        assert "RESTARTED" in alert.reason
+        assert "RESTARTED" in alert.message
 
     @pytest.mark.asyncio
     async def test_multiple_alerts_published(self, watchdog_with_redis, fake_redis):
@@ -131,15 +130,17 @@ class TestWatchdogRedisAlerts:
         alerts = [Alert.model_validate_json(msg[1]["data"]) for msg in messages]
 
         # Recovery alert
-        recovery_alert = next(a for a in alerts if "RECOVERED" in a.reason)
+        recovery_alert = next(a for a in alerts if "RECOVERED" in a.message)
         assert recovery_alert.severity == AlertSeverity.INFO
 
         # Failed restart alert
-        failed_alert = next(a for a in alerts if "RESTART_FAILED" in a.reason)
+        failed_alert = next(a for a in alerts if "RESTART_FAILED" in a.message)
         assert failed_alert.severity == AlertSeverity.CRITICAL
 
         # Successful restart alert
-        success_alert = next(a for a in alerts if "RESTARTED" in a.reason and a.details["success"])
+        success_alert = next(
+            a for a in alerts if "RESTARTED" in a.message and "success=True" in a.message
+        )
         assert success_alert.severity == AlertSeverity.WARNING
 
     @pytest.mark.asyncio
@@ -150,8 +151,8 @@ class TestWatchdogRedisAlerts:
         messages = await fake_redis.xrange("alerts")
         alert = Alert.model_validate_json(messages[0][1]["data"])
 
-        assert "health_url" in alert.details
-        assert alert.details["health_url"] == "http://trading-bot:8080/health"
+        assert "health_url=" in alert.message
+        assert "health_url=http://trading-bot:8080/health" in alert.message
 
     @pytest.mark.asyncio
     async def test_redis_connection_error_handled(self, watchdog_with_redis):
