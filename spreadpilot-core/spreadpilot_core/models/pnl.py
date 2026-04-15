@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import Boolean, Column, Date, DateTime, Index, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -11,14 +11,14 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class TradeType(str, Enum):
+class TradeType(StrEnum):
     """Trade type enumeration."""
 
     BUY = "BUY"
     SELL = "SELL"
 
 
-class QuoteType(str, Enum):
+class QuoteType(StrEnum):
     """Quote type enumeration."""
 
     BID = "BID"

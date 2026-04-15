@@ -6,11 +6,11 @@ Generates realistic market data, trade scenarios, and edge cases for testing.
 import json
 import random
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Dict, List, Optional
 
 
-class ScenarioType(str, Enum):
+class ScenarioType(StrEnum):
     """Test scenario types."""
 
     WINNING_TRADE = "winning_trade"

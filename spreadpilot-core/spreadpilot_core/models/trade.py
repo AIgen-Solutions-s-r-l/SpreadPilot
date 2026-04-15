@@ -1,7 +1,7 @@
 """Trade model for SpreadPilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any  # Added Any, Annotated
 
 from bson import ObjectId  # Added ObjectId
@@ -20,14 +20,14 @@ def validate_objectid_to_str(v: Any) -> str:
     raise TypeError("ObjectId or str required")
 
 
-class TradeSide(str, Enum):
+class TradeSide(StrEnum):
     """Trade side enum."""
 
     LONG = "LONG"
     SHORT = "SHORT"
 
 
-class TradeStatus(str, Enum):
+class TradeStatus(StrEnum):
     """Trade status enum."""
 
     FILLED = "FILLED"

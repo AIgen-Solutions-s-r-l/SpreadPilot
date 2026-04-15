@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 import time
-from enum import Enum
+from enum import StrEnum
 
 # Removed firebase_admin imports
 from motor.motor_asyncio import AsyncIOMotorDatabase  # Added Motor import
@@ -34,7 +34,7 @@ from .vertical_spreads_strategy_handler import VerticalSpreadsStrategyHandler
 logger = get_logger(__name__)
 
 
-class ServiceStatus(str, Enum):
+class ServiceStatus(StrEnum):
     """Service status enum."""
 
     STARTING = "STARTING"

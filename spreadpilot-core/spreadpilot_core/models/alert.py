@@ -1,7 +1,7 @@
 """Alert model for SpreadPilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Any  # Added Annotated
 
 from bson import ObjectId  # Added ObjectId
@@ -20,7 +20,7 @@ def validate_objectid_to_str(v: Any) -> str:
     raise TypeError("ObjectId or str required")
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Alert severity enum."""
 
     INFO = "INFO"
@@ -28,7 +28,7 @@ class AlertSeverity(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class AlertType(str, Enum):
+class AlertType(StrEnum):
     """Alert type enum."""
 
     COMPONENT_DOWN = "COMPONENT_DOWN"

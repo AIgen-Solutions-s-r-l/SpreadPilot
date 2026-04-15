@@ -3,7 +3,7 @@
 import asyncio
 import datetime
 import time
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from typing import Any
 
@@ -49,14 +49,14 @@ def _create_stock_contract_cached(
     return Stock(symbol=symbol, exchange=exchange, currency=currency)
 
 
-class OrderSide(str, Enum):
+class OrderSide(StrEnum):
     """Order side enum."""
 
     LONG = "LONG"
     SHORT = "SHORT"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Order status enum."""
 
     FILLED = "FILLED"
@@ -67,7 +67,7 @@ class OrderStatus(str, Enum):
     PENDING = "PENDING"
 
 
-class AssignmentState(str, Enum):
+class AssignmentState(StrEnum):
     """Assignment state enum."""
 
     NONE = "NONE"
