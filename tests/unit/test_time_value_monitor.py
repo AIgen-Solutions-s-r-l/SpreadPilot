@@ -26,8 +26,12 @@ def mock_service():
     service = MagicMock()
     service.active_followers = {"test_follower_123": MagicMock(id="test_follower_123")}
 
-    # Mock IBKR manager
+    # Mock IBKR manager. `get_client` is awaited by
+    # TimeValueMonitor._check_follower_positions, so it must be an AsyncMock;
+    # a plain MagicMock returns a non-awaitable child mock and fails with
+    # "object MagicMock can't be used in 'await' expression".
     mock_ibkr_manager = MagicMock()
+    mock_ibkr_manager.get_client = AsyncMock()
     service.ibkr_manager = mock_ibkr_manager
 
     return service
@@ -137,8 +141,9 @@ class TestTimeValueMonitor:
 
         mock_ibkr_client.ib.positions.return_value = [mock_position]
 
-        # Mock prices: option at $3.50, underlying at $455, intrinsic = $5, TV = -$1.50
-        mock_ibkr_client.get_market_price.side_effect = [3.50, 455.0]
+        # Mock prices: option at $8.00, underlying at $455, intrinsic = $5, TV = $3.00
+        # (TV > $1.00 is the SAFE threshold)
+        mock_ibkr_client.get_market_price.side_effect = [8.00, 455.0]
 
         # Run check
         await tv_monitor._check_follower_positions(
@@ -150,7 +155,7 @@ class TestTimeValueMonitor:
         assert status_key is not None
         status_data = json.loads(status_key)
         assert status_data["status"] == "SAFE"
-        assert abs(status_data["time_value"] - (-1.50)) < 0.01
+        assert abs(status_data["time_value"] - 3.00) < 0.01
 
         # No alerts should be published for SAFE status
         alerts = await fake_redis.xrange("alerts")
