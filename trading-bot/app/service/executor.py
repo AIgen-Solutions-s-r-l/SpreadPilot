@@ -138,16 +138,27 @@ class VerticalSpreadExecutor:
             )
 
             if not margin_check_result["success"]:
-                # Publish alert for margin failure
-                await self._publish_alert(
-                    follower_id=follower_id,
-                    message=f"NO_MARGIN: {margin_check_result['error']}",
-                    alert_type=AlertType.NO_MARGIN,
-                    severity=AlertSeverity.CRITICAL,
-                )
+                # Connection-loss errors surface from the whatIf path too:
+                # route them to GATEWAY_UNREACHABLE instead of NO_MARGIN so the
+                # alert reflects the actual failure domain.
+                error_msg = margin_check_result["error"] or ""
+                if "Not connected to IB Gateway" in error_msg:
+                    await self._publish_alert(
+                        follower_id=follower_id,
+                        message=f"GATEWAY_UNREACHABLE: {error_msg}",
+                        alert_type=AlertType.GATEWAY_UNREACHABLE,
+                        severity=AlertSeverity.CRITICAL,
+                    )
+                else:
+                    await self._publish_alert(
+                        follower_id=follower_id,
+                        message=f"NO_MARGIN: {error_msg}",
+                        alert_type=AlertType.NO_MARGIN,
+                        severity=AlertSeverity.CRITICAL,
+                    )
                 return {
                     "status": OrderStatus.REJECTED,
-                    "error": f"Margin check failed: {margin_check_result['error']}",
+                    "error": f"Margin check failed: {error_msg}",
                     "follower_id": follower_id,
                     "margin_details": margin_check_result,
                 }
@@ -169,7 +180,7 @@ class VerticalSpreadExecutor:
                 # Publish alert for MID too low
                 await self._publish_alert(
                     follower_id=follower_id,
-                    message=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold}",
+                    message=f"MID_TOO_LOW: MID price ${mid_price:.3f} below threshold ${min_price_threshold:.2f}",
                     alert_type=AlertType.MID_TOO_LOW,
                     severity=AlertSeverity.CRITICAL,
                 )
@@ -252,9 +263,23 @@ class VerticalSpreadExecutor:
             short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
-            combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
-            combo_contract.addLeg(long_contract, 1)  # Buy long leg
-            combo_contract.addLeg(short_contract, -1)  # Sell short leg
+            combo_contract = ib_insync.Bag(symbol="QQQ", exchange="SMART", currency="USD")
+            combo_contract.comboLegs.append(
+                ib_insync.ComboLeg(
+                    conId=long_contract.conId,
+                    ratio=1,
+                    action="BUY",
+                    exchange=long_contract.exchange,
+                )
+            )
+            combo_contract.comboLegs.append(
+                ib_insync.ComboLeg(
+                    conId=short_contract.conId,
+                    ratio=1,
+                    action="SELL",
+                    exchange=short_contract.exchange,
+                )
+            )
 
             # Create a test order for whatIf check
             test_order = LimitOrder(
@@ -418,9 +443,23 @@ class VerticalSpreadExecutor:
             short_contract = self.ibkr_client._get_qqq_option_contract(strike_short, short_right)
 
             # Create combo contract for spread
-            combo_contract = ib_insync.Bag("QQQ", "SMART", "USD")
-            combo_contract.addLeg(long_contract, 1)
-            combo_contract.addLeg(short_contract, -1)
+            combo_contract = ib_insync.Bag(symbol="QQQ", exchange="SMART", currency="USD")
+            combo_contract.comboLegs.append(
+                ib_insync.ComboLeg(
+                    conId=long_contract.conId,
+                    ratio=1,
+                    action="BUY",
+                    exchange=long_contract.exchange,
+                )
+            )
+            combo_contract.comboLegs.append(
+                ib_insync.ComboLeg(
+                    conId=short_contract.conId,
+                    ratio=1,
+                    action="SELL",
+                    exchange=short_contract.exchange,
+                )
+            )
 
             # Start with initial MID price as limit
             current_limit_price = initial_mid_price
@@ -587,7 +626,18 @@ class VerticalSpreadExecutor:
             }
 
         except Exception as e:
-            logger.error(f"Error in limit-ladder execution for follower {follower_id}: {e}")
+            logger.error(
+                f"Error in limit-ladder execution for follower {follower_id}: {e}",
+                exc_info=True,
+            )
+            # Publish alert so upstream observers see the execution failure;
+            # the inner catch previously swallowed the signal silently.
+            await self._publish_alert(
+                follower_id=follower_id,
+                message=f"GATEWAY_UNREACHABLE: {e!s}",
+                alert_type=AlertType.GATEWAY_UNREACHABLE,
+                severity=AlertSeverity.CRITICAL,
+            )
             return {
                 "status": OrderStatus.REJECTED,
                 "error": f"Limit-ladder execution error: {e!s}",
