@@ -215,16 +215,27 @@ class TestAlertRouter:
     @pytest.mark.asyncio
     async def test_health_endpoint(self):
         """Test the health check endpoint."""
-        from alert_router.app.alert_router import app
+        from alert_router.app.alert_router import app, router
         from fastapi.testclient import TestClient
 
-        with TestClient(app) as client:
-            response = client.get("/health")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["status"] == "healthy"
-            assert data["service"] == "alert-router"
-            assert "timestamp" in data
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+
+        with (
+            patch.object(router, "_init_redis", new_callable=AsyncMock),
+            patch.object(router, "_init_mongo", new_callable=AsyncMock),
+            patch.object(router, "_init_httpx", new_callable=AsyncMock),
+            patch.object(router, "_load_vault_secrets", new_callable=AsyncMock),
+            patch.object(router, "_process_alerts", new_callable=AsyncMock),
+            patch.object(router, "redis_client", mock_redis),
+        ):
+            with TestClient(app) as client:
+                response = client.get("/health")
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "healthy"
+                assert data["service"] == "alert-router"
+                assert "timestamp" in data
 
     @pytest.mark.asyncio
     async def test_consumer_group_creation(self, alert_router, fake_redis):
