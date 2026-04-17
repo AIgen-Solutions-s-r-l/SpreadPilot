@@ -86,34 +86,22 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
         token: JWT token from query parameter
     """
     try:
-        # Validate token before accepting connection
         username = await validate_ws_token(token)
-
-        # Accept connection with authenticated user
-        await manager.connect(websocket, username)
-
-        # Connection loop
-        while True:
-            # Receive and process messages
-            data = await websocket.receive_text()
-
-            # Simple echo for now
-            await manager.send_personal_message(f"You sent: {data}", websocket)
-
-            # In a real application, you would process the message and potentially
-            # broadcast updates to all connected clients
-
     except Exception as auth_error:
-        # Authentication failed - close with 1008 (policy violation)
         logger.warning(f"WebSocket authentication failed: {auth_error}")
         try:
             await websocket.close(code=1008, reason=str(auth_error))
-        except:
-            pass  # Connection may already be closed
+        except (RuntimeError, OSError):
+            pass
+        return
 
+    await manager.connect(websocket, username)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.send_personal_message(f"You sent: {data}", websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
         manager.disconnect(websocket)
