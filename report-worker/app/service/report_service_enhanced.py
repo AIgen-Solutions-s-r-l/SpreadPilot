@@ -7,7 +7,7 @@ from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 
-from .. import config
+import os
 from . import generator, pnl
 from .notifier_minio import send_report_email_with_minio
 
@@ -132,7 +132,7 @@ class EnhancedReportService:
                 commission_pct = (
                     follower.commission_pct
                     if follower.commission_pct is not None
-                    else config.DEFAULT_COMMISSION_PERCENTAGE
+                    else float(os.environ.get("DEFAULT_COMMISSION_PERCENTAGE", "20.0"))
                 )
                 commission_amount = pnl.calculate_commission(total_monthly_pnl, follower)
 
