@@ -60,8 +60,7 @@ class EmailSender:
 
         logger.info(
             "Initialized email sender",
-            from_email=from_email,
-            from_name=from_name,
+            extra={"from_email": from_email, "from_name": from_name},
         )
 
     @dry_run("email", return_value=True, log_args=False)
@@ -119,8 +118,7 @@ class EmailSender:
                     if not os.path.exists(attachment_path):
                         logger.warning(
                             f"Attachment file not found: {attachment_path}",
-                            to_email=to_email,
-                            subject=subject,
+                            extra={"to_email": to_email, "subject": subject},
                         )
                         continue
 
@@ -159,25 +157,28 @@ class EmailSender:
             if response.status_code in [200, 201, 202]:
                 logger.info(
                     "Email sent successfully",
-                    to_email=to_email,
-                    subject=subject,
-                    status_code=response.status_code,
+                    extra={
+                        "to_email": to_email,
+                        "subject": subject,
+                        "status_code": response.status_code,
+                    },
                 )
                 return True
             else:
                 logger.error(
                     "Failed to send email",
-                    to_email=to_email,
-                    subject=subject,
-                    status_code=response.status_code,
-                    response_body=response.body,
+                    extra={
+                        "to_email": to_email,
+                        "subject": subject,
+                        "status_code": response.status_code,
+                        "response_body": response.body,
+                    },
                 )
                 return False
         except Exception as e:
             logger.error(
                 f"Error sending email: {e}",
-                to_email=to_email,
-                subject=subject,
+                extra={"to_email": to_email, "subject": subject},
             )
             return False
 
@@ -228,10 +229,12 @@ class SMTPEmailSender:
 
         logger.info(
             "Initialized SMTP email sender",
-            smtp_host=self.smtp_host,
-            smtp_port=self.smtp_port,
-            from_email=from_email,
-            from_name=from_name,
+            extra={
+                "smtp_host": self.smtp_host,
+                "smtp_port": self.smtp_port,
+                "from_email": from_email,
+                "from_name": from_name,
+            },
         )
 
     @dry_run_async("email", return_value=True, log_args=False)
@@ -325,18 +328,14 @@ class SMTPEmailSender:
 
             logger.info(
                 "Email sent successfully via SMTP",
-                to_email=to_email,
-                subject=subject,
-                smtp_host=self.smtp_host,
+                extra={"to_email": to_email, "subject": subject, "smtp_host": self.smtp_host},
             )
             return True
 
         except Exception as e:
             logger.error(
                 f"Error sending email via SMTP: {e}",
-                to_email=to_email,
-                subject=subject,
-                smtp_host=self.smtp_host,
+                extra={"to_email": to_email, "subject": subject, "smtp_host": self.smtp_host},
             )
             return False
 

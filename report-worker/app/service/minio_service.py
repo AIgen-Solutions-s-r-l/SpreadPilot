@@ -7,9 +7,6 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 from spreadpilot_core.logging.logger import get_logger
 
-# Import the module, not the attributes (to avoid triggering __getattr__ at import time)
-from .. import config
-
 logger = get_logger(__name__)
 
 
@@ -17,14 +14,13 @@ class MinIOService:
     """Service for uploading reports to MinIO/S3 with lifecycle management."""
 
     def __init__(self):
-        """Initialize MinIO service with configuration."""
-        # Access settings via config module (triggers __getattr__ at runtime, not import time)
-        self.endpoint_url = config.MINIO_ENDPOINT_URL
-        self.access_key = config.MINIO_ACCESS_KEY
-        self.secret_key = config.MINIO_SECRET_KEY
-        self.bucket_name = config.MINIO_BUCKET_NAME
-        self.region = config.MINIO_REGION
-        self.secure = config.MINIO_SECURE
+        """Initialize MinIO service with configuration from environment."""
+        self.endpoint_url = os.environ.get("MINIO_ENDPOINT_URL")
+        self.access_key = os.environ.get("MINIO_ACCESS_KEY")
+        self.secret_key = os.environ.get("MINIO_SECRET_KEY")
+        self.bucket_name = os.environ.get("MINIO_BUCKET_NAME")
+        self.region = os.environ.get("MINIO_REGION", "us-east-1")
+        self.secure = os.environ.get("MINIO_SECURE", "true").lower() == "true"
 
         self._s3_client = None
 

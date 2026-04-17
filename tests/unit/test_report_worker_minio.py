@@ -34,28 +34,26 @@ def temp_files():
 def test_follower():
     """Create a test follower."""
     return Follower(
-        id="test_follower_123",
-        name="Test User",
+        _id="test_follower_123",
         email="test@example.com",
-        enabled=True,
+        iban="DE89370400440532013000",
+        ibkr_username="test_trader",
+        ibkr_secret_ref="sm://projects/test/secrets/ibkr_pass",
         commission_pct=20.0,
+        enabled=True,
     )
 
 
 class TestMinIOService:
     """Test MinIO service functionality."""
 
-    @mock_aws
     def test_minio_upload_success(self, temp_files):
         """Test successful MinIO upload."""
         pdf_path, excel_path = temp_files
 
-        # Mock MinIO configuration
         with patch.dict(
             os.environ,
             {
-                "GOOGLE_CLOUD_PROJECT": "test-project",
-                "REPORT_SENDER_EMAIL": "test@example.com",
                 "MINIO_ENDPOINT_URL": "http://localhost:9000",
                 "MINIO_ACCESS_KEY": "test_access",
                 "MINIO_SECRET_KEY": "test_secret",
@@ -63,25 +61,14 @@ class TestMinIOService:
             },
         ):
             service = MinIOService()
-
-            # Test configuration
             assert service.is_configured() is True
 
-            # Create mock S3 bucket
-            import boto3
+            mock_s3 = MagicMock()
+            service._s3_client = mock_s3
 
-            s3_client = boto3.client(
-                "s3",
-                endpoint_url="http://localhost:9000",
-                aws_access_key_id="test_access",
-                aws_secret_access_key="test_secret",
-                region_name="us-east-1",
-            )
-            s3_client.create_bucket(Bucket="test-bucket")
-
-            # Test upload
             object_key = service.upload_report(pdf_path, "test/report.pdf")
             assert object_key == "test/report.pdf"
+            mock_s3.put_object.assert_called_once()
 
     def test_minio_not_configured(self):
         """Test MinIO service when not configured."""
@@ -99,7 +86,6 @@ class TestMinIOService:
             result = service.upload_report("/fake/path.pdf", "test.pdf")
             assert result is None
 
-    @mock_aws
     def test_minio_upload_with_url_generation(self, temp_files):
         """Test MinIO upload with URL generation."""
         pdf_path, excel_path = temp_files
@@ -107,8 +93,6 @@ class TestMinIOService:
         with patch.dict(
             os.environ,
             {
-                "GOOGLE_CLOUD_PROJECT": "test-project",
-                "REPORT_SENDER_EMAIL": "test@example.com",
                 "MINIO_ENDPOINT_URL": "http://localhost:9000",
                 "MINIO_ACCESS_KEY": "test_access",
                 "MINIO_SECRET_KEY": "test_secret",
@@ -117,19 +101,10 @@ class TestMinIOService:
         ):
             service = MinIOService()
 
-            # Create mock S3 bucket
-            import boto3
+            mock_s3 = MagicMock()
+            mock_s3.generate_presigned_url.return_value = "https://minio.example.com/signed-url"
+            service._s3_client = mock_s3
 
-            s3_client = boto3.client(
-                "s3",
-                endpoint_url="http://localhost:9000",
-                aws_access_key_id="test_access",
-                aws_secret_access_key="test_secret",
-                region_name="us-east-1",
-            )
-            s3_client.create_bucket(Bucket="test-bucket")
-
-            # Test upload with URL generation
             object_key, presigned_url = service.upload_report_with_url(
                 pdf_path, "test_follower", "2025-06", "pdf"
             )
@@ -157,14 +132,15 @@ class TestEmailWithMinIO:
     """Test email sending with MinIO integration."""
 
     @patch("report_worker.app.service.notifier_minio.send_email")
-    @patch("report_worker.app.service.notifier_minio.minio_service")
+    @patch("report_worker.app.service.notifier_minio.get_minio_service")
     def test_email_with_minio_links(self, mock_minio, mock_send_email, test_follower, temp_files):
         """Test email sending with MinIO download links."""
         pdf_path, excel_path = temp_files
 
-        # Mock MinIO service
-        mock_minio.is_configured.return_value = True
-        mock_minio.upload_report_with_url.side_effect = [
+        # Mock MinIO service instance returned by get_minio_service()
+        mock_svc = mock_minio.return_value
+        mock_svc.is_configured.return_value = True
+        mock_svc.upload_report_with_url.side_effect = [
             ("pdf_key", "https://minio.example.com/pdf_url"),
             ("excel_key", "https://minio.example.com/excel_url"),
         ]
@@ -183,7 +159,7 @@ class TestEmailWithMinIO:
         assert report_info["email_sent"] is True
 
         # Verify MinIO uploads were called
-        assert mock_minio.upload_report_with_url.call_count == 2
+        assert mock_svc.upload_report_with_url.call_count == 2
 
         # Verify email was sent with links
         mock_send_email.assert_called_once()
@@ -196,7 +172,7 @@ class TestEmailWithMinIO:
         assert "valid for 30 days" in html_content
 
     @patch("report_worker.app.service.notifier_minio.send_email")
-    @patch("report_worker.app.service.notifier_minio.minio_service")
+    @patch("report_worker.app.service.notifier_minio.get_minio_service")
     def test_email_with_attachments_fallback(
         self, mock_minio, mock_send_email, test_follower, temp_files
     ):
@@ -204,7 +180,7 @@ class TestEmailWithMinIO:
         pdf_path, excel_path = temp_files
 
         # Mock MinIO service not configured
-        mock_minio.is_configured.return_value = False
+        mock_minio.return_value.is_configured.return_value = False
 
         # Mock email sending
         mock_send_email.return_value = True
@@ -230,7 +206,7 @@ class TestEmailWithMinIO:
         assert any(att["path"] == excel_path for att in attachments)
 
     @patch("report_worker.app.service.notifier_minio.send_email")
-    @patch("report_worker.app.service.notifier_minio.minio_service")
+    @patch("report_worker.app.service.notifier_minio.get_minio_service")
     def test_email_with_minio_upload_failure(
         self, mock_minio, mock_send_email, test_follower, temp_files
     ):
@@ -238,8 +214,9 @@ class TestEmailWithMinIO:
         pdf_path, excel_path = temp_files
 
         # Mock MinIO service configured but upload fails
-        mock_minio.is_configured.return_value = True
-        mock_minio.upload_report_with_url.return_value = (None, None)
+        mock_svc = mock_minio.return_value
+        mock_svc.is_configured.return_value = True
+        mock_svc.upload_report_with_url.return_value = (None, None)
 
         # Mock email sending
         mock_send_email.return_value = True
@@ -270,16 +247,13 @@ class TestEmailWithMinIO:
         assert report_info["email_sent"] is False
 
     def test_email_follower_without_email(self, temp_files):
-        """Test email sending to follower without email."""
+        """Test email sending to follower without email attribute."""
         pdf_path, excel_path = temp_files
 
-        # Create follower without email
-        follower = Follower(
-            id="test_follower",
-            name="Test User",
-            enabled=True,
-            # email field missing
-        )
+        # Use a simple mock without email attribute to simulate the missing-email path
+        follower = MagicMock(spec=[])
+        follower.id = "test_follower"
+        follower.email = None
 
         success, report_info = send_report_email_with_minio(
             follower, "2025-06", pdf_path, excel_path
@@ -384,23 +358,37 @@ class TestReportServiceEnhanced:
         # Mock follower data
         follower_doc = {
             "_id": "test_follower",
-            "name": "Test User",
             "email": "test@example.com",
-            "enabled": True,
+            "iban": "DE89370400440532013000",
+            "ibkr_username": "test_trader",
+            "ibkr_secret_ref": "sm://projects/test/secrets/ibkr_pass",
             "commission_pct": 20.0,
+            "enabled": True,
         }
-        mock_db.__getitem__.return_value.find.return_value = AsyncMock()
-        mock_db.__getitem__.return_value.find.return_value.__aiter__ = AsyncMock(
-            return_value=iter([follower_doc])
-        )
 
-        # Mock P&L calculation
-        mock_pnl.calculate_monthly_pnl.return_value = 1000.0
+        # Create a proper async iterator for the cursor
+        class AsyncCursor:
+            def __init__(self, docs):
+                self._docs = iter(docs)
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                try:
+                    return next(self._docs)
+                except StopIteration:
+                    raise StopAsyncIteration
+
+        mock_db.__getitem__.return_value.find.return_value = AsyncCursor([follower_doc])
+
+        # Mock P&L calculation (calculate_monthly_pnl is async)
+        mock_pnl.calculate_monthly_pnl = AsyncMock(return_value=1000.0)
         mock_pnl.calculate_commission.return_value = 200.0
 
-        # Mock report generation
-        mock_generator.generate_pdf_report.return_value = "/fake/report.pdf"
-        mock_generator.generate_excel_report.return_value = "/fake/report.xlsx"
+        # Mock report generation (async functions)
+        mock_generator.generate_pdf_report = AsyncMock(return_value="/fake/report.pdf")
+        mock_generator.generate_excel_report = AsyncMock(return_value="/fake/report.xlsx")
 
         # Mock email sending
         mock_email.return_value = (

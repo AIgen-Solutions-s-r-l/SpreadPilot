@@ -6,7 +6,6 @@ from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 from spreadpilot_core.utils.email import send_email
 
-from .. import config
 from .minio_service import get_minio_service
 
 logger = get_logger(__name__)
@@ -83,7 +82,7 @@ def send_report_email_with_minio(
             body = f"""
             <html>
             <body>
-                <p>Dear {follower.name if hasattr(follower, 'name') else 'Valued Client'},</p>
+                <p>Dear {follower.name if hasattr(follower, "name") else "Valued Client"},</p>
                 
                 <p>Your monthly report for {report_period} is ready.</p>
                 
@@ -111,7 +110,7 @@ def send_report_email_with_minio(
             body = f"""
             <html>
             <body>
-                <p>Dear {follower.name if hasattr(follower, 'name') else 'Valued Client'},</p>
+                <p>Dear {follower.name if hasattr(follower, "name") else "Valued Client"},</p>
                 
                 <p>Please find attached your monthly report for {report_period}.</p>
                 
@@ -138,12 +137,13 @@ def send_report_email_with_minio(
 
         # Determine CC recipients
         cc_recipients = []
-        if config.ADMIN_EMAIL:
-            cc_recipients.append(config.ADMIN_EMAIL)
+        admin_email = os.environ.get("ADMIN_EMAIL")
+        if admin_email:
+            cc_recipients.append(admin_email)
 
         # Send email using core utility
         result = send_email(
-            from_email=config.REPORT_SENDER_EMAIL,
+            from_email=os.environ.get("REPORT_SENDER_EMAIL", "noreply@spreadpilot.com"),
             to_email=follower.email,
             subject=subject,
             html_content=body,
