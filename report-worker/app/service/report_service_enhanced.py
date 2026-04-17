@@ -1,13 +1,13 @@
 """Enhanced report service with MinIO integration and database updates."""
 
 import datetime
+import os
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from spreadpilot_core.db.mongodb import get_mongo_db
 from spreadpilot_core.logging.logger import get_logger
 from spreadpilot_core.models.follower import Follower
 
-import os
 from . import generator, pnl
 from .notifier_minio import send_report_email_with_minio
 
