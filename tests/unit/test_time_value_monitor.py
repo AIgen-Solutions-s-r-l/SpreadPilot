@@ -56,7 +56,7 @@ def mock_ibkr_client():
 @pytest.fixture
 async def tv_monitor(mock_service, fake_redis):
     """Create a time value monitor instance."""
-    monitor = TimeValueMonitor(mock_service)
+    monitor = TimeValueMonitor(mock_service, redis_url="redis://fake")
     monitor.redis_client = fake_redis
     yield monitor
     # Cleanup
