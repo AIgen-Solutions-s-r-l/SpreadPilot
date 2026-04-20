@@ -108,3 +108,25 @@ class TestWebSocketExceptionHandling:
         lines = [line.strip() for line in source.splitlines()]
         bare_excepts = [line for line in lines if line == "except:"]
         assert len(bare_excepts) == 0, f"Found bare except: {bare_excepts}"
+
+    @pytest.mark.asyncio
+    async def test_inbound_messages_are_not_echoed(self):
+        """Client messages are discarded — the dashboard channel is server-push only."""
+        manager = _ws_mod.manager
+        websocket_endpoint = _ws_mod.websocket_endpoint
+
+        # Receive two client messages, then disconnect.
+        mock_ws = AsyncMock()
+        mock_ws.receive_text = AsyncMock(side_effect=["hello", "world", WebSocketDisconnect()])
+
+        with patch.object(manager, "connect", new_callable=AsyncMock) as mock_connect:
+            mock_connect.side_effect = lambda ws, user: manager.active_connections.__setitem__(
+                ws, user
+            )
+            with patch.object(
+                _ws_mod, "validate_ws_token", new_callable=AsyncMock, return_value="admin"
+            ):
+                await websocket_endpoint(mock_ws, token="valid_token")
+
+        # No echo — send_text must never be called from the receive loop.
+        mock_ws.send_text.assert_not_called()

@@ -97,9 +97,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
 
     await manager.connect(websocket, username)
     try:
+        # Server-push channel: dashboard receives broadcasts via broadcast_update().
+        # We still read from the socket so that client disconnects raise
+        # WebSocketDisconnect and we can release the connection; inbound
+        # messages are intentionally discarded.
         while True:
-            data = await websocket.receive_text()
-            await manager.send_personal_message(f"You sent: {data}", websocket)
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
