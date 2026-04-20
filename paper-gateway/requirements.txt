@@ -7,5 +7,5 @@ pymongo==4.6.0
 numpy==1.26.2
 scipy==1.11.4
 python-dateutil==2.8.2
-pytz==2023.3
+pytz==2025.2
 httpx==0.25.2
