@@ -83,7 +83,7 @@ jobs:
           category: 'container-${{ matrix.service }}'
 
       - name: Run Grype vulnerability scanner
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
         with:
           image: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:scan
           fail-build: false
