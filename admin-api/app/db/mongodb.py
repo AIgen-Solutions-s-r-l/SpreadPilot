@@ -36,8 +36,8 @@ async def connect_to_mongo():
         logger.info(f"Connecting to MongoDB at {MONGO_URI}...")
         try:
             _mongo_client = AsyncIOMotorClient(MONGO_URI)
-            # Verify connection
-            await _mongo_client.admin.command("ismaster")
+            # Verify connection (ping replaces deprecated ismaster, removed in MongoDB 6.0)
+            await _mongo_client.admin.command("ping")
             logger.info("MongoDB client initialized successfully.")
         except Exception as e:
             logger.error(f"Failed to initialize MongoDB client: {e}", exc_info=True)
@@ -81,9 +81,9 @@ async def get_db() -> AsyncIOMotorDatabase:
 # Function to check database connection (for health checks)
 async def check_connection():
     try:
-        # The ismaster command is cheap and does not require auth
+        # ping replaces deprecated ismaster (removed in MongoDB 6.0) and requires no auth
         client = get_mongo_client()
-        await client.admin.command("ismaster")
+        await client.admin.command("ping")
         logger.info("Successfully connected to MongoDB!")
         return True
     except Exception as e:

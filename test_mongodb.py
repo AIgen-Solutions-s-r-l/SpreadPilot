@@ -12,8 +12,8 @@ time.sleep(5)
 # Try to connect to MongoDB
 try:
     client = pymongo.MongoClient(mongo_uri)
-    # The ismaster command is cheap and does not require auth
-    client.admin.command("ismaster")
+    # ping replaces deprecated ismaster (removed in MongoDB 6.0) and requires no auth
+    client.admin.command("ping")
     print("Successfully connected to MongoDB!")
 
     # List databases
