@@ -78,7 +78,7 @@ class TradingService:
         self.alert_manager = AlertManager(self)
         self.signal_processor = SignalProcessor(self)
         self.pnl_service = PnLService(self)
-        self.time_value_monitor = TimeValueMonitor(self)
+        self.time_value_monitor = TimeValueMonitor(self, redis_url=settings.redis_url)
         self.vertical_spreads_strategy_handler = VerticalSpreadsStrategyHandler(
             self, VERTICAL_SPREADS_STRATEGY
         )

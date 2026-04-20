@@ -32,7 +32,7 @@ class TimeValueStatus(StrEnum):
 class TimeValueMonitor:
     """Monitor for tracking time value of open positions."""
 
-    def __init__(self, service, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, service, redis_url: str):
         """Initialize the time value monitor.
 
         Args:

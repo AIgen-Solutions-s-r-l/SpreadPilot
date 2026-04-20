@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 class VerticalSpreadExecutor:
     """Executes vertical spread orders with limit-ladder strategy and margin checks."""
 
-    def __init__(self, ibkr_client: IBKRClient, redis_url: str = "redis://localhost:6379"):
+    def __init__(self, ibkr_client: IBKRClient, redis_url: str):
         """Initialize the executor.
 
         Args:

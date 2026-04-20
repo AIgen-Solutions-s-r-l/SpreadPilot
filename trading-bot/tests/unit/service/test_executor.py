@@ -395,7 +395,7 @@ class TestVerticalSpreadExecutor(unittest.TestCase):
 
     def test_executor_initialization(self):
         """Test executor initialization."""
-        executor = VerticalSpreadExecutor(self.mock_ibkr_client)
+        executor = VerticalSpreadExecutor(self.mock_ibkr_client, redis_url="redis://fake")
         self.assertEqual(executor.ibkr_client, self.mock_ibkr_client)
 
     async def test_execute_vertical_spread_bear_call_strategy(self):

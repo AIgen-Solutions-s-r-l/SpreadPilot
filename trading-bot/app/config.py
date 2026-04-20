@@ -107,6 +107,13 @@ class Settings(BaseSettings):
         description="Timeout in seconds for each limit order attempt",
     )
 
+    # Redis
+    redis_url: str = Field(
+        ...,
+        env="REDIS_URL",
+        description="Redis connection URL (required; no default to surface misconfiguration early)",
+    )
+
     # Polling parameters
     polling_interval_seconds: float = Field(
         default=1.0,

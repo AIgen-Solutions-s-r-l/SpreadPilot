@@ -43,7 +43,7 @@ def mock_ibkr_client():
 @pytest.fixture
 async def executor(mock_ibkr_client, fake_redis):
     """Create an executor instance with mocked dependencies."""
-    executor = VerticalSpreadExecutor(mock_ibkr_client)
+    executor = VerticalSpreadExecutor(mock_ibkr_client, redis_url="redis://fake")
     executor.redis_client = fake_redis
     yield executor
 
